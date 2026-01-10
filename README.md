@@ -1,3 +1,33 @@
+# Kuinbee Admin Frontend
+
+This is the admin panel for the Kuinbee marketplace.
+
+## Branching Strategy
+- `production`: Stable, finalized code only.
+- `staging`: QA/testing, pre-production.
+- `feature/*`: New features, bugfixes, or experiments.
+
+## Getting Started
+1. Install dependencies:
+	```bash
+	npm install
+	# or
+	yarn install
+	```
+2. Start development server:
+	```bash
+	npm run dev
+	# or
+	yarn dev
+	```
+
+## Contributing
+- Work on feature branches from `staging`.
+- Open PRs to merge features into `staging`.
+- After QA, merge `staging` into `production`.
+
+## License
+See [LICENSE](LICENSE).
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

@@ -40,6 +40,7 @@ import { useSidebarStore } from '@/store/sidebar.store';
 import { useThemeStore } from '@/store/theme.store';
 import { useLogout } from '@/hooks';
 import { AntiFlickerWrapper } from '@/components/auth/AntiFlickerWrapper';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -314,7 +315,9 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
-          <AntiFlickerWrapper>{children}</AntiFlickerWrapper>
+          <AntiFlickerWrapper>
+            <AuthGuard>{children}</AuthGuard>
+          </AntiFlickerWrapper>
         </main>
       </div>
     </div>

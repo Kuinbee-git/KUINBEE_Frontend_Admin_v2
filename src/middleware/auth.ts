@@ -13,9 +13,18 @@ const PROTECTED_PATHS = ['/dashboard'];
  */
 function hasAuthCookies(request: NextRequest): boolean {
   // Check for session cookie existence (fast, no network call)
-  const sessionCookie = request.cookies.get('connect.sid') || 
+  const sessionCookie = request.cookies.get('sid') ||                    // Your backend uses 'sid'
+                        request.cookies.get('connect.sid') || 
                         request.cookies.get('session') ||
                         request.cookies.get('auth_token');
+  
+  // Log for debugging (visible in Vercel logs)
+  console.log('[Auth Middleware] Cookie check:', { 
+    hasSid: !!request.cookies.get('sid'),
+    hasSessionCookie: !!sessionCookie,
+    allCookieNames: Array.from(request.cookies.getAll()).map(c => c.name)
+  });
+  
   return !!sessionCookie;
 }
 

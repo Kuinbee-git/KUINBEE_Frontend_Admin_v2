@@ -1,35 +1,18 @@
 "use client";
 
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Building2, User } from "lucide-react";
 import {
   StatusBadge,
   getKYCStatusSemantic,
   formatStatusLabel,
 } from "@/components/shared/StatusBadge";
 import { DataTable, ColumnDef } from "@/components/shared/DataTable";
+import type { SupplierListItem } from "@/types";
 
-type KYCStatus =
-  | "not_started"
-  | "in_progress"
-  | "submitted"
-  | "approved"
-  | "rejected"
-  | "expired";
-
-interface Supplier {
-  id: string;
-  name: string;
-  type: "individual" | "company";
-  businessDomains: string[];
-  kycStatus: KYCStatus;
-  email: string;
-  emailVerified: boolean;
-  datasetCount: number;
-  createdDate: string;
-}
+type KycStatus = "PENDING" | "IN_PROGRESS" | "VERIFIED" | "REJECTED" | "FAILED";
 
 interface SupplierTableProps {
-  suppliers: Supplier[];
+  suppliers: SupplierListItem[];
   onRowClick: (supplierId: string) => void;
 }
 
@@ -37,37 +20,48 @@ export function SupplierTable({
   suppliers,
   onRowClick,
 }: SupplierTableProps) {
-  const columns: ColumnDef<Supplier>[] = [
+  const columns: ColumnDef<SupplierListItem>[] = [
     {
-      header: "Supplier ID",
-      accessor: "id",
-      render: (id: string) => (
-        <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-          {id}
-        </span>
+      header: "Supplier",
+      accessor: (row) => row.supplier.email,
+      render: (_, supplier: SupplierListItem) => (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            {supplier.supplierProfile.supplierType === "COMPANY" ? (
+              <Building2 className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+            ) : (
+              <User className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+            )}
+            <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+              {supplier.supplierProfile.supplierType === "COMPANY" 
+                ? supplier.supplierProfile.companyName 
+                : supplier.supplierProfile.individualName}
+            </span>
+          </div>
+          <div className="text-xs" style={{ color: "var(--text-muted)" }}>
+            {supplier.supplier.email}
+          </div>
+          {supplier.supplierProfile.supplierType === "COMPANY" && supplier.supplierProfile.contactPersonName && (
+            <div className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Contact: {supplier.supplierProfile.contactPersonName}
+            </div>
+          )}
+        </div>
       ),
     },
     {
-      header: "Name",
-      accessor: "name",
-      render: (name: string) => (
-        <span className="text-sm" style={{ color: "var(--text-primary)" }}>
-          {name}
-        </span>
+      header: "Status",
+      accessor: (row) => row.supplier.status,
+      render: (status: string) => (
+        <StatusBadge
+          status={formatStatusLabel(status)}
+          semanticType={status === "ACTIVE" ? "success" : status === "SUSPENDED" ? "error" : "warning"}
+        />
       ),
     },
     {
-      header: "Type",
-      accessor: "type",
-      render: (type: string) => (
-        <span className="text-sm">
-          {type.charAt(0).toUpperCase() + type.slice(1)}
-        </span>
-      ),
-    },
-    {
-      header: "Business Domain",
-      accessor: "businessDomains",
+      header: "Business Domains",
+      accessor: (row) => row.supplierProfile.businessDomains,
       render: (domains: string[]) =>
         domains.length > 0 ? (
           <div className="flex flex-wrap gap-1">
@@ -96,28 +90,38 @@ export function SupplierTable({
     },
     {
       header: "KYC Status",
-      accessor: "kycStatus",
-      render: (status: KYCStatus) => (
-        <StatusBadge
-          status={formatStatusLabel(status)}
-          semanticType={getKYCStatusSemantic(status)}
-        />
-      ),
+      accessor: (row) => row.kyc?.status,
+      render: (_, supplier: SupplierListItem) => {
+        if (!supplier.kyc) {
+          return (
+            <StatusBadge
+              status="Not Started"
+              semanticType="neutral"
+            />
+          );
+        }
+        return (
+          <StatusBadge
+            status={formatStatusLabel(supplier.kyc.status)}
+            semanticType={getKYCStatusSemantic(supplier.kyc.status)}
+          />
+        );
+      },
     },
     {
-      header: "Email",
-      accessor: (row) => ({ email: row.email, verified: row.emailVerified }),
+      header: "Contact Email",
+      accessor: (row) => ({ email: row.supplierProfile.contactEmail, verified: row.supplierProfile.contactEmailVerified }),
       render: (data: { email: string; verified: boolean }) => (
         <div className="flex items-center gap-2">
-          <span className="truncate max-w-[180px] text-sm">{data.email}</span>
+          <span className="truncate max-w-45 text-sm">{data.email}</span>
           {data.verified ? (
             <CheckCircle2
-              className="h-4 w-4 flex-shrink-0"
+              className="h-4 w-4 shrink-0"
               style={{ color: "var(--status-success)" }}
             />
           ) : (
             <XCircle
-              className="h-4 w-4 flex-shrink-0"
+              className="h-4 w-4 shrink-0"
               style={{ color: "var(--status-error)" }}
             />
           )}
@@ -125,23 +129,8 @@ export function SupplierTable({
       ),
     },
     {
-      header: "Datasets",
-      accessor: "datasetCount",
-      align: "center",
-      render: (count: number) =>
-        count > 0 ? (
-          <span className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>
-            {count}
-          </span>
-        ) : (
-          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-            0
-          </span>
-        ),
-    },
-    {
       header: "Created",
-      accessor: "createdDate",
+      accessor: (row) => row.supplier.createdAt,
       render: (date: string) => (
         <span className="text-sm">
           {new Date(date).toLocaleDateString("en-US", {
@@ -158,8 +147,8 @@ export function SupplierTable({
     <DataTable
       columns={columns}
       data={suppliers}
-      onRowClick={(supplier) => onRowClick(supplier.id)}
-      getRowKey={(supplier) => supplier.id}
+      onRowClick={(supplier) => onRowClick(supplier.supplier.id)}
+      getRowKey={(supplier) => supplier.supplier.id}
       emptyMessage="No suppliers found"
     />
   );

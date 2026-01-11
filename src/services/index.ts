@@ -10,3 +10,5 @@ export * as categoriesService from './categories.service';
 export * as sourcesService from './sources.service';
 export * as invitesService from './invites.service';
 export * as rolesService from './roles.service';
+export * as suppliersService from './suppliers.service';
+export * as supplierInvitesService from './supplier-invites.service';

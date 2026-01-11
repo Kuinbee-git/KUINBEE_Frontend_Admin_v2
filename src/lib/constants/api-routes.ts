@@ -131,6 +131,14 @@ export const API_ROUTES = {
       DETAIL: (inviteId: string) => `/v1/admin/supplier-invites/${inviteId}`,
       RESEND: (inviteId: string) => `/v1/admin/supplier-invites/${inviteId}/resend`,
     },
+
+    // Suppliers
+    SUPPLIERS: {
+      LIST: '/v1/admin/suppliers',
+      DETAIL: (supplierId: string) => `/v1/admin/suppliers/${supplierId}`,
+      ANALYTICS: (supplierId: string) => `/v1/admin/suppliers/${supplierId}/analytics`,
+      KYC: (supplierId: string) => `/v1/admin/suppliers/${supplierId}/kyc`,
+    },
   },
 
   // ============================================

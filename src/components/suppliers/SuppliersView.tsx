@@ -7,136 +7,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SupplierFilters } from "@/components/suppliers/SupplierFilters";
 import { SupplierTable } from "@/components/suppliers/SupplierTable";
 import { SupplierInvitesView } from "@/components/suppliers/SupplierInvitesView";
-
-type SupplierType = "all" | "individual" | "company";
-type DatasetPresence = "all" | "has_datasets" | "no_datasets";
-type KYCStatus =
-  | "all"
-  | "not_started"
-  | "in_progress"
-  | "submitted"
-  | "approved"
-  | "rejected"
-  | "expired";
-
-interface Supplier {
-  id: string;
-  name: string;
-  type: "individual" | "company";
-  businessDomains: string[];
-  kycStatus: Exclude<KYCStatus, "all">;
-  email: string;
-  emailVerified: boolean;
-  datasetCount: number;
-  createdDate: string;
-}
+import { useSuppliers } from "@/hooks";
+import type { SupplierListParams } from "@/services/suppliers.service";
+import type { SupplierListItem } from "@/types";
 
 export function SuppliersView() {
   const router = useRouter();
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [typeFilter, setTypeFilter] = useState<SupplierType>("all");
-  const [datasetPresenceFilter, setDatasetPresenceFilter] =
-    useState<DatasetPresence>("all");
-  const [kycStatusFilter, setKycStatusFilter] = useState<KYCStatus>("all");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "INDIVIDUAL" | "COMPANY">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING_VERIFICATION" | "DELETED">("ALL");
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
-  const [emailVerifiedFilter, setEmailVerifiedFilter] =
-    useState<string>("all");
+  const [emailVerifiedFilter, setEmailVerifiedFilter] = useState<string>("all");
 
-  // Mock data
-  const allSuppliers: Supplier[] = [
-    {
-      id: "SUP-2024-001",
-      name: "DataCorp International",
-      type: "company",
-      businessDomains: ["Supply Chain", "Logistics", "Manufacturing"],
-      kycStatus: "approved",
-      email: "contact@datacorp.com",
-      emailVerified: true,
-      datasetCount: 12,
-      createdDate: "2024-01-15T10:00:00Z",
-    },
-    {
-      id: "SUP-2024-002",
-      name: "Insight Data Partners",
-      type: "company",
-      businessDomains: ["Consumer Analytics", "Market Research"],
-      kycStatus: "approved",
-      email: "info@insightdata.com",
-      emailVerified: true,
-      datasetCount: 8,
-      createdDate: "2024-02-20T14:30:00Z",
-    },
-    {
-      id: "SUP-2024-003",
-      name: "John Anderson",
-      type: "individual",
-      businessDomains: ["Finance", "Investment"],
-      kycStatus: "in_progress",
-      email: "j.anderson@email.com",
-      emailVerified: true,
-      datasetCount: 3,
-      createdDate: "2024-03-10T09:15:00Z",
-    },
-    {
-      id: "SUP-2024-004",
-      name: "Global Analytics Ltd",
-      type: "company",
-      businessDomains: ["Healthcare", "Pharmaceuticals"],
-      kycStatus: "submitted",
-      email: "contact@globalanalytics.com",
-      emailVerified: false,
-      datasetCount: 5,
-      createdDate: "2024-04-05T11:45:00Z",
-    },
-    {
-      id: "SUP-2024-005",
-      name: "Maria Rodriguez",
-      type: "individual",
-      businessDomains: ["E-commerce", "Retail"],
-      kycStatus: "not_started",
-      email: "maria.r@email.com",
-      emailVerified: true,
-      datasetCount: 0,
-      createdDate: "2024-05-12T16:20:00Z",
-    },
-    {
-      id: "SUP-2024-006",
-      name: "TechData Solutions",
-      type: "company",
-      businessDomains: ["Technology", "Software", "Cloud Services"],
-      kycStatus: "approved",
-      email: "info@techdata.com",
-      emailVerified: true,
-      datasetCount: 15,
-      createdDate: "2024-01-08T08:00:00Z",
-    },
-    {
-      id: "SUP-2024-007",
-      name: "Sarah Mitchell",
-      type: "individual",
-      businessDomains: ["Education", "EdTech"],
-      kycStatus: "rejected",
-      email: "s.mitchell@email.com",
-      emailVerified: false,
-      datasetCount: 2,
-      createdDate: "2024-06-18T13:30:00Z",
-    },
-    {
-      id: "SUP-2024-008",
-      name: "Urban Insights Group",
-      type: "company",
-      businessDomains: ["Real Estate", "Urban Planning"],
-      kycStatus: "expired",
-      email: "contact@urbaninsights.com",
-      emailVerified: true,
-      datasetCount: 6,
-      createdDate: "2023-11-20T10:00:00Z",
-    },
-  ];
+  // API params
+  const apiParams: SupplierListParams = {
+    page: 1,
+    pageSize: 20,
+    q: searchQuery || undefined,
+    supplierType: typeFilter === "ALL" ? undefined : typeFilter,
+    status: statusFilter === "ALL" ? undefined : statusFilter,
+    sort: "createdAt:desc",
+  };
 
-  // Available business domains for filter
+  // Fetch suppliers
+  const { data, isLoading } = useSuppliers(apiParams);
+  const suppliers = data?.items || [];
+
+  // Available business domains for filter (can be fetched from API later)
   const domainList = [
     "Supply Chain",
     "Logistics",
@@ -158,48 +57,20 @@ export function SuppliersView() {
     "Urban Planning",
   ];
 
-  // Filter logic
-  const filteredSuppliers = allSuppliers.filter((supplier) => {
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchesName = supplier.name.toLowerCase().includes(query);
-      const matchesId = supplier.id.toLowerCase().includes(query);
-      const matchesEmail = supplier.email.toLowerCase().includes(query);
-      const matchesDomain = supplier.businessDomains.some(domain => domain.toLowerCase().includes(query));
-      if (!matchesName && !matchesId && !matchesEmail && !matchesDomain) return false;
-    }
-
-    // Type filter
-    if (typeFilter !== "all" && supplier.type !== typeFilter) {
-      return false;
-    }
-
-    // Dataset presence filter
-    if (datasetPresenceFilter === "has_datasets" && supplier.datasetCount === 0) {
-      return false;
-    }
-    if (datasetPresenceFilter === "no_datasets" && supplier.datasetCount > 0) {
-      return false;
-    }
-
-    // KYC status filter
-    if (kycStatusFilter !== "all" && supplier.kycStatus !== kycStatusFilter) {
-      return false;
-    }
-
+  // Filter suppliers client-side for domain and email verification
+  const filteredSuppliers = suppliers.filter((supplierItem: SupplierListItem) => {
     // Email verified filter
-    if (emailVerifiedFilter === "verified" && !supplier.emailVerified) {
+    if (emailVerifiedFilter === "verified" && !supplierItem.supplierProfile.contactEmailVerified) {
       return false;
     }
-    if (emailVerifiedFilter === "unverified" && supplier.emailVerified) {
+    if (emailVerifiedFilter === "unverified" && supplierItem.supplierProfile.contactEmailVerified) {
       return false;
     }
 
     // Business domains filter
     if (selectedDomains.length > 0) {
       const hasMatchingDomain = selectedDomains.some((domain) =>
-        supplier.businessDomains.includes(domain)
+        supplierItem.supplierProfile.businessDomains.includes(domain)
       );
       if (!hasMatchingDomain) {
         return false;
@@ -211,9 +82,8 @@ export function SuppliersView() {
 
   const clearAllFilters = () => {
     setSearchQuery("");
-    setTypeFilter("all");
-    setDatasetPresenceFilter("all");
-    setKycStatusFilter("all");
+    setTypeFilter("ALL");
+    setStatusFilter("ALL");
     setSelectedDomains([]);
     setEmailVerifiedFilter("all");
   };
@@ -276,10 +146,8 @@ export function SuppliersView() {
             setSearchQuery={setSearchQuery}
             typeFilter={typeFilter}
             setTypeFilter={setTypeFilter}
-            datasetPresenceFilter={datasetPresenceFilter}
-            setDatasetPresenceFilter={setDatasetPresenceFilter}
-            kycStatusFilter={kycStatusFilter}
-            setKycStatusFilter={setKycStatusFilter}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
             selectedDomains={selectedDomains}
             setSelectedDomains={setSelectedDomains}
             emailVerifiedFilter={emailVerifiedFilter}
@@ -297,10 +165,19 @@ export function SuppliersView() {
                 borderColor: "var(--border-default)",
               }}
             >
-              {filteredSuppliers.length > 0 ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <p
+                    className="text-sm font-medium mb-2"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Loading suppliers...
+                  </p>
+                </div>
+              ) : filteredSuppliers.length > 0 ? (
                 <SupplierTable
                   suppliers={filteredSuppliers}
-                  onRowClick={handleRowClick}
+                  onRowClick={(supplierId: string) => handleRowClick(supplierId)}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center py-16">

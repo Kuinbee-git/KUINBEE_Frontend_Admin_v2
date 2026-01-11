@@ -1,28 +1,17 @@
 "use client";
 
 import { FilterBar, FilterConfig, ActiveFilter } from "@/components/shared/FilterBar";
-import { formatStatusLabel } from "@/components/shared/StatusBadge";
 
-type SupplierType = "all" | "individual" | "company";
-type DatasetPresence = "all" | "has_datasets" | "no_datasets";
-type KYCStatus =
-  | "all"
-  | "not_started"
-  | "in_progress"
-  | "submitted"
-  | "approved"
-  | "rejected"
-  | "expired";
+type SupplierType = "ALL" | "INDIVIDUAL" | "COMPANY";
+type SupplierStatus = "ALL" | "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING_VERIFICATION" | "DELETED";
 
 interface SupplierFiltersProps {
   searchQuery: string;
   setSearchQuery: (value: string) => void;
   typeFilter: SupplierType;
   setTypeFilter: (value: SupplierType) => void;
-  datasetPresenceFilter: DatasetPresence;
-  setDatasetPresenceFilter: (value: DatasetPresence) => void;
-  kycStatusFilter: KYCStatus;
-  setKycStatusFilter: (value: KYCStatus) => void;
+  statusFilter: SupplierStatus;
+  setStatusFilter: (value: SupplierStatus) => void;
   selectedDomains: string[];
   setSelectedDomains: (value: string[]) => void;
   emailVerifiedFilter: string;
@@ -36,10 +25,8 @@ export function SupplierFilters({
   setSearchQuery,
   typeFilter,
   setTypeFilter,
-  datasetPresenceFilter,
-  setDatasetPresenceFilter,
-  kycStatusFilter,
-  setKycStatusFilter,
+  statusFilter,
+  setStatusFilter,
   selectedDomains,
   setSelectedDomains,
   emailVerifiedFilter,
@@ -50,61 +37,45 @@ export function SupplierFilters({
   const filters: FilterConfig<unknown>[] = [
     {
       id: "search",
-      type: "search",
       label: "Search",
-      placeholder: "Search by name, ID, email, or domain...",
+      type: "search",
       value: searchQuery,
       onChange: (value) => setSearchQuery(value as string),
-      showInPrimary: true,
+      placeholder: "Search by name, ID, email, or domain...",
     },
     {
       id: "type",
-      type: "toggle",
-      label: "Type",
+      label: "Supplier Type",
+      type: "select",
       value: typeFilter,
       onChange: (value) => setTypeFilter(value as SupplierType),
       options: [
-        { value: "all", label: "All" },
-        { value: "individual", label: "Individual" },
-        { value: "company", label: "Company" },
+        { value: "ALL", label: "All Types" },
+        { value: "INDIVIDUAL", label: "Individual" },
+        { value: "COMPANY", label: "Company" },
       ],
     },
     {
-      id: "datasets",
-      type: "toggle",
-      label: "Datasets",
-      value: datasetPresenceFilter,
-      onChange: (value) => setDatasetPresenceFilter(value as DatasetPresence),
-      options: [
-        { value: "all", label: "All" },
-        { value: "has_datasets", label: "Has Datasets" },
-        { value: "no_datasets", label: "No Datasets" },
-      ],
-    },
-    {
-      id: "kycStatus",
+      id: "status",
+      label: "Status",
       type: "select",
-      label: "KYC Status",
-      value: kycStatusFilter,
-      onChange: (value) => setKycStatusFilter(value as KYCStatus),
-      width: "w-[180px]",
+      value: statusFilter,
+      onChange: (value) => setStatusFilter(value as SupplierStatus),
       options: [
-        { value: "all", label: "All Statuses" },
-        { value: "not_started", label: "Not Started" },
-        { value: "in_progress", label: "In Progress" },
-        { value: "submitted", label: "Submitted" },
-        { value: "approved", label: "Approved" },
-        { value: "rejected", label: "Rejected" },
-        { value: "expired", label: "Expired" },
+        { value: "ALL", label: "All Statuses" },
+        { value: "ACTIVE", label: "Active" },
+        { value: "INACTIVE", label: "Inactive" },
+        { value: "SUSPENDED", label: "Suspended" },
+        { value: "PENDING_VERIFICATION", label: "Pending Verification" },
+        { value: "DELETED", label: "Deleted" },
       ],
     },
     {
-      id: "email",
+      id: "email-verified",
+      label: "Email Verified",
       type: "select",
-      label: "Email",
       value: emailVerifiedFilter,
       onChange: (value) => setEmailVerifiedFilter(value as string),
-      width: "w-[140px]",
       options: [
         { value: "all", label: "All" },
         { value: "verified", label: "Verified" },
@@ -113,37 +84,32 @@ export function SupplierFilters({
     },
     {
       id: "domains",
-      type: "popover",
       label: "Business Domains",
+      type: "popover",
       value: selectedDomains,
       onChange: (value) => setSelectedDomains(value as string[]),
-      options: domainList.map((domain) => ({ value: domain, label: domain })),
+      options: domainList.map(domain => ({
+        value: domain,
+        label: domain,
+      })),
     },
   ];
 
   const activeFilters: ActiveFilter[] = [];
 
-  if (typeFilter !== "all") {
+  if (typeFilter !== "ALL") {
     activeFilters.push({
       key: "type",
-      label: `Type: ${typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}`,
-      onRemove: () => setTypeFilter("all"),
+      label: `Type: ${typeFilter}`,
+      onRemove: () => setTypeFilter("ALL"),
     });
   }
 
-  if (datasetPresenceFilter !== "all") {
+  if (statusFilter !== "ALL") {
     activeFilters.push({
-      key: "datasetPresence",
-      label: datasetPresenceFilter === "has_datasets" ? "Has Datasets" : "No Datasets",
-      onRemove: () => setDatasetPresenceFilter("all"),
-    });
-  }
-
-  if (kycStatusFilter !== "all") {
-    activeFilters.push({
-      key: "kycStatus",
-      label: `KYC: ${formatStatusLabel(kycStatusFilter)}`,
-      onRemove: () => setKycStatusFilter("all"),
+      key: "status",
+      label: `Status: ${statusFilter.replace(/_/g, " ")}`,
+      onRemove: () => setStatusFilter("ALL"),
     });
   }
 

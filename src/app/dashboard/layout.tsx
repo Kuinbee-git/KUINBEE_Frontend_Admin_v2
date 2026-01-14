@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useCallback, useMemo } from 'react';
+import { ReactNode, useCallback, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -52,6 +52,13 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
   const { theme } = useThemeStore();
   const { user } = useAuthStore();
   const logoutMutation = useLogout();
+
+  // Hydrate persisted stores on mount to prevent hydration mismatch
+  useEffect(() => {
+    useAuthStore.persist.rehydrate();
+    useSidebarStore.persist.rehydrate();
+    useThemeStore.persist.rehydrate();
+  }, []);
 
   const isDark = theme === 'dark';
 

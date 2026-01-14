@@ -52,6 +52,7 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
         permissions: state.permissions,
       }),
+      skipHydration: true,
     }
   )
 );

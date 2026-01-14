@@ -27,6 +27,7 @@ import type {
   ApproveProposalRequest,
   RejectProposalRequest,
   RequestChangesRequest,
+  ProposalReviewResponse,
   VerificationStatus,
   AssignmentStatus,
   UploadScope,
@@ -247,6 +248,17 @@ export async function getDatasetProposals(
     `${API_ROUTES.ADMIN.DATASET_PROPOSALS.LIST}${query}`
   );
   return response.data;
+}
+
+/**
+ * Get complete dataset proposal details for review
+ * Includes dataset, verification, assignment, metadata, features, categories, and source
+ */
+export async function getProposalForReview(datasetId: string): Promise<ProposalReviewResponse> {
+  const response = await apiClient.get<{ data: ProposalReviewResponse }>(
+    API_ROUTES.ADMIN.DATASET_PROPOSALS.REVIEW(datasetId)
+  );
+  return response.data.data;
 }
 
 /**

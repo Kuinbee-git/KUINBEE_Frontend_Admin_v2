@@ -45,6 +45,7 @@ export const API_ROUTES = {
     // Dataset Proposals (Stage 2)
     DATASET_PROPOSALS: {
       LIST: '/v1/admin/dataset-proposals',
+      REVIEW: (datasetId: string) => `/v1/admin/dataset-proposals/${datasetId}/review`,
       PICK: (datasetId: string) => `/v1/admin/dataset-proposals/${datasetId}/pick`,
       DOWNLOAD_URL: (datasetId: string) =>
         `/v1/admin/dataset-proposals/${datasetId}/current-upload/download-url`,

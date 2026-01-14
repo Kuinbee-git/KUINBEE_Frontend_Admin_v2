@@ -39,6 +39,7 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: 'kuinbee-theme-storage',
+      skipHydration: true,
     }
   )
 );

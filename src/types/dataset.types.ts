@@ -341,6 +341,49 @@ export interface DownloadUrlResponse {
   };
 }
 
+export interface ProposalReviewResponse {
+  dataset: Dataset;
+  verification: {
+    id: string;
+    status: VerificationStatus;
+    currentUploadId: string | null;
+    currentUpload: DatasetUpload | null;
+    rejectionReason: string | null;
+    notes: string | null;
+    verifiedBy: string | null;
+    submittedAt: string | null;
+    verifiedAt: string | null;
+    rejectedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+  activeAssignment: DatasetAssignment | null;
+  aboutDatasetInfo: AboutDatasetInfo | null;
+  dataFormatInfo: DataFormatInfo | null;
+  features: DatasetFeature[];
+  primaryCategory: {
+    id: string;
+    name: string;
+    createdAt: string;
+    createdBy: string;
+  };
+  secondaryCategories: Array<{
+    id: string;
+    name: string;
+  }>;
+  source: {
+    id: string;
+    name: string;
+    description: string | null;
+    websiteUrl: string | null;
+    createdBy: string;
+    createdByType: string;
+    isVerified: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
 // ============================================
 // Legacy Types (for UI compatibility)
 // ============================================

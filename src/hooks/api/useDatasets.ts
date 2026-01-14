@@ -60,6 +60,14 @@ export function useDataset(datasetId: string) {
   });
 }
 
+export function useProposalReview(datasetId: string) {
+  return useQuery({
+    queryKey: [...datasetsKeys.detail(datasetId), 'review'],
+    queryFn: () => datasetsService.getProposalForReview(datasetId),
+    enabled: !!datasetId,
+  });
+}
+
 export function useDatasetUploads(datasetId: string, params: UploadListParams = {}) {
   return useQuery({
     queryKey: [...datasetsKeys.uploads(datasetId), params],

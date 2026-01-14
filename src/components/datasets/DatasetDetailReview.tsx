@@ -10,7 +10,7 @@ import { ReviewActions } from "./ReviewActions";
 import { ConversationTimeline } from "./ConversationTimeline";
 import { DatasetAuditLog } from "./DatasetAuditLog";
 import { EditMetadataDialog } from "./EditMetadataDialog";
-import { useDataset, useUpdateDatasetMetadata, usePublishDataset, useUnpublishDataset, useUploadDatasetFile, useDatasetUploads, usePickProposal, useApproveProposal, useRejectProposal, useRequestChanges } from "@/hooks/api/useDatasets";
+import { useProposalReview, useUpdateDatasetMetadata, usePublishDataset, useUnpublishDataset, useUploadDatasetFile, useDatasetUploads, usePickProposal, useApproveProposal, useRejectProposal, useRequestChanges } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { getUploadDownloadUrl } from "@/services/datasets.service";
 import { toast } from "sonner";
@@ -23,11 +23,11 @@ interface DatasetDetailReviewProps {
 export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const router = useRouter();
   
-  // Fetch dataset details
-  const { data: datasetData, isLoading } = useDataset(datasetId);
+  // Fetch dataset proposal review details
+  const { data: datasetData, isLoading } = useProposalReview(datasetId);
   
-  // Fetch upload history
-  const { data: uploadsData } = useDatasetUploads(datasetId, { pageSize: 10 });
+  // Note: Upload history can be fetched separately if needed
+  // const { data: uploadsData } = useDatasetUploads(datasetId, { pageSize: 10 });
   
   // Mutations
   const updateMetadataMutation = useUpdateDatasetMetadata();
@@ -177,23 +177,23 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
     );
   }
   
-  const { dataset, primaryCategory, source, aboutDatasetInfo, locationInfo, dataFormatInfo, features, tags } = datasetData;
+  const { dataset, verification, activeAssignment, primaryCategory, source, aboutDatasetInfo, dataFormatInfo, features } = datasetData;
   
   // Transform status, ownerType, and visibility for UI compatibility
   const currentStatus = dataset.status as string; // UI component expects status as string
   const ownerType = dataset.ownerType.toLowerCase() as "platform" | "supplier";
   const visibility = dataset.visibility.toLowerCase() as "public" | "private" | "restricted";
   
-  // Transform uploads data for UI
-  const files = uploadsData?.items.map(upload => ({
-    id: upload.id,
-    name: upload.originalFileName || 'Unknown file',
-    format: upload.contentType || dataFormatInfo?.fileFormat || 'Unknown',
-    size: upload.sizeBytes ? `${(parseInt(upload.sizeBytes) / 1024 / 1024).toFixed(2)} MB` : 'Unknown',
-    scope: upload.scope,
-    status: upload.status,
-    uploadedAt: upload.uploadedAt
-  })) || [];
+  // Transform current upload for UI
+  const files = verification?.currentUpload ? [{
+    id: verification.currentUpload.id,
+    name: verification.currentUpload.originalFileName || 'Unknown file',
+    format: verification.currentUpload.contentType || dataFormatInfo?.fileFormat || 'Unknown',
+    size: verification.currentUpload.sizeBytes ? `${(parseInt(verification.currentUpload.sizeBytes) / 1024 / 1024).toFixed(2)} MB` : 'Unknown',
+    scope: verification.currentUpload.scope,
+    status: verification.currentUpload.status,
+    uploadedAt: verification.currentUpload.uploadedAt
+  }] : [];
   
   const mockConversation: Array<{
     id: string;
@@ -223,7 +223,10 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
         ownerType={ownerType}
         currentStatus={currentStatus}
         lastUpdated={new Date(dataset.updatedAt).toLocaleString()}
-        assignedReviewer={undefined} // TODO: Fetch from assignments API
+        assignedReviewer={activeAssignment ? {
+          id: activeAssignment.adminId,
+          name: 'Reviewer' // TODO: Fetch admin name
+        } : undefined}
         canReassign={false} // TODO: Check permissions
         onBack={handleBack}
         onReassign={handleReassign}
@@ -308,8 +311,6 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
         initialData={{
           aboutDatasetInfo: aboutDatasetInfo || undefined,
           dataFormatInfo: dataFormatInfo || undefined,
-          locationInfo: locationInfo || undefined,
-          tags: tags || undefined,
         }}
       />
     </div>

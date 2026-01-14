@@ -117,10 +117,10 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const handleActionConfirm = useCallback((action: "approve" | "reject" | "request_changes" | "publish" | "unpublish" | "pick", notes: string) => {
     console.log("Action confirmed:", action, "Notes:", notes);
     
-    if (action === "publish" && datasetData?.publishedUpload) {
+    if (action === "publish" && datasetData?.verification?.currentUpload) {
       publishMutation.mutate({
         datasetId,
-        data: { uploadId: datasetData.publishedUpload.id }
+        data: { uploadId: datasetData.verification.currentUpload.id }
       });
     } else if (action === "unpublish") {
       unpublishMutation.mutate(datasetId);

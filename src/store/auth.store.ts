@@ -11,38 +11,25 @@ import type { AuthUser } from '@/types';
 interface AuthState {
   user: AuthUser | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
   permissions: string[];
   
   // Actions
   setUser: (user: AuthUser | null) => void;
   setPermissions: (permissions: string[]) => void;
-  setLoading: (loading: boolean) => void;
   login: (user: AuthUser) => void;
   logout: () => void;
-  
-  /** @deprecated Token auth not used - kept for backward compatibility */
-  token: string | null;
-  /** @deprecated */
-  setToken: (token: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      token: null,
       isAuthenticated: false,
-      isLoading: false,
       permissions: [],
 
       setUser: (user) => set({ user, isAuthenticated: !!user }),
-
-      setToken: (token) => set({ token }),
       
       setPermissions: (permissions) => set({ permissions }),
-      
-      setLoading: (isLoading) => set({ isLoading }),
 
       login: (user) =>
         set({
@@ -53,7 +40,6 @@ export const useAuthStore = create<AuthState>()(
       logout: () =>
         set({
           user: null,
-          token: null,
           isAuthenticated: false,
           permissions: [],
         }),

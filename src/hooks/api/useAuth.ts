@@ -123,6 +123,19 @@ export function useLogin() {
       // Update query cache
       queryClient.setQueryData(authKeys.me(), user);
       
+      // Fetch user data from /auth/me to verify session
+      try {
+        const verifiedUser = await authService.getCurrentUser();
+        
+        if (verifiedUser) {
+          // Update store with verified user
+          storeLogin(verifiedUser);
+          queryClient.setQueryData(authKeys.me(), verifiedUser);
+        }
+      } catch (error) {
+        // Continue anyway, we have the user from login response
+      }
+      
       // Fetch and cache permissions (don't block navigation)
       authService.getMyPermissions()
         .then(permissions => {

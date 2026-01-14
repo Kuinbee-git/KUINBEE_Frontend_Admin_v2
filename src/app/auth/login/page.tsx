@@ -5,7 +5,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 
 export default function LoginPage() {
   return (
-    <AuthLayout showSkipButton>
+    <AuthLayout>
       <AuthHeader
         title="Admin Access"
         description="Secure entry to marketplace control plane"

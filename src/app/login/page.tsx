@@ -7,7 +7,7 @@ import { LoginRedirect } from "@/components/auth/LoginRedirect";
 export default function LoginPage() {
   return (
     <LoginRedirect>
-      <AuthLayout showSkipButton>
+      <AuthLayout>
         <AuthHeader
           title="Admin Access"
           description="Secure entry to marketplace control plane"

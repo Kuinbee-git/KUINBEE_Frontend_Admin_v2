@@ -10,6 +10,7 @@ import { ActionDialog } from '@/components/shared/ActionDialog';
 import { AdminProfileSection } from '@/components/admins/AdminProfileSection';
 import { AdminSecuritySection } from '@/components/admins/AdminSecuritySection';
 import { AdminAuditSection } from '@/components/admins/AdminAuditSection';
+import { AdminRolesSection } from '@/components/admins/AdminRolesSection';
 import { DetailSkeleton } from '@/components/shared';
 import { useAdmin, useUpdateAdmin, useDeleteAdmin, useAdminRoles } from '@/hooks';
 
@@ -211,42 +212,10 @@ export function AdminProfileDetail({ adminId, onBack }: AdminProfileDetailProps)
         <AdminSecuritySection admin={data} />
 
         {/* Roles Section */}
-        <div
-          className="p-6 rounded-lg border"
-          style={{
-            backgroundColor: 'var(--bg-base)',
-            borderColor: 'var(--border-default)',
-          }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Assigned Roles
-            </h3>
-          </div>
-          <div className="space-y-2">
-            {rolesData?.roles && rolesData.roles.length > 0 ? (
-              rolesData.roles.map((role) => (
-                <div
-                  key={role.roleId}
-                  className="p-3 rounded border"
-                  style={{
-                    backgroundColor: 'var(--bg-surface)',
-                    borderColor: 'var(--border-default)',
-                  }}
-                >
-                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {role.displayName}
-                  </p>
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    {role.name}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <p style={{ color: 'var(--text-muted)' }}>No roles assigned</p>
-            )}
-          </div>
-        </div>
+        <AdminRolesSection
+          adminId={adminId}
+          currentRoles={rolesData?.roles || []}
+        />
 
         {/* Audit Awareness - Mock for now */}
         <AdminAuditSection

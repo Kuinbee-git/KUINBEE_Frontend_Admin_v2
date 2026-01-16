@@ -63,9 +63,9 @@ export function CategoriesView() {
   // Permissions from API
   const { data: permissionsData } = useMyPermissions();
   const permissions = {
-    canCreateCategory: permissionsData?.includes('categories:create') ?? false,
-    canUpdateCategory: permissionsData?.includes('categories:update') ?? false,
-    canDeleteCategory: permissionsData?.includes('categories:delete') ?? false,
+    canCreateCategory: permissionsData?.includes('CREATE_CATEGORY') ?? false,
+    canUpdateCategory: permissionsData?.includes('UPDATE_CATEGORY') ?? false,
+    canDeleteCategory: permissionsData?.includes('DELETE_CATEGORY') ?? false,
   };
 
   // Apply filters

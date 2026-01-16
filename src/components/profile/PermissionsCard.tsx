@@ -2,63 +2,66 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 
 const PERMISSION_GROUPS: Record<string, string[]> = {
-  'Dataset Governance': [
-    'datasets:approve',
-    'datasets:reject',
-    'datasets:request_changes',
-    'datasets:update',
-    'datasets:publish',
-    'datasets:unpublish',
-    'datasets:view',
-    'datasets:proposals:view',
-    'datasets:pick',
-    'datasets:create',
+  'Categories': [
+    'CREATE_CATEGORY',
+    'UPDATE_CATEGORY',
+    'DELETE_CATEGORY',
+    'VIEW_CATEGORY',
   ],
-  'Supplier Management': [
-    'suppliers:invite',
-    'suppliers:view',
-    'suppliers:analytics',
-    'suppliers:verify',
-    'suppliers:suspend',
+  'Sources': [
+    'CREATE_SOURCE',
+    'UPDATE_SOURCE',
+    'DELETE_SOURCE',
+    'VIEW_SOURCE',
   ],
-  'Catalog Management': [
-    'categories:create',
-    'categories:update',
-    'categories:delete',
-    'categories:view',
-    'sources:create',
-    'sources:update',
-    'sources:delete',
-    'sources:view',
+  'Datasets': [
+    'CREATE_PLATFORM_DATASET',
+    'UPDATE_PLATFORM_DATASET',
+    'DELETE_PLATFORM_DATASET',
+    'VIEW_PLATFORM_DATASETS',
+    'APPROVE_DATASET',
+    'REJECT_DATASET',
+    'REQUEST_DATASET_CHANGES',
+    'PUBLISH_DATASET',
+    'UNPUBLISH_DATASET',
+    'VIEW_DATASET_PROPOSALS',
   ],
-  'User & Admin Management': [
-    'users:view',
-    'users:manage',
-    'users:suspend',
-    'users:delete',
-    'admins:create',
-    'admins:update',
-    'admins:delete',
-    'admins:roles:assign',
-    'permissions:manage',
+  'Suppliers': [
+    'VIEW_SUPPLIER_ANALYTICS',
+    'VIEW_SUPPLIERS',
+    'INVITE_SUPPLIER',
+    'CREATE_SUPPLIER',
+    'UPDATE_SUPPLIER',
+    'DELETE_SUPPLIER',
+    'VERIFY_SUPPLIER',
+    'SUSPEND_SUPPLIER',
   ],
-  'Reporting & Analytics': [
-    'analytics:view',
-    'reports:view',
-    'reports:export',
+  'Users': [
+    'VIEW_USERS',
+    'VIEW_USER_ANALYTICS',
+    'UPDATE_USER',
+    'DELETE_USER',
+    'SUSPEND_USER',
+  ],
+  'Admins': [
+    'VIEW_ADMINS',
+    'CREATE_ADMIN',
+    'UPDATE_ADMIN',
+    'DELETE_ADMIN',
+  ],
+  'Roles': [
+    'VIEW_ROLES',
+    'CREATE_ROLE',
+    'UPDATE_ROLE',
+    'DELETE_ROLE',
   ],
 };
 
 function formatPermissionName(permission: string): string {
   return permission
-    .split(':')
-    .map(part => 
-      part
-        .split('_')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
-    )
-    .join(' - ');
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
 }
 
 interface PermissionsCardProps {

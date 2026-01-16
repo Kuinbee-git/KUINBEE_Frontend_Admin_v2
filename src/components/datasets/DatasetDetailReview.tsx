@@ -50,10 +50,10 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   // Permissions
   const { data: permissionsData } = useMyPermissions();
   
-  const canApprove = permissionsData?.includes('datasets:approve') ?? false;
-  const canReject = permissionsData?.includes('datasets:reject') ?? false;
-  const canRequestChanges = permissionsData?.includes('datasets:request_changes') ?? false;
-  const canEdit = permissionsData?.includes('datasets:update') ?? false;
+  const canApprove = permissionsData?.includes('APPROVE_DATASET') ?? false;
+  const canReject = permissionsData?.includes('REJECT_DATASET') ?? false;
+  const canRequestChanges = permissionsData?.includes('REQUEST_DATASET_CHANGES') ?? false;
+  const canEdit = permissionsData?.includes('UPDATE_PLATFORM_DATASET') ?? false;
   
   const handleBack = useCallback(() => {
     router.push("/dashboard/datasets");

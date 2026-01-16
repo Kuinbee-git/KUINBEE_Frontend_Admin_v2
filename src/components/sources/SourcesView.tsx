@@ -53,10 +53,10 @@ export function SourcesView() {
 
   // Permissions from API
   const { data: permissionsData } = useMyPermissions();
-  const canCreate = permissionsData?.includes('sources:create') ?? false;
-  const canUpdate = permissionsData?.includes('sources:update') ?? false;
-  const canVerify = permissionsData?.includes('sources:verify') ?? false;
-  const canDelete = permissionsData?.includes('sources:delete') ?? false;
+  const canCreate = permissionsData?.includes('CREATE_SOURCE') ?? false;
+  const canUpdate = permissionsData?.includes('UPDATE_SOURCE') ?? false;
+  const canVerify = permissionsData?.includes('VERIFY_SOURCE') ?? false;
+  const canDelete = permissionsData?.includes('DELETE_SOURCE') ?? false;
 
   // Filtered sources
   const filteredSources = useMemo(() => {

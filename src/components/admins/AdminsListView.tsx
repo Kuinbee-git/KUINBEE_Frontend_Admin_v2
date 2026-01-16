@@ -133,14 +133,6 @@ export function AdminsListView({ onAdminClick, onBack }: AdminsListViewProps) {
               </p>
             </div>
           </div>
-          <Button
-            style={{
-              backgroundColor: 'var(--brand-primary)',
-              color: '#ffffff',
-            }}
-          >
-            Create Admin
-          </Button>
         </div>
       </div>
 

@@ -118,7 +118,7 @@ export async function updateProfile(data: UpdateProfileRequest): Promise<AdminPr
 
 /**
  * Get current admin's permissions
- * Returns array of permission strings (e.g., ['datasets.view', 'users.edit'])
+ * Returns array of permission strings (e.g., ['CREATE_PLATFORM_DATASET', 'UPDATE_USER'])
  * Returns empty array if fetch fails (e.g., due to CORS/cookie issues)
  */
 export async function getMyPermissions(): Promise<string[]> {

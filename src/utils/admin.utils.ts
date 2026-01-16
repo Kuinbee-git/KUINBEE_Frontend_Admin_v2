@@ -5,7 +5,6 @@
  */
 
 import { UserType, UserStatus } from '@/types/auth.types';
-import { ADMIN_PERMISSIONS } from '@/types/admin.types';
 
 // ============================================
 // Permission Helpers
@@ -18,7 +17,7 @@ export function getPermissionsByDomain(
   permissions: string[],
   domain: string
 ): string[] {
-  return permissions.filter(p => p.startsWith(`${domain}.`));
+  return permissions.filter(p => p.includes(domain.toUpperCase()));
 }
 
 /**
@@ -115,8 +114,10 @@ export function getPermissionChanges(
  * Format permission for display
  */
 export function formatPermissionLabel(permissionId: string): string {
-  const permissionDef = ADMIN_PERMISSIONS.find(p => p.id === permissionId);
-  return permissionDef?.label || permissionId;
+  return permissionId
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
 }
 
 /**

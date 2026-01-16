@@ -123,7 +123,7 @@ export function DatasetsView() {
               Review, verify, and manage marketplace datasets
             </p>
           </div>
-          {(permissionsData?.includes('datasets:create') ?? false) && (
+          {(permissionsData?.includes('CREATE_PLATFORM_DATASET') ?? false) && (
             <Button
               onClick={handleCreateClick}
               style={{

@@ -46,7 +46,7 @@ export function CreateDatasetView() {
   
   // Permissions
   const { data: permissionsData } = useMyPermissions();
-  const canCreate = permissionsData?.includes('datasets:create') ?? true;
+  const canCreate = permissionsData?.includes('CREATE_PLATFORM_DATASET') ?? true;
   
   // Form state - Basic Info
   const [title, setTitle] = useState("");

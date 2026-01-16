@@ -84,10 +84,12 @@ export const MOCK_ADMIN_STATS = {
  * Permission Domain Labels
  */
 export const PERMISSION_DOMAIN_LABELS = {
-  datasets: 'Datasets',
-  suppliers: 'Suppliers',
-  users: 'Users',
-  categories: 'Categories',
-  sources: 'Sources',
-  admins: 'Admins',
+  CATEGORY: 'Categories',
+  SOURCE: 'Sources',
+  DATASET: 'Datasets',
+  SUPPLIER: 'Suppliers',
+  USER: 'Users',
+  ADMIN: 'Admins',
+  ROLE: 'Roles',
+  AUDIT: 'Audit',
 } as const;

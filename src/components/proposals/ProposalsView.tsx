@@ -64,7 +64,7 @@ export function ProposalsView() {
   
   // Permissions
   const { data: permissionsData } = useMyPermissions();
-  const canPickProposal = permissionsData?.includes('datasets:pick') ?? true; // Default to true if not defined
+  const canPickProposal = permissionsData?.includes('VIEW_DATASET_PROPOSALS') ?? true; // Default to true if not defined
   
   // Transform data for UI
   const proposals = useMemo(() => {

@@ -6,10 +6,7 @@
 import React from 'react';
 import { Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ADMIN_PERMISSIONS } from '@/types/admin.types';
-import { PERMISSION_DOMAIN_LABELS } from '@/constants/admin.constants';
-
-type PermissionDomain = 'datasets' | 'suppliers' | 'users' | 'categories' | 'sources' | 'admins';
+import { PERMISSIONS, PERMISSION_LABELS, ALL_PERMISSIONS } from '@/lib/constants/permissions';
 
 interface AdminPermissionsMatrixProps {
   permissions: string[];
@@ -20,6 +17,12 @@ interface AdminPermissionsMatrixProps {
   onPermissionToggle: (permissionId: string) => void;
 }
 
+interface PermissionDomain {
+  name: string;
+  label: string;
+  permissions: string[];
+}
+
 export function AdminPermissionsMatrix({
   permissions,
   isEditing,
@@ -28,12 +31,49 @@ export function AdminPermissionsMatrix({
   onCancel,
   onPermissionToggle,
 }: AdminPermissionsMatrixProps) {
-  const domains: PermissionDomain[] = ['datasets', 'suppliers', 'users', 'categories', 'sources', 'admins'];
-
-  // Get permissions for a domain from ADMIN_PERMISSIONS
-  const getDomainPermissions = (domain: PermissionDomain) => {
-    return ADMIN_PERMISSIONS.filter(p => p.domain === domain);
-  };
+  // Get all domains with their permissions
+  const domains: PermissionDomain[] = [
+    {
+      name: 'categories',
+      label: 'Categories',
+      permissions: Object.values(PERMISSIONS.CATEGORIES),
+    },
+    {
+      name: 'sources',
+      label: 'Sources',
+      permissions: Object.values(PERMISSIONS.SOURCES),
+    },
+    {
+      name: 'datasets',
+      label: 'Datasets',
+      permissions: Object.values(PERMISSIONS.DATASETS),
+    },
+    {
+      name: 'suppliers',
+      label: 'Suppliers',
+      permissions: Object.values(PERMISSIONS.SUPPLIERS),
+    },
+    {
+      name: 'users',
+      label: 'Users',
+      permissions: Object.values(PERMISSIONS.USERS),
+    },
+    {
+      name: 'admins',
+      label: 'Admins',
+      permissions: Object.values(PERMISSIONS.ADMINS),
+    },
+    {
+      name: 'roles',
+      label: 'Roles',
+      permissions: Object.values(PERMISSIONS.ROLES),
+    },
+    {
+      name: 'audit',
+      label: 'Audit',
+      permissions: Object.values(PERMISSIONS.AUDIT),
+    },
+  ];
 
   return (
     <div
@@ -65,20 +105,19 @@ export function AdminPermissionsMatrix({
 
       <div className="space-y-6">
         {domains.map((domain) => {
-          const domainPermissions = getDomainPermissions(domain);
-          
           return (
-            <div key={domain}>
+            <div key={domain.name}>
               <h4 className="font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
-                {PERMISSION_DOMAIN_LABELS[domain]} ({domainPermissions.length})
+                {domain.label} ({domain.permissions.length})
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {domainPermissions.map((permission) => {
-                  const granted = permissions.includes(permission.id);
+                {domain.permissions.map((permissionId) => {
+                  const granted = permissions.includes(permissionId);
+                  const label = PERMISSION_LABELS[permissionId] || permissionId;
                   
                   return (
                     <label
-                      key={permission.id}
+                      key={permissionId}
                       className={`flex items-center gap-2 p-3 rounded border cursor-pointer transition-colors ${
                         isEditing ? 'hover:bg-opacity-80' : ''
                       }`}
@@ -92,13 +131,13 @@ export function AdminPermissionsMatrix({
                         type="checkbox"
                         checked={granted}
                         disabled={!isEditing}
-                        onChange={() => onPermissionToggle(permission.id)}
+                        onChange={() => onPermissionToggle(permissionId)}
                         className="w-4 h-4"
                         style={{ accentColor: 'var(--brand-primary)' }}
                       />
                       <div className="flex items-center gap-2 flex-1">
                         <Shield className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                        <span style={{ color: 'var(--text-primary)' }}>{permission.label}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{label}</span>
                       </div>
                     </label>
                   );

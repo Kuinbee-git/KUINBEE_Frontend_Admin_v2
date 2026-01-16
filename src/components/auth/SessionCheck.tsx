@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 
-const PUBLIC_PATHS = ['/login', '/auth/login', '/', '/accept-invite'];
+const PUBLIC_PATHS = ['/login', '/auth/login', '/', '/admin/accept-invite'];
 
 /**
  * SessionCheck - Client-side auth fallback
@@ -40,7 +40,8 @@ export function SessionCheck() {
       }
 
       // If authenticated and on login page, redirect to dashboard
-      if (isAuthenticated && isPublicPath && pathname !== '/') {
+      // Don't redirect from accept-invite even if authenticated
+      if (isAuthenticated && isPublicPath && pathname !== '/' && pathname !== '/admin/accept-invite') {
         hasRedirected.current = true;
         router.replace('/dashboard');
       }

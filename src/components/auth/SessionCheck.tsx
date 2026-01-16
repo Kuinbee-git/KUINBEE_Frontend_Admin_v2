@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 
-const PUBLIC_PATHS = ['/login', '/auth/login', '/'];
+const PUBLIC_PATHS = ['/login', '/auth/login', '/', '/accept-invite'];
 
 /**
  * SessionCheck - Client-side auth fallback

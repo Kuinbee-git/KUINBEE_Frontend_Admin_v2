@@ -20,9 +20,9 @@ export const API_ROUTES = {
   },
 
   // ============================================
-  // PERMISSIONS (/api/v1/permissions)
+  // PERMISSIONS (/api/v1/enums/permissions)
   // ============================================
-  PERMISSIONS: '/v1/permissions',
+  PERMISSIONS: '/v1/enums/permissions',
 
   // ============================================
   // ADMIN ROUTES (/api/v1/admin)

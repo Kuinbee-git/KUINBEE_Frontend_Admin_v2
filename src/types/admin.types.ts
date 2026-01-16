@@ -152,6 +152,7 @@ export interface AdminListItem {
   deletedAt: string | null;
   personalInfo: PersonalInfo | null;
   adminProfile: AdminProfileInfo | null;
+  roles: AdminRole[];
 }
 
 export interface AdminAuditLog {

@@ -92,6 +92,16 @@ export function AdminTable({ admins, onRowClick }: AdminTableProps) {
         <span style={{ color: 'var(--text-muted)' }}>{admin.id}</span>
       ),
     },
+    {
+      header: 'Roles',
+      render: (_, admin) => (
+        <span style={{ color: 'var(--text-primary)' }}>
+          {admin.roles && admin.roles.length > 0
+            ? admin.roles.map((role) => role.displayName).join(', ')
+            : 'N/A'}
+        </span>
+      ),
+    },
   ];
 
   return (

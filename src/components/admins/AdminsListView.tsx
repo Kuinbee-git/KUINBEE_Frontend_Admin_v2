@@ -68,6 +68,7 @@ export function AdminsListView({ onAdminClick, onBack }: AdminsListViewProps) {
       deletedAt: item.admin.deletedAt,
       personalInfo: null, // Not available in list response
       adminProfile: item.adminProfile,
+      roles: item.roles || [],
     }));
   }, [data]);
 

@@ -17,8 +17,7 @@ import type {
   ReplacePermissionsRequest,
   AddPermissionRequest,
   RemovePermissionRequest,
-} from '@/types';
-
+} from '@/types';import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 // ============================================
 // Query Keys
 // ============================================
@@ -106,8 +105,8 @@ export function useCreateRole() {
       queryClient.invalidateQueries({ queryKey: rolesKeys.lists() });
       toast.success('Role created successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create role');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -123,8 +122,8 @@ export function useUpdateRole() {
       queryClient.invalidateQueries({ queryKey: rolesKeys.detail(roleId) });
       toast.success('Role updated successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update role');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -144,8 +143,8 @@ export function useReplaceRolePermissions() {
       queryClient.invalidateQueries({ queryKey: rolesKeys.detail(roleId) });
       toast.success('Permissions updated successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update permissions');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -160,8 +159,8 @@ export function useAddRolePermission() {
       queryClient.invalidateQueries({ queryKey: rolesKeys.permissions(roleId) });
       toast.success('Permission added');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to add permission');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -176,8 +175,8 @@ export function useRemoveRolePermission() {
       queryClient.invalidateQueries({ queryKey: rolesKeys.permissions(roleId) });
       toast.success('Permission removed');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to remove permission');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }

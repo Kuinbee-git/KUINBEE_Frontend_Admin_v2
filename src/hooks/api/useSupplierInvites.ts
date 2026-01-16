@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import * as supplierInvitesService from '@/services/supplier-invites.service';
 import type { SupplierInviteListParams } from '@/services/supplier-invites.service';
 import type { CreateSupplierInviteRequest } from '@/types';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 
 // ============================================
 // Query Keys
@@ -55,8 +56,8 @@ export function useCreateSupplierInvite() {
       queryClient.invalidateQueries({ queryKey: supplierInvitesKeys.lists() });
       toast.success('Supplier invite sent successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to send supplier invite');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to send supplier invite');
     },
   });
 }
@@ -71,8 +72,8 @@ export function useResendSupplierInvite() {
       queryClient.invalidateQueries({ queryKey: supplierInvitesKeys.lists() });
       toast.success('Supplier invite resent successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to resend supplier invite');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to resend supplier invite');
     },
   });
 }

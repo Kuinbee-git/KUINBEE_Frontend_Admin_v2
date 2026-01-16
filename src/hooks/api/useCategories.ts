@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import * as categoriesService from '@/services/categories.service';
 import type { CategoryListParams } from '@/services/categories.service';
 import type { CreateCategoryRequest, UpdateCategoryRequest } from '@/types';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 
 // ============================================
 // Query Keys
@@ -44,8 +45,8 @@ export function useCreateCategory() {
       queryClient.invalidateQueries({ queryKey: categoriesKeys.lists() });
       toast.success('Category created successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create category');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -60,8 +61,8 @@ export function useUpdateCategory() {
       queryClient.invalidateQueries({ queryKey: categoriesKeys.lists() });
       toast.success('Category updated successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update category');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -75,8 +76,8 @@ export function useDeleteCategory() {
       queryClient.invalidateQueries({ queryKey: categoriesKeys.lists() });
       toast.success('Category deleted successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete category');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }

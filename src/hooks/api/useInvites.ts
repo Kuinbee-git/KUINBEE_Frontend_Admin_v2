@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import * as invitesService from '@/services/invites.service';
 import type { InviteListParams, InviteAuditParams } from '@/services/invites.service';
 import type { CreateInviteRequest } from '@/types';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 
 // ============================================
 // Query Keys
@@ -63,8 +64,8 @@ export function useCreateInvite() {
       queryClient.invalidateQueries({ queryKey: invitesKeys.lists() });
       toast.success('Invite sent successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to send invite');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -79,8 +80,8 @@ export function useResendInvite() {
       queryClient.invalidateQueries({ queryKey: invitesKeys.detail(inviteId) });
       toast.success('Invite resent successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to resend invite');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -95,8 +96,8 @@ export function useCancelInvite() {
       queryClient.invalidateQueries({ queryKey: invitesKeys.detail(inviteId) });
       toast.success('Invite cancelled');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to cancel invite');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import * as usersService from '@/services/users.service';
 import type { UserListParams } from '@/services/users.service';
 import type { SuspendUserRequest } from '@/types';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 
 // ============================================
 // Query Keys
@@ -65,8 +66,8 @@ export function useSuspendUser() {
       queryClient.invalidateQueries({ queryKey: usersKeys.detail(userId) });
       toast.success('User suspended successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to suspend user');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to suspend user');
     },
   });
 }
@@ -84,8 +85,8 @@ export function useDeleteUser() {
       queryClient.invalidateQueries({ queryKey: usersKeys.detail(userId) });
       toast.success('User deleted successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete user');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to delete user');
     },
   });
 }

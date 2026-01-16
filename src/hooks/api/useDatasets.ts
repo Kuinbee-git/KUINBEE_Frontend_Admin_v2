@@ -22,6 +22,7 @@ import type {
   RequestChangesRequest,
   UploadScope,
 } from '@/types';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 
 // ============================================
 // Query Keys
@@ -108,8 +109,8 @@ export function useCreateDataset() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
       toast.success('Dataset created successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create dataset');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to create dataset');
     },
   });
 }
@@ -125,8 +126,8 @@ export function useUpdateDataset() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
       toast.success('Dataset updated successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update dataset');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to update dataset');
     },
   });
 }
@@ -141,8 +142,8 @@ export function useUpdateDatasetMetadata() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
       toast.success('Metadata updated successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update metadata');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to update metadata');
     },
   });
 }
@@ -156,8 +157,8 @@ export function useDeleteDataset() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
       toast.success('Dataset deleted successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete dataset');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to delete dataset');
     },
   });
 }
@@ -173,8 +174,8 @@ export function usePublishDataset() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
       toast.success('Dataset published successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to publish dataset');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to publish dataset');
     },
   });
 }
@@ -189,8 +190,8 @@ export function useUnpublishDataset() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
       toast.success('Dataset unpublished');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to unpublish dataset');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to unpublish dataset');
     },
   });
 }
@@ -210,8 +211,8 @@ export function useUploadDatasetFile() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
       toast.success('File uploaded successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to upload file');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to upload file');
     },
   });
 }
@@ -230,8 +231,8 @@ export function usePickProposal() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
       toast.success('Proposal assigned to you');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to pick proposal');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to pick proposal');
     },
   });
 }
@@ -247,8 +248,8 @@ export function useApproveProposal() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
       toast.success('Proposal approved');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to approve proposal');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to approve proposal');
     },
   });
 }
@@ -264,8 +265,8 @@ export function useRejectProposal() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
       toast.success('Proposal rejected');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to reject proposal');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to reject proposal');
     },
   });
 }
@@ -281,8 +282,8 @@ export function useRequestChanges() {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
       toast.success('Changes requested');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to request changes');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to request changes');
     },
   });
 }

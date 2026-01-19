@@ -114,14 +114,14 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
 
   return (
     <div
-      className="min-h-screen flex transition-colors duration-200"
+      className="h-screen flex overflow-hidden transition-colors duration-200"
       style={{
         backgroundColor: 'var(--bg-surface)',
       }}
     >
       {/* Left Sidebar Navigation */}
       <aside
-        className="flex flex-col border-r transition-all duration-300 relative"
+        className="flex flex-col border-r transition-all duration-300 relative h-screen"
         style={{
           width: isCollapsed ? '64px' : '256px',
           backgroundColor: 'var(--bg-base)',
@@ -173,7 +173,7 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.href === '/dashboard' 

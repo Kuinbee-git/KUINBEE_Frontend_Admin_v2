@@ -104,25 +104,26 @@ export function ReviewActions({
 
   return (
     <div
-      className="p-6 rounded-lg"
+      className="p-4 md:p-6 rounded-lg"
       style={{
         backgroundColor: "var(--bg-base)",
         boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)",
       }}
     >
-      <h2 className="mb-4" style={{ color: "var(--text-primary)" }}>Review Actions</h2>
+      <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>Review Actions</h2>
 
       {!activeAction ? (
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3">
           {availableActions.map(({ action }) => (
             action && (
               <Button
                 key={action}
                 onClick={() => handleActionClick(action)}
                 style={getActionStyle(action)}
+                className="w-full justify-center gap-2"
               >
                 {getActionIcon(action)}
-                {getActionLabel(action)}
+                <span>{getActionLabel(action)}</span>
               </Button>
             )
           ))}
@@ -178,11 +179,12 @@ export function ReviewActions({
             />
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Button
               onClick={handleConfirm}
               disabled={!actionNotes.trim()}
               style={getActionStyle(activeAction)}
+              className="flex-1 sm:flex-none"
             >
               Confirm {activeAction === "approve" ? "Approval" : activeAction === "reject" ? "Rejection" : "Request"}
             </Button>
@@ -192,6 +194,7 @@ export function ReviewActions({
                 backgroundColor: "var(--bg-hover)",
                 color: "var(--text-primary)",
               }}
+              className="flex-1 sm:flex-none"
             >
               Cancel
             </Button>

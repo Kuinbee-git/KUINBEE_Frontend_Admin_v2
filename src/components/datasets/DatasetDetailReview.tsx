@@ -2,19 +2,16 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { DatasetHeader } from "./DatasetHeader";
-import { DatasetMetadata } from "./DatasetMetadata";
-import { DatasetFilesSchema } from "./DatasetFilesSchema";
-import { SupplierContext } from "./SupplierContext";
+import { ArrowLeft, Download, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { StatusBadge, getDatasetStatusSemantic, getVerificationStatusSemantic } from "@/components/shared/StatusBadge";
 import { ReviewActions } from "./ReviewActions";
-import { ConversationTimeline } from "./ConversationTimeline";
-import { DatasetAuditLog } from "./DatasetAuditLog";
-import { EditMetadataDialog } from "./EditMetadataDialog";
-import { useProposalReview, useUpdateDatasetMetadata, usePublishDataset, useUnpublishDataset, useUploadDatasetFile, useDatasetUploads, usePickProposal, useApproveProposal, useRejectProposal, useRequestChanges } from "@/hooks/api/useDatasets";
+import { useProposalReview, usePickProposal, useApproveProposal, useRejectProposal, useRequestChanges } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
-import { getUploadDownloadUrl } from "@/services/datasets.service";
 import { toast } from "sonner";
-import type { UpdateDatasetMetadataRequest } from "@/types/dataset.types";
 
 interface DatasetDetailReviewProps {
   datasetId: string;
@@ -24,16 +21,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const router = useRouter();
   
   // Fetch dataset proposal review details
-  const { data: datasetData, isLoading } = useProposalReview(datasetId);
-  
-  // Note: Upload history can be fetched separately if needed
-  // const { data: uploadsData } = useDatasetUploads(datasetId, { pageSize: 10 });
-  
-  // Mutations
-  const updateMetadataMutation = useUpdateDatasetMetadata();
-  const publishMutation = usePublishDataset();
-  const unpublishMutation = useUnpublishDataset();
-  const uploadMutation = useUploadDatasetFile();
+  const { data: datasetData, isLoading, refetch } = useProposalReview(datasetId);
   
   // Proposal mutations
   const pickProposalMutation = usePickProposal();
@@ -41,116 +29,64 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const rejectProposalMutation = useRejectProposal();
   const requestChangesMutation = useRequestChanges();
   
-  // Upload state
-  const [isUploading, setIsUploading] = useState(false);
-  
-  // Edit metadata modal state
-  const [isEditMetadataOpen, setIsEditMetadataOpen] = useState(false);
-  
   // Permissions
   const { data: permissionsData } = useMyPermissions();
   
   const canApprove = permissionsData?.includes('APPROVE_DATASET') ?? false;
   const canReject = permissionsData?.includes('REJECT_DATASET') ?? false;
   const canRequestChanges = permissionsData?.includes('REQUEST_DATASET_CHANGES') ?? false;
-  const canEdit = permissionsData?.includes('UPDATE_PLATFORM_DATASET') ?? false;
+  const canPickProposal = permissionsData?.includes('VIEW_DATASET_PROPOSALS') ?? false;
   
   const handleBack = useCallback(() => {
-    router.push("/dashboard/datasets");
+    router.push("/dashboard/dataset-proposals");
   }, [router]);
-
-  const handleReassign = useCallback(() => {
-    console.log("Reassign reviewer - Not implemented yet");
-    // TODO: Implement reassignment
-  }, []);
-
-  const handleEditMetadata = useCallback(() => {
-    setIsEditMetadataOpen(true);
-  }, []);
-
-  const handleSaveMetadata = useCallback(async (data: UpdateDatasetMetadataRequest) => {
-    try {
-      await updateMetadataMutation.mutateAsync({
-        datasetId,
-        data,
-      });
-      toast.success("Metadata updated successfully");
-    } catch (error) {
-      toast.error("Failed to update metadata");
-      throw error;
-    }
-  }, [datasetId, updateMetadataMutation]);
-
-  const handleUploadFile = useCallback(async (file: File) => {
-    if (!datasetId) return;
-    
-    setIsUploading(true);
-    try {
-      await uploadMutation.mutateAsync({
-        datasetId,
-        file,
-        scope: 'FINAL'
-      });
-      toast.success('File uploaded successfully');
-    } catch {
-      toast.error('Failed to upload file');
-    } finally {
-      setIsUploading(false);
-    }
-  }, [datasetId, uploadMutation]);
   
-  const handleDownloadFile = useCallback(async (fileId: string) => {
+  const handleDownloadFile = useCallback(async (uploadId: string) => {
     try {
-      const response = await getUploadDownloadUrl(datasetId, fileId);
-      // Open download URL in new tab
-      window.open(response.url, '_blank');
-      toast.success('Download started');
+      // The endpoint returns 501 Not Implemented from backend
+      // For now, we can show a message
+      toast.error('Download functionality not yet available on server');
+      // TODO: Implement when backend is ready
+      // const response = await getProposalDownloadUrl(datasetId);
+      // window.open(response.url, '_blank');
     } catch {
       toast.error('Failed to get download URL');
     }
-  }, [datasetId]);
-
-  const handleSupplierClick = useCallback((supplierId: string) => {
-    router.push(`/dashboard/suppliers/${supplierId}`);
-  }, [router]);
-
-  const handleActionConfirm = useCallback((action: "approve" | "reject" | "request_changes" | "publish" | "unpublish" | "pick", notes: string) => {
-    console.log("Action confirmed:", action, "Notes:", notes);
-    
-    if (action === "publish" && datasetData?.verification?.currentUpload) {
-      publishMutation.mutate({
-        datasetId,
-        data: { uploadId: datasetData.verification.currentUpload.id }
-      });
-    } else if (action === "unpublish") {
-      unpublishMutation.mutate(datasetId);
-    } else if (action === "pick") {
-      pickProposalMutation.mutate(datasetId);
-    } else if (action === "approve") {
-      approveProposalMutation.mutate({
-        datasetId,
-        data: notes ? { notes } : undefined
-      });
-    } else if (action === "reject") {
-      rejectProposalMutation.mutate({
-        datasetId,
-        data: {
-          rejectionReason: notes || "Rejected",
-          notes: notes || undefined
-        }
-      });
-    } else if (action === "request_changes") {
-      requestChangesMutation.mutate({
-        datasetId,
-        data: { notes }
-      });
-    }
-  }, [datasetId, datasetData, publishMutation, unpublishMutation, pickProposalMutation, approveProposalMutation, rejectProposalMutation, requestChangesMutation]);
-
-  const handleAddNote = useCallback((note: string) => {
-    console.log("Adding note:", note);
-    // TODO: Implement conversation/notes API
   }, []);
+
+  const handleActionConfirm = useCallback(async (action: "approve" | "reject" | "request_changes" | "pick", notes: string) => {
+    try {
+      if (action === "pick") {
+        await pickProposalMutation.mutateAsync(datasetId);
+        toast.success("Proposal assigned to you");
+      } else if (action === "approve") {
+        await approveProposalMutation.mutateAsync({
+          datasetId,
+          data: notes ? { notes } : undefined
+        });
+        toast.success("Proposal approved successfully");
+      } else if (action === "reject") {
+        await rejectProposalMutation.mutateAsync({
+          datasetId,
+          data: {
+            rejectionReason: notes || "Rejected",
+            notes: notes || undefined
+          }
+        });
+        toast.success("Proposal rejected");
+      } else if (action === "request_changes") {
+        await requestChangesMutation.mutateAsync({
+          datasetId,
+          data: { notes }
+        });
+        toast.success("Changes requested");
+      }
+      refetch();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to ${action} proposal: ${message}`);
+    }
+  }, [datasetId, pickProposalMutation, approveProposalMutation, rejectProposalMutation, requestChangesMutation, refetch]);
   
   if (isLoading) {
     return (
@@ -165,154 +101,425 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg-surface)" }}>
         <div className="text-center">
           <p className="text-lg font-medium mb-2 text-red-500">Failed to load dataset</p>
-          <button 
-            onClick={handleBack}
-            className="text-sm underline"
-            style={{ color: "var(--text-muted)" }}
-          >
-            Back to datasets
-          </button>
+          <Button variant="outline" onClick={handleBack}>
+            Back to proposals
+          </Button>
         </div>
       </div>
     );
   }
   
-  const { dataset, verification, activeAssignment, primaryCategory, source, aboutDatasetInfo, dataFormatInfo, features } = datasetData;
+  const { dataset, verification, activeAssignment, primaryCategory, secondaryCategories, source, aboutDatasetInfo, dataFormatInfo, features } = datasetData;
   
-  // Transform status, ownerType, and visibility for UI compatibility
-  const currentStatus = dataset.status as string; // UI component expects status as string
-  const ownerType = dataset.ownerType.toLowerCase() as "platform" | "supplier";
-  const visibility = dataset.visibility.toLowerCase() as "public" | "private" | "restricted";
+  const formatDate = (date: string | null) => {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
   
-  // Transform current upload for UI
-  const files = verification?.currentUpload ? [{
-    id: verification.currentUpload.id,
-    name: verification.currentUpload.originalFileName || 'Unknown file',
-    format: verification.currentUpload.contentType || dataFormatInfo?.fileFormat || 'Unknown',
-    size: verification.currentUpload.sizeBytes ? `${(parseInt(verification.currentUpload.sizeBytes) / 1024 / 1024).toFixed(2)} MB` : 'Unknown',
-    scope: verification.currentUpload.scope,
-    status: verification.currentUpload.status,
-    uploadedAt: verification.currentUpload.uploadedAt
-  }] : [];
-  
-  const mockConversation: Array<{
-    id: string;
-    author: string;
-    authorType: "platform" | "supplier";
-    timestamp: string;
-    content: string;
-    relatedStatus?: string;
-  }> = [];
-  
-  const mockAuditLog: Array<{
-    id: string;
-    timestamp: string;
-    performedBy: string;
-    action: string;
-    previousStatus?: string;
-    newStatus?: string;
-    notes?: string;
-  }> = [];
+  const formatFileSize = (bytes: string | null) => {
+    if (!bytes) return 'Unknown';
+    const size = parseInt(bytes);
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`;
+    if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(2)} MB`;
+    return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--bg-surface)" }}>
+    <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: "var(--bg-surface)" }}>
       {/* Header */}
-      <DatasetHeader
-        datasetId={dataset.datasetUniqueId}
-        datasetName={dataset.title}
-        ownerType={ownerType}
-        currentStatus={currentStatus}
-        lastUpdated={new Date(dataset.updatedAt).toLocaleString()}
-        assignedReviewer={activeAssignment ? {
-          id: activeAssignment.adminId,
-          name: 'Reviewer' // TODO: Fetch admin name
-        } : undefined}
-        canReassign={false} // TODO: Check permissions
-        onBack={handleBack}
-        onReassign={handleReassign}
-      />
-
-      {/* Content Grid */}
-      <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content (Left Column) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Metadata */}
-          <DatasetMetadata
-            description={aboutDatasetInfo?.overview || aboutDatasetInfo?.description || "No description available"}
-            category={primaryCategory.name}
-            source={source.name}
-            superType={dataset.superType}
-            visibility={visibility}
-            fileFormats={dataFormatInfo?.fileFormat ? [dataFormatInfo.fileFormat] : []}
-            canEdit={canEdit}
-            onEdit={handleEditMetadata}
-          />
-
-          {/* Files & Schema */}
-          <DatasetFilesSchema
-            files={files}
-            schema={features.map(f => ({
-              columnName: f.name,
-              dataType: f.dataType,
-              nullable: f.isNullable
-            }))}
-            sampleRows={[]} // TODO: Fetch sample data
-            onDownloadFile={handleDownloadFile}
-            onUploadFile={handleUploadFile}
-            isUploading={isUploading}
-            canUpload={canEdit}
-          />
-
-          {/* Conversation */}
-          <ConversationTimeline
-            conversation={mockConversation}
-            onAddNote={handleAddNote}
-          />
-
-          {/* Audit Log */}
-          <DatasetAuditLog
-            auditLog={mockAuditLog}
-          />
-        </div>
-
-        {/* Sidebar (Right Column) */}
-        <div className="space-y-6">
-          {/* Supplier Context (if supplier-owned) */}
-          {dataset.ownerType === "SUPPLIER" && (
-            <SupplierContext
-              supplier={{
-                id: dataset.ownerId,
-                name: "Supplier Name", // TODO: Fetch supplier details
-                type: "company",
-                totalDatasets: 0,
-                approvedDatasets: 0,
-              }}
-              onSupplierClick={handleSupplierClick}
-            />
-          )}
-
-          {/* Review Actions */}
-          <ReviewActions
-            currentStatus={currentStatus}
-            ownerType={ownerType}
-            canApprove={canApprove}
-            canReject={canReject}
-            canRequestChanges={canRequestChanges}
-            onActionConfirm={handleActionConfirm}
-          />
+      <div 
+        className="border-b sticky top-0 z-10"
+        style={{ 
+          backgroundColor: "var(--bg-base)", 
+          borderColor: "var(--border-default)" 
+        }}
+      >
+        <div className="p-4 md:p-6 max-w-full">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                className="mt-1 flex-shrink-0"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h1 
+                    className="text-xl md:text-2xl font-bold break-words"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {dataset.title}
+                  </h1>
+                  <Badge variant="outline" className="text-xs flex-shrink-0">
+                    {dataset.datasetUniqueId}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap text-sm" style={{ color: "var(--text-muted)" }}>
+                  <span className="truncate">Owner: {dataset.ownerType}</span>
+                  <span className="flex-shrink-0">•</span>
+                  <span className="truncate">Updated: {formatDate(dataset.updatedAt)}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+              <StatusBadge 
+                status={dataset.status.replace(/_/g, ' ')}
+                semanticType={getDatasetStatusSemantic(dataset.status)}
+              />
+              <StatusBadge 
+                status={verification.status.replace(/_/g, ' ')}
+                semanticType={getVerificationStatusSemantic(verification.status)}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Edit Metadata Dialog */}
-      <EditMetadataDialog
-        open={isEditMetadataOpen}
-        onOpenChange={setIsEditMetadataOpen}
-        onSave={handleSaveMetadata}
-        initialData={{
-          aboutDatasetInfo: aboutDatasetInfo || undefined,
-          dataFormatInfo: dataFormatInfo || undefined,
-        }}
-      />
+      {/* Main Content */}
+      <div className="w-full px-4 md:px-6 py-4 md:py-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          {/* Left Column - Main Content */}
+          <div className="lg:col-span-2 space-y-4 md:space-y-6 min-w-0">
+            {/* Dataset Information */}
+            <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+              <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
+                <CardTitle style={{ color: "var(--text-primary)" }}>Dataset Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Category</p>
+                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{primaryCategory.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Source</p>
+                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{source.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Type</p>
+                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataset.superType}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Visibility</p>
+                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataset.visibility}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>License</p>
+                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataset.license || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Pricing</p>
+                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>
+                      {dataset.isPaid ? `${dataset.price} ${dataset.currency}` : 'Free'}
+                    </p>
+                  </div>
+                </div>
+                
+                {secondaryCategories.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-sm font-medium mb-2" style={{ color: "var(--text-muted)" }}>Secondary Categories</p>
+                      <div className="flex flex-wrap gap-2">
+                        {secondaryCategories.map(cat => (
+                          <Badge key={cat.id} variant="secondary">{cat.name}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* About Dataset */}
+            {aboutDatasetInfo && (
+              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
+                  <CardTitle style={{ color: "var(--text-primary)" }}>About Dataset</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {aboutDatasetInfo.overview && (
+                    <div>
+                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Overview</p>
+                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.overview}</p>
+                    </div>
+                  )}
+                  {aboutDatasetInfo.description && (
+                    <div>
+                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Description</p>
+                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.description}</p>
+                    </div>
+                  )}
+                  {aboutDatasetInfo.dataQuality && (
+                    <div>
+                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Data Quality</p>
+                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.dataQuality}</p>
+                    </div>
+                  )}
+                  {aboutDatasetInfo.useCases && (
+                    <div>
+                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Use Cases</p>
+                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.useCases}</p>
+                    </div>
+                  )}
+                  {aboutDatasetInfo.limitations && (
+                    <div>
+                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Limitations</p>
+                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.limitations}</p>
+                    </div>
+                  )}
+                  {aboutDatasetInfo.methodology && (
+                    <div>
+                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Methodology</p>
+                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.methodology}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Data Format */}
+            {dataFormatInfo && (
+              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
+                  <CardTitle style={{ color: "var(--text-primary)" }}>Data Format</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {dataFormatInfo.fileFormat && (
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Format</p>
+                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataFormatInfo.fileFormat}</p>
+                      </div>
+                    )}
+                    {dataFormatInfo.rows && (
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Rows</p>
+                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataFormatInfo.rows.toLocaleString()}</p>
+                      </div>
+                    )}
+                    {dataFormatInfo.cols && (
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Columns</p>
+                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataFormatInfo.cols}</p>
+                      </div>
+                    )}
+                    {dataFormatInfo.fileSize && (
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>File Size</p>
+                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{formatFileSize(dataFormatInfo.fileSize)}</p>
+                      </div>
+                    )}
+                    {dataFormatInfo.encoding && (
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Encoding</p>
+                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataFormatInfo.encoding}</p>
+                      </div>
+                    )}
+                    {dataFormatInfo.compressionType && (
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Compression</p>
+                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataFormatInfo.compressionType}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Features/Schema */}
+            {features.length > 0 && (
+              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
+                  <CardTitle style={{ color: "var(--text-primary)" }}>Features ({features.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b" style={{ borderColor: "var(--border-default)" }}>
+                            <th className="text-left p-2 font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>Name</th>
+                            <th className="text-left p-2 font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>Data Type</th>
+                            <th className="text-left p-2 font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>Nullable</th>
+                            <th className="text-left p-2 font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {features.map((feature) => (
+                            <tr key={feature.id} className="border-b" style={{ borderColor: "var(--border-default)" }}>
+                              <td className="p-2 break-words" style={{ color: "var(--text-primary)" }}>{feature.name}</td>
+                              <td className="p-2 whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{feature.dataType}</td>
+                              <td className="p-2">
+                                {feature.isNullable ? (
+                                  <Badge variant="outline" className="text-xs whitespace-nowrap">Yes</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs whitespace-nowrap">No</Badge>
+                                )}
+                              </td>
+                              <td className="p-2 break-words" style={{ color: "var(--text-muted)" }}>{feature.description || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Right Column - Sidebar */}
+          <div className="space-y-4 md:space-y-6 min-w-0 lg:sticky lg:top-24 lg:h-fit">
+            {/* Review Actions - Wrapped in Card for consistency */}
+            <div style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)", border: "1px solid var(--border-default)", borderRadius: "var(--radius, 0.5rem)", overflow: "hidden" }}>
+              <div style={{ borderBottomColor: "var(--border-default)", borderBottom: "1px solid var(--border-default)", padding: "1rem" }}>
+                <h3 style={{ color: "var(--text-primary)", fontWeight: "600" }}>Review Actions</h3>
+              </div>
+              <div style={{ padding: "1rem" }}>
+            <ReviewActions
+              currentStatus={dataset.status}
+              ownerType={dataset.ownerType.toLowerCase() as "platform" | "supplier"}
+              canApprove={canApprove}
+              canReject={canReject}
+              canRequestChanges={canRequestChanges}
+              onActionConfirm={handleActionConfirm}
+            />
+              </div>
+            </div>
+
+            {/* Verification Status */}
+            <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+              <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
+                <CardTitle style={{ color: "var(--text-primary)" }}>Verification</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Status</p>
+                  <div className="mt-1">
+                    <StatusBadge 
+                      status={verification.status.replace(/_/g, ' ')}
+                      semanticType={getVerificationStatusSemantic(verification.status)}
+                    />
+                  </div>
+                </div>
+                
+                {verification.submittedAt && (
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Submitted</p>
+                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{formatDate(verification.submittedAt)}</p>
+                  </div>
+                )}
+                
+                {verification.verifiedAt && (
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Verified</p>
+                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{formatDate(verification.verifiedAt)}</p>
+                  </div>
+                )}
+                
+                {verification.rejectedAt && (
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Rejected</p>
+                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{formatDate(verification.rejectedAt)}</p>
+                  </div>
+                )}
+                
+                {verification.rejectionReason && (
+                  <div className="p-3 rounded-lg break-words" style={{ backgroundColor: "var(--bg-surface)" }}>
+                    <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Rejection Reason</p>
+                    <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{verification.rejectionReason}</p>
+                  </div>
+                )}
+                
+                {verification.notes && (
+                  <div className="p-3 rounded-lg break-words" style={{ backgroundColor: "var(--bg-surface)" }}>
+                    <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Notes</p>
+                    <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{verification.notes}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Current Upload */}
+            {verification.currentUpload && (
+              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
+                  <CardTitle style={{ color: "var(--text-primary)" }}>Current Upload</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Scope</p>
+                    <Badge variant="outline" className="mt-1">{verification.currentUpload.scope}</Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Status</p>
+                    <Badge variant="outline" className="mt-1">{verification.currentUpload.status}</Badge>
+                  </div>
+                  {verification.currentUpload.sizeBytes && (
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Size</p>
+                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{formatFileSize(verification.currentUpload.sizeBytes)}</p>
+                    </div>
+                  )}
+                  {verification.currentUpload.uploadedAt && (
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Uploaded</p>
+                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{formatDate(verification.currentUpload.uploadedAt)}</p>
+                    </div>
+                  )}
+                  
+                  {/* Download Button */}
+                  {verification.currentUpload && (
+                    <Button
+                      onClick={() => handleDownloadFile(verification.currentUpload!.id)}
+                      variant="outline"
+                      className="w-full mt-4 gap-2"
+                      style={{
+                        borderColor: "var(--border-default)",
+                        color: "var(--text-primary)"
+                      }}
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download File</span>
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Assignment */}
+            {activeAssignment && (
+              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
+                  <CardTitle style={{ color: "var(--text-primary)" }}>Assignment</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Assigned To</p>
+                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{activeAssignment.adminId}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Status</p>
+                    <Badge variant="outline" className="mt-1">{activeAssignment.status}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

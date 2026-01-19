@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Public paths that don't require authentication
-const PUBLIC_PATHS = ['/', '/login', '/auth/login', '/accept-invite'];
+const PUBLIC_PATHS = ['/', '/login', '/auth/login', '/admin/accept-invite'];
 
 // Protected paths that require authentication
 const PROTECTED_PATHS = ['/dashboard'];

@@ -37,21 +37,36 @@ export async function getSources(
   params: SourceListParams = {}
 ): Promise<PaginatedResponse<Source>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<PaginatedResponse<Source>>(
+  const response = await apiClient.get<any>(
     `${API_ROUTES.ADMIN.SOURCES.LIST}${query}`
   );
-  return response.data;
+  
+  // API returns: { success: true, data: { items, page, pageSize, total } }
+  const apiData = response.data?.data || response.data;
+  
+  return {
+    items: apiData.items || [],
+    pagination: {
+      page: apiData.page || 1,
+      pageSize: apiData.pageSize || 50,
+      total: apiData.total || 0,
+      totalPages: Math.ceil((apiData.total || 0) / (apiData.pageSize || 50)),
+    },
+  };
 }
 
 /**
  * Create a new source
  */
 export async function createSource(data: CreateSourceRequest): Promise<Source> {
-  const response = await apiClient.post<SourceResponse>(
+  const response = await apiClient.post<any>(
     API_ROUTES.ADMIN.SOURCES.CREATE,
     data
   );
-  return response.data.source;
+  
+  // API returns: { success: true, data: { source: {...} } }
+  const apiData = response.data?.data || response.data;
+  return apiData.source || apiData;
 }
 
 /**
@@ -61,11 +76,14 @@ export async function updateSource(
   sourceId: string,
   data: UpdateSourceRequest
 ): Promise<Source> {
-  const response = await apiClient.patch<SourceResponse>(
+  const response = await apiClient.patch<any>(
     API_ROUTES.ADMIN.SOURCES.UPDATE(sourceId),
     data
   );
-  return response.data.source;
+  
+  // API returns: { success: true, data: { source: {...} } }
+  const apiData = response.data?.data || response.data;
+  return apiData.source || apiData;
 }
 
 /**

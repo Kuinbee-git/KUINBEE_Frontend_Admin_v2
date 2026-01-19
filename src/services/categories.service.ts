@@ -36,21 +36,36 @@ export async function getCategories(
   params: CategoryListParams = {}
 ): Promise<PaginatedResponse<Category>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<PaginatedResponse<Category>>(
+  const response = await apiClient.get<any>(
     `${API_ROUTES.ADMIN.CATEGORIES.LIST}${query}`
   );
-  return response.data;
+  
+  // API returns: { success: true, data: { items, page, pageSize, total } }
+  const apiData = response.data?.data || response.data;
+  
+  return {
+    items: apiData.items || [],
+    pagination: {
+      page: apiData.page || 1,
+      pageSize: apiData.pageSize || 50,
+      total: apiData.total || 0,
+      totalPages: Math.ceil((apiData.total || 0) / (apiData.pageSize || 50)),
+    },
+  };
 }
 
 /**
  * Create a new category
  */
 export async function createCategory(data: CreateCategoryRequest): Promise<Category> {
-  const response = await apiClient.post<CategoryResponse>(
+  const response = await apiClient.post<any>(
     API_ROUTES.ADMIN.CATEGORIES.CREATE,
     data
   );
-  return response.data.category;
+  
+  // API returns: { success: true, data: { category: {...} } }
+  const apiData = response.data?.data || response.data;
+  return apiData.category || apiData;
 }
 
 /**
@@ -60,11 +75,14 @@ export async function updateCategory(
   categoryId: string,
   data: UpdateCategoryRequest
 ): Promise<Category> {
-  const response = await apiClient.patch<CategoryResponse>(
+  const response = await apiClient.patch<any>(
     API_ROUTES.ADMIN.CATEGORIES.UPDATE(categoryId),
     data
   );
-  return response.data.category;
+  
+  // API returns: { success: true, data: { category: {...} } }
+  const apiData = response.data?.data || response.data;
+  return apiData.category || apiData;
 }
 
 /**

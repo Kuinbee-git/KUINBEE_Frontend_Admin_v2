@@ -87,10 +87,22 @@ export async function getDatasets(
   params: DatasetListParams = {}
 ): Promise<PaginatedResponse<DatasetListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<PaginatedResponse<DatasetListItem>>(
+  const response = await apiClient.get<any>(
     `${API_ROUTES.ADMIN.DATASETS.LIST}${query}`
   );
-  return response.data;
+  
+  // API returns: { success: true, data: { items, page, pageSize, total } }
+  const apiData = response.data?.data || response.data;
+  
+  return {
+    items: apiData.items || [],
+    pagination: {
+      page: apiData.page || 1,
+      pageSize: apiData.pageSize || 50,
+      total: apiData.total || 0,
+      totalPages: Math.ceil((apiData.total || 0) / (apiData.pageSize || 50)),
+    },
+  };
 }
 
 /**
@@ -185,10 +197,22 @@ export async function getDatasetUploads(
   params: UploadListParams = {}
 ): Promise<PaginatedResponse<DatasetUpload>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<PaginatedResponse<DatasetUpload>>(
+  const response = await apiClient.get<any>(
     `${API_ROUTES.ADMIN.DATASETS.UPLOADS.LIST(datasetId)}${query}`
   );
-  return response.data;
+  
+  // API returns: { success: true, data: { items, page, pageSize, total } }
+  const apiData = response.data?.data || response.data;
+  
+  return {
+    items: apiData.items || [],
+    pagination: {
+      page: apiData.page || 1,
+      pageSize: apiData.pageSize || 50,
+      total: apiData.total || 0,
+      totalPages: Math.ceil((apiData.total || 0) / (apiData.pageSize || 50)),
+    },
+  };
 }
 
 /**
@@ -244,10 +268,22 @@ export async function getDatasetProposals(
   params: DatasetProposalParams = {}
 ): Promise<PaginatedResponse<DatasetProposalListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<PaginatedResponse<DatasetProposalListItem>>(
+  const response = await apiClient.get<any>(
     `${API_ROUTES.ADMIN.DATASET_PROPOSALS.LIST}${query}`
   );
-  return response.data;
+  
+  // API returns: { success: true, data: { items, page, pageSize, total } }
+  const apiData = response.data?.data || response.data;
+  
+  return {
+    items: apiData.items || [],
+    pagination: {
+      page: apiData.page || 1,
+      pageSize: apiData.pageSize || 50,
+      total: apiData.total || 0,
+      totalPages: Math.ceil((apiData.total || 0) / (apiData.pageSize || 50)),
+    },
+  };
 }
 
 /**
@@ -319,10 +355,22 @@ export async function getAssignedDatasets(
   params: AssignedDatasetParams = {}
 ): Promise<PaginatedResponse<AssignedDatasetListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<PaginatedResponse<AssignedDatasetListItem>>(
+  const response = await apiClient.get<any>(
     `${API_ROUTES.ADMIN.ASSIGNED_DATASETS}${query}`
   );
-  return response.data;
+  
+  // API returns: { success: true, data: { items, page, pageSize, total } }
+  const apiData = response.data?.data || response.data;
+  
+  return {
+    items: apiData.items || [],
+    pagination: {
+      page: apiData.page || 1,
+      pageSize: apiData.pageSize || 50,
+      total: apiData.total || 0,
+      totalPages: Math.ceil((apiData.total || 0) / (apiData.pageSize || 50)),
+    },
+  };
 }
 
 // ============================================

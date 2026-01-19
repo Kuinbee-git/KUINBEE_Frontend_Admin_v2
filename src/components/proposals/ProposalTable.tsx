@@ -44,7 +44,7 @@ export function ProposalTable({ proposals, onRowClick, onPickProposal }: Proposa
             key={proposal.id}
             className="border-b cursor-pointer transition-colors hover:bg-[var(--bg-surface)]"
             style={{ borderColor: "var(--border-default)" }}
-            onClick={() => onRowClick(proposal.datasetUniqueId)}
+            onClick={() => onRowClick(proposal.id)}
           >
             <td className="p-4">
               <div>
@@ -91,7 +91,7 @@ export function ProposalTable({ proposals, onRowClick, onPickProposal }: Proposa
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={(e) => onPickProposal(proposal.datasetUniqueId, e)}
+                  onClick={(e) => onPickProposal(proposal.id, e)}
                   className="flex items-center gap-1.5"
                 >
                   <UserPlus className="w-3.5 h-3.5" />

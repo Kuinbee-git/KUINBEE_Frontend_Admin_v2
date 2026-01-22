@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BarChart3, Building2, User, Mail, Phone, Globe, Calendar, CheckCircle2, XCircle, Shield } from "lucide-react";
+import { ArrowLeft, BarChart3, Building2, User, Mail, Phone, Globe, Calendar, CheckCircle2, XCircle, Shield, FileCheck, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge, formatStatusLabel, getKYCStatusSemantic } from "@/components/shared/StatusBadge";
 import { useSupplier, useSupplierKyc } from "@/hooks";
+import { markOfflineContractDone } from "@/services/suppliers.service";
+import { toast } from "sonner";
 
 interface SupplierDetailViewProps {
   supplierId: string;
@@ -16,8 +18,9 @@ interface SupplierDetailViewProps {
 export function SupplierDetailView({ supplierId }: SupplierDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
+  const [isMarkingContractDone, setIsMarkingContractDone] = useState(false);
   
-  const { data: supplier, isLoading } = useSupplier(supplierId);
+  const { data: supplier, isLoading, refetch: refetchSupplier } = useSupplier(supplierId);
   const { data: kycData, isLoading: isLoadingKyc } = useSupplierKyc(supplierId);
 
   if (isLoading) {
@@ -38,6 +41,27 @@ export function SupplierDetailView({ supplierId }: SupplierDetailViewProps) {
 
   const handleViewAnalytics = () => {
     router.push(`/dashboard/suppliers/${supplierId}/analytics`);
+  };
+
+  const handleMarkOfflineContractDone = async () => {
+    try {
+      setIsMarkingContractDone(true);
+      const result = await markOfflineContractDone(supplierId);
+      
+      toast.success("Offline contract has been marked as completed.", {
+        description: "The supplier can now publish datasets.",
+      });
+      
+      // Refetch supplier data to show updated offline contract status
+      refetchSupplier();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to mark offline contract as done";
+      toast.error("Error", {
+        description: errorMessage,
+      });
+    } finally {
+      setIsMarkingContractDone(false);
+    }
   };
 
   return (
@@ -264,6 +288,253 @@ export function SupplierDetailView({ supplierId }: SupplierDetailViewProps) {
                     <p className="mt-1" style={{ color: "var(--text-primary)" }}>
                       {supplier.supplierProfile.naturesOfDataProvided}
                     </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Offline Contract Status - CRITICAL ACTION */}
+            <Card 
+              style={{ 
+                backgroundColor: "var(--bg-base)",
+                boxShadow: supplier.supplierProfile.isOfflineContractDone 
+                  ? "0 1px 3px rgba(0, 0, 0, 0.1)"
+                  : "0 4px 6px rgba(0, 0, 0, 0.1), inset 0 0 0 1px var(--status-warning-bg)"
+              }}
+            >
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="p-2 rounded-lg"
+                      style={{ 
+                        backgroundColor: supplier.supplierProfile.isOfflineContractDone 
+                          ? "var(--status-success-bg)" 
+                          : "var(--status-warning-bg)" 
+                      }}
+                    >
+                      <FileCheck 
+                        className="w-5 h-5" 
+                        style={{ 
+                          color: supplier.supplierProfile.isOfflineContractDone 
+                            ? "var(--status-success)" 
+                            : "var(--status-warning)" 
+                        }} 
+                      />
+                    </div>
+                    <div>
+                      <CardTitle>Offline Contract Verification</CardTitle>
+                      <CardDescription className="mt-1">
+                        {supplier.supplierProfile.isOfflineContractDone 
+                          ? "Contract has been verified and completed"
+                          : "Required: Mark offline contract as completed to enable publishing"}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <StatusBadge
+                    status={supplier.supplierProfile.isOfflineContractDone ? "Completed" : "Pending"}
+                    semanticType={supplier.supplierProfile.isOfflineContractDone ? "success" : "warning"}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                {supplier.supplierProfile.isOfflineContractDone ? (
+                  // Completed State
+                  <div 
+                    className="p-5 rounded-lg"
+                    style={{ 
+                      backgroundColor: "var(--bg-surface)",
+                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08), inset 0 0 0 1px var(--status-success-bg)"
+                    }}
+                  >
+                    <div className="flex items-start gap-4 mb-4">
+                      <div 
+                        className="p-2 rounded-full"
+                        style={{ backgroundColor: "var(--status-success-bg)" }}
+                      >
+                        <CheckCircle2 className="w-6 h-6" style={{ color: "var(--status-success)" }} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                          Contract Verified Successfully
+                        </h4>
+                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                          This supplier is authorized to publish datasets on the marketplace.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div 
+                      className="h-px mb-4"
+                      style={{ backgroundColor: "var(--border-default)" }}
+                    />
+                    
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <label className="text-xs font-medium uppercase tracking-wide mb-2 block" style={{ color: "var(--text-muted)" }}>
+                          Completed Date & Time
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                            {supplier.supplierProfile.offlineContractDoneAt
+                              ? new Date(supplier.supplierProfile.offlineContractDoneAt).toLocaleString('en-US', {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short'
+                                })
+                              : "—"}
+                          </p>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium uppercase tracking-wide mb-2 block" style={{ color: "var(--text-muted)" }}>
+                          Verified By (Admin ID)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                          <p className="text-sm font-mono font-medium" style={{ color: "var(--text-primary)" }}>
+                            {supplier.supplierProfile.offlineContractDoneBy || "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Pending State
+                  <div className="space-y-4">
+                    <div 
+                      className="p-4 rounded-lg"
+                      style={{ 
+                        backgroundColor: "var(--status-warning-bg)",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08), inset 0 0 0 1px var(--status-warning-bg)"
+                      }}
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "var(--status-warning)" }} />
+                        <div>
+                          <h4 className="font-semibold mb-1" style={{ color: "var(--status-warning)" }}>
+                            Action Required: Contract Verification Pending
+                          </h4>
+                          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                            The supplier cannot publish datasets until the offline contract has been verified and marked as complete. 
+                            Please ensure all contractual documents have been reviewed and signed before proceeding.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div 
+                      className="p-5 rounded-lg"
+                      style={{ 
+                        backgroundColor: "var(--bg-surface)",
+                        border: "1px solid var(--border-default)"
+                      }}
+                    >
+                      <h4 className="font-semibold mb-3" style={{ color: "var(--text-primary)" }}>
+                        Before Marking as Complete:
+                      </h4>
+                      <ul className="space-y-2 mb-4">
+                        <li className="flex items-start gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--text-muted)" }} />
+                          <span>Verify all contract documents are signed and received</span>
+                        </li>
+                        <li className="flex items-start gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--text-muted)" }} />
+                          <span>Confirm supplier identity and business details</span>
+                        </li>
+                        <li className="flex items-start gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--text-muted)" }} />
+                          <span>Review KYC verification status above</span>
+                        </li>
+                      </ul>
+
+                      <Button
+                        onClick={handleMarkOfflineContractDone}
+                        disabled={isMarkingContractDone}
+                        className="w-full h-12 text-base font-semibold"
+                        size="lg"
+                      >
+                        {isMarkingContractDone ? (
+                          <>
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            Processing Verification...
+                          </>
+                        ) : (
+                          <>
+                            <FileCheck className="w-5 h-5 mr-2" />
+                            Mark Offline Contract as Complete
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Verification Status */}
+            <Card style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+              <CardHeader>
+                <CardTitle>Verification Status</CardTitle>
+                <CardDescription>Email verification and account status</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
+                      Contact Email
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                      <span className="text-sm" style={{ color: "var(--text-primary)" }}>
+                        {supplier.supplierProfile.contactEmail}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
+                      Verification Status
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {supplier.supplierProfile.contactEmailVerified ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" style={{ color: "var(--status-success)" }} />
+                          <span className="text-sm font-medium" style={{ color: "var(--status-success)" }}>
+                            Verified
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4" style={{ color: "var(--status-warning)" }} />
+                          <span className="text-sm font-medium" style={{ color: "var(--status-warning)" }}>
+                            Not Verified
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {supplier.supplierProfile.contactEmailVerified && supplier.supplierProfile.contactEmailVerifiedAt && (
+                  <div 
+                    className="p-3 rounded-lg"
+                    style={{ 
+                      backgroundColor: "var(--bg-surface)",
+                      border: "1px solid var(--border-default)"
+                    }}
+                  >
+                    <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-muted)" }}>
+                      Verified On
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                      <span className="text-sm" style={{ color: "var(--text-primary)" }}>
+                        {new Date(supplier.supplierProfile.contactEmailVerifiedAt).toLocaleString('en-US', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short'
+                        })}
+                      </span>
+                    </div>
                   </div>
                 )}
               </CardContent>

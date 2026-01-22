@@ -68,17 +68,3 @@ export const EMPTY_MESSAGES = {
   NO_DOWNLOADS: 'No downloads recorded',
   NO_AUDIT_LOGS: 'No audit logs available',
 };
-
-/**
- * User stats for index tiles
- */
-export const MOCK_USER_STATS = {
-  users: {
-    total: 1247,
-    suspended: 12,
-  },
-  admins: {
-    total: 8,
-    active: 7,
-  },
-};

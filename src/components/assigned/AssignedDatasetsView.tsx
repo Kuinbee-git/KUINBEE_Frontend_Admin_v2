@@ -127,7 +127,8 @@ export function AssignedDatasetsView() {
 
   // Handlers
   const handleRowClick = useCallback((item: AssignedDatasetListItem) => {
-    router.push(`/dashboard/datasets/${item.dataset.datasetUniqueId}`);
+    // Navigate to dataset detail view using the internal dataset ID
+    router.push(`/dashboard/datasets/${item.dataset.id}`);
   }, [router]);
 
   const handleClearFilters = useCallback(() => {

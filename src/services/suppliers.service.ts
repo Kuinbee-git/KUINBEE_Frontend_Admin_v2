@@ -96,3 +96,27 @@ export async function getSupplierKyc(supplierId: string): Promise<SupplierKyc> {
   );
   return response.data.data;
 }
+
+// ============================================
+// Offline Contract Management
+// ============================================
+
+export interface OfflineContractResponse {
+  supplierId: string;
+  isOfflineContractDone: boolean;
+  offlineContractDoneAt: string; // ISO timestamp
+  offlineContractDoneBy: string; // Admin userId
+}
+
+/**
+ * Mark a supplier's offline contract as completed
+ * Unblocks publishing for the supplier
+ */
+export async function markOfflineContractDone(
+  supplierId: string
+): Promise<OfflineContractResponse> {
+  const response = await apiClient.post<ApiSuccessResponse<OfflineContractResponse>>(
+    `/api/v1/admin/suppliers/${supplierId}/offline-contract/mark-done`
+  );
+  return response.data.data;
+}

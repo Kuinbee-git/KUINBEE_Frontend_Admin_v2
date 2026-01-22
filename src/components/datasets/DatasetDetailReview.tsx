@@ -38,7 +38,14 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const canPickProposal = permissionsData?.includes('VIEW_DATASET_PROPOSALS') ?? false;
   
   const handleBack = useCallback(() => {
-    router.push("/dashboard/dataset-proposals");
+    // Prefer navigating back in browser history to preserve origin (filters, query, etc.)
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    // Fallback if no history is available (direct deep link)
+    router.push("/dashboard/datasets");
   }, [router]);
   
   const handleDownloadFile = useCallback(async (uploadId: string) => {

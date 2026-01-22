@@ -7,7 +7,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Users, Shield, ArrowRight } from 'lucide-react';
-import { MOCK_USER_STATS } from '@/constants/user.constants';
 import { getCurrentUserPermissions } from '@/utils/permissions.utils';
 
 interface UsersAdminsIndexProps {
@@ -100,34 +99,17 @@ export function UsersAdminsIndex({
                 </p>
 
                 <div className="flex items-center gap-6 mb-6">
-                  <div>
-                    <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
-                      Total Users
-                    </p>
-                    <p className="text-2xl" style={{ color: 'var(--text-primary)' }}>
-                      {MOCK_USER_STATS.users.total.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
-                      Suspended
-                    </p>
-                    <p className="text-2xl" style={{ color: 'var(--text-primary)' }}>
-                      {MOCK_USER_STATS.users.suspended}
-                    </p>
-                  </div>
+                  <Button
+                    onClick={onNavigateToUsers}
+                    className="w-full"
+                    style={{
+                      backgroundColor: 'var(--brand-primary)',
+                      color: '#ffffff',
+                    }}
+                  >
+                    View Users
+                  </Button>
                 </div>
-
-                <Button
-                  onClick={onNavigateToUsers}
-                  className="w-full"
-                  style={{
-                    backgroundColor: 'var(--brand-primary)',
-                    color: '#ffffff',
-                  }}
-                >
-                  View Users
-                </Button>
               </div>
             </div>
           )}
@@ -176,18 +158,7 @@ export function UsersAdminsIndex({
                 <div className="flex items-center gap-6 mb-6">
                   <div>
                     <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
-                      Total Admins
-                    </p>
-                    <p className="text-2xl" style={{ color: 'var(--text-primary)' }}>
-                      {MOCK_USER_STATS.admins.total}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
-                      Active
-                    </p>
-                    <p className="text-2xl" style={{ color: 'var(--text-primary)' }}>
-                      {MOCK_USER_STATS.admins.active}
+                      Manage internal operators and assign datasets for review
                     </p>
                   </div>
                 </div>

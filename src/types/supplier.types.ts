@@ -59,6 +59,9 @@ export interface SupplierDetail {
     businessDomains: string[];
     primaryDomain: string | null;
     naturesOfDataProvided: string | null;
+    isOfflineContractDone: boolean;
+    offlineContractDoneAt: string | null; // ISO
+    offlineContractDoneBy: string | null; // Admin userId
     createdAt: string; // ISO
     updatedAt: string; // ISO
   };

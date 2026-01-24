@@ -50,15 +50,8 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const { isCollapsed, setCollapsed } = useSidebarStore();
   const { theme } = useThemeStore();
-  const { user } = useAuthStore();
+  const user = useAuthStore(state => state.user);
   const logoutMutation = useLogout();
-
-  // Hydrate persisted stores on mount to prevent hydration mismatch
-  useEffect(() => {
-    useAuthStore.persist.rehydrate();
-    useSidebarStore.persist.rehydrate();
-    useThemeStore.persist.rehydrate();
-  }, []);
 
   const isDark = theme === 'dark';
 

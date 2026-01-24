@@ -15,15 +15,15 @@ interface LoginRedirectProps {
  */
 export function LoginRedirect({ children }: LoginRedirectProps) {
   const router = useRouter();
-  const { isAuthenticated, user: storeUser } = useAuthStore();
-  const { data: user, isLoading } = useCurrentUser({ enabled: isAuthenticated });
+  const user = useAuthStore((state) => state.user);
+  const { data: currentUser, isLoading } = useCurrentUser({ enabled: !!user });
   const [hasRedirected, setHasRedirected] = useState(false);
 
   useEffect(() => {
     // Only redirect if we're certain the user IS authenticated
     // and we haven't already redirected
     if (!hasRedirected && !isLoading) {
-      const authenticated = isAuthenticated && (user || storeUser);
+      const authenticated = !!user || !!currentUser;
       
       if (authenticated) {
         console.log('[LoginRedirect] User already authenticated, redirecting to dashboard');
@@ -31,7 +31,7 @@ export function LoginRedirect({ children }: LoginRedirectProps) {
         router.replace('/dashboard');
       }
     }
-  }, [user, isLoading, isAuthenticated, storeUser, router, hasRedirected]);
+  }, [currentUser, isLoading, user, router, hasRedirected]);
 
   // Always render children (login form) - redirect happens in background
   return <>{children}</>;

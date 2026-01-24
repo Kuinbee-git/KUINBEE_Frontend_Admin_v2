@@ -12,44 +12,36 @@ interface AuthGuardProps {
 /**
  * Client-side authentication guard
  * Redirects to login if user is not authenticated
- * Works reliably in both local and production environments
+ * API response is the source of truth
  */
 export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
-  const { isAuthenticated, user: storeUser, setUser } = useAuthStore();
+  const setUser = useAuthStore(state => state.setUser);
   const { data: user, isLoading, isError } = useCurrentUser();
   const [hasRedirected, setHasRedirected] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
-    // Sync user from query to store if available
+    // Sync user from API to store
     if (user && !isLoading) {
       setUser(user);
-      setIsInitialLoad(false);
-    } else if (!isLoading) {
-      setIsInitialLoad(false);
+    } else if (!isLoading && !user) {
+      setUser(null);
     }
   }, [user, isLoading, setUser]);
 
   useEffect(() => {
     // Only redirect if we're certain the user is not authenticated
-    // Wait for initial load to complete and don't redirect if we have storeUser
-    if (!hasRedirected && !isLoading && !isInitialLoad) {
-      // If we have a user in store, trust it (don't redirect)
-      if (storeUser) {
-        return;
-      }
-      
+    if (!hasRedirected && !isLoading) {
       // Check if user is not authenticated (no user from API and error occurred)
       if (!user && isError) {
         setHasRedirected(true);
         router.replace('/login');
       }
     }
-  }, [user, isLoading, isError, storeUser, router, hasRedirected, isInitialLoad]);
+  }, [user, isLoading, isError, router, hasRedirected]);
 
   // Show loading state during initial check
-  if (isLoading || isInitialLoad) {
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -57,9 +49,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  // If we have user data from either source OR isAuthenticated flag is set, render children
-  // This handles the case where the store has isAuthenticated but user object is temporarily missing
-  if (user || storeUser || isAuthenticated) {
+  // Only render if we have user data from API
+  if (user) {
     return <>{children}</>;
   }
 

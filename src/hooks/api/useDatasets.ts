@@ -110,6 +110,8 @@ export function useCreateDataset() {
       toast.success('Dataset created successfully');
     },
     onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to create dataset');
     },
   });
@@ -127,6 +129,8 @@ export function useUpdateDataset() {
       toast.success('Dataset updated successfully');
     },
     onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to update dataset');
     },
   });
@@ -143,6 +147,8 @@ export function useUpdateDatasetMetadata() {
       toast.success('Metadata updated successfully');
     },
     onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to update metadata');
     },
   });
@@ -158,6 +164,8 @@ export function useDeleteDataset() {
       toast.success('Dataset deleted successfully');
     },
     onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to delete dataset');
     },
   });
@@ -175,6 +183,8 @@ export function usePublishDataset() {
       toast.success('Dataset published successfully');
     },
     onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to publish dataset');
     },
   });
@@ -191,6 +201,8 @@ export function useUnpublishDataset() {
       toast.success('Dataset unpublished');
     },
     onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to unpublish dataset');
     },
   });
@@ -212,6 +224,8 @@ export function useUploadDatasetFile() {
       toast.success('File uploaded successfully');
     },
     onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to upload file');
     },
   });
@@ -232,6 +246,8 @@ export function usePickProposal() {
       toast.success('Proposal assigned to you');
     },
     onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to pick proposal');
     },
   });
@@ -249,6 +265,8 @@ export function useApproveProposal() {
       toast.success('Proposal approved');
     },
     onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to approve proposal');
     },
   });
@@ -266,6 +284,9 @@ export function useRejectProposal() {
       toast.success('Proposal rejected');
     },
     onError: (error) => {
+      // Skip toast for auth errors - global handler will redirect
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to reject proposal');
     },
   });
@@ -283,6 +304,9 @@ export function useRequestChanges() {
       toast.success('Changes requested');
     },
     onError: (error) => {
+      // Skip toast for auth errors - global handler will redirect
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to request changes');
     },
   });

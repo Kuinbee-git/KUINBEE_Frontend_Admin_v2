@@ -55,13 +55,13 @@ export function useCurrentUser(options?: { enabled?: boolean; retry?: boolean; r
  * Only runs when user is authenticated
  */
 export function useProfile(options?: { enabled?: boolean }) {
-  const { isAuthenticated } = useAuthStore();
+  const user = useAuthStore(state => state.user);
   
   return useQuery({
     queryKey: authKeys.profile(),
     queryFn: authService.getProfile,
     staleTime: 5 * 60 * 1000,
-    enabled: options?.enabled ?? isAuthenticated,
+    enabled: options?.enabled ?? !!user,
     retry: false,
   });
 }
@@ -71,7 +71,8 @@ export function useProfile(options?: { enabled?: boolean }) {
  * Only runs when user is authenticated
  */
 export function useMyPermissions(options?: { enabled?: boolean }) {
-  const { setPermissions, isAuthenticated } = useAuthStore();
+  const setPermissions = useAuthStore(state => state.setPermissions);
+  const user = useAuthStore(state => state.user);
 
   return useQuery({
     queryKey: authKeys.permissions(),
@@ -81,7 +82,7 @@ export function useMyPermissions(options?: { enabled?: boolean }) {
       return permissions;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
-    enabled: options?.enabled ?? isAuthenticated,
+    enabled: options?.enabled ?? !!user,
     retry: false,
   });
 }
@@ -91,13 +92,13 @@ export function useMyPermissions(options?: { enabled?: boolean }) {
  * Only runs when user is authenticated
  */
 export function useAddresses(options?: { enabled?: boolean }) {
-  const { isAuthenticated } = useAuthStore();
+  const user = useAuthStore(state => state.user);
   
   return useQuery({
     queryKey: authKeys.addresses(),
     queryFn: authService.getAddresses,
     staleTime: 5 * 60 * 1000,
-    enabled: options?.enabled ?? isAuthenticated,
+    enabled: options?.enabled ?? !!user,
     retry: false,
   });
 }
@@ -117,7 +118,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: (credentials: LoginRequest) => authService.login(credentials),
     onSuccess: async (user) => {
-      // Update store first (this sets isAuthenticated = true)
+      // Update store with user
       storeLogin(user);
       
       // Update query cache
@@ -193,7 +194,7 @@ export function useAcceptInvite() {
   return useMutation({
     mutationFn: authService.acceptInvite,
     onSuccess: async (user) => {
-      // Update store (sets isAuthenticated = true)
+      // Update store with user
       storeLogin(user);
       
       // Update query cache
@@ -303,7 +304,7 @@ export function useDeleteAddress() {
  * Use this in protected routes
  */
 export function useAuthCheck() {
-  const { user } = useAuthStore();
+  const user = useAuthStore(state => state.user);
   const { data, isLoading, isError } = useCurrentUser();
 
   return {

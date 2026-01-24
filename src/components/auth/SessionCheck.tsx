@@ -7,18 +7,17 @@ import { useAuthStore } from '@/store/auth.store';
 const PUBLIC_PATHS = ['/login', '/auth/login', '/', '/admin/accept-invite'];
 
 /**
- * SessionCheck - Client-side auth fallback
- * Now less aggressive since middleware handles server-side redirects
- * Only handles client-side navigation edge cases
+ * SessionCheck - Client-side auth guard
+ * Single responsibility: Redirect unauthenticated users from protected routes
+ * Does NOT handle authenticated users on public paths (useLogin handles that)
  */
 export function SessionCheck() {
   const router = useRouter();
   const pathname = usePathname();
-  const isPublicPath = PUBLIC_PATHS.includes(pathname);
+  const user = useAuthStore(state => state.user);
   const hasRedirected = useRef(false);
   
-  // Use only the Zustand store for auth checks (synchronous and reliable)
-  const { isAuthenticated } = useAuthStore();
+  const isPublicPath = PUBLIC_PATHS.includes(pathname);
 
   useEffect(() => {
     // Reset redirect flag when pathname changes
@@ -28,27 +27,29 @@ export function SessionCheck() {
   useEffect(() => {
     // Don't redirect if already redirected
     if (hasRedirected.current) return;
-
-    // Only redirect after client-side navigation (middleware handles page loads)
-    // Add a small delay to avoid competing with middleware
-    const timeoutId = setTimeout(() => {
-      // If not authenticated and NOT on login page, redirect to login
-      if (!isAuthenticated && !isPublicPath) {
-        hasRedirected.current = true;
-        router.replace('/login');
-        return;
+    
+    // Check if there's a user in localStorage (store might not be hydrated yet)
+    // This prevents premature redirect during page refresh
+    let hasStoredUser = false;
+    try {
+      const stored = localStorage.getItem('kuinbee-auth-storage');
+      if (stored) {
+        const state = JSON.parse(stored);
+        if (state.state?.user) {
+          hasStoredUser = true;
+        }
       }
-
-      // If authenticated and on login page, redirect to dashboard
-      // Don't redirect from accept-invite even if authenticated
-      if (isAuthenticated && isPublicPath && pathname !== '/' && pathname !== '/admin/accept-invite') {
-        hasRedirected.current = true;
-        router.replace('/dashboard');
-      }
-    }, 50); // Small delay to avoid race with middleware
-
-    return () => clearTimeout(timeoutId);
-  }, [isAuthenticated, isPublicPath, pathname, router]);
+    } catch {
+      // Ignore localStorage errors
+    }
+    
+    // Only redirect UNAUTHENTICATED users away from PROTECTED routes
+    // Trust stored data if store hasn't hydrated yet
+    if (!user && !hasStoredUser && !isPublicPath) {
+      hasRedirected.current = true;
+      router.replace('/login');
+    }
+  }, [user, isPublicPath, pathname, router]);
 
   return null;
 }

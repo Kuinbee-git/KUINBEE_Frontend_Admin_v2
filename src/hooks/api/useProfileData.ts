@@ -3,16 +3,17 @@ import { useProfile, useMyPermissions, useCurrentUser } from './useAuth';
 import { useAuthStore } from '@/store/auth.store';
 
 export function useProfileData() {
-  const { isAuthenticated } = useAuthStore();
-  const { data: user, isLoading: userLoading } = useCurrentUser();
+  const user = useAuthStore(state => state.user);
+  const { data: currentUser, isLoading: userLoading, error: userError } = useCurrentUser();
   const { data: profile, isLoading: profileLoading, error: profileError } = useProfile({ 
-    enabled: isAuthenticated 
+    enabled: !!user
   });
-  const { data: permissions, isLoading: permissionsLoading } = useMyPermissions({ 
-    enabled: isAuthenticated 
+  const { data: permissions, isLoading: permissionsLoading, error: permissionsError } = useMyPermissions({ 
+    enabled: !!user
   });
 
   const isLoading = userLoading || profileLoading || permissionsLoading;
+  const error = userError || profileError || permissionsError;
   const userPermissions = useMemo(() => permissions || [], [permissions]);
 
   const fullName = useMemo(() => {
@@ -43,6 +44,6 @@ export function useProfileData() {
     fullName,
     inferredRole,
     isLoading,
-    error: profileError,
+    error,
   };
 }

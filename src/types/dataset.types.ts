@@ -242,7 +242,7 @@ export interface RejectProposalRequest {
 }
 
 export interface RequestChangesRequest {
-  notes: string;
+  changeRationale: string;
 }
 
 export interface ApproveProposalRequest {

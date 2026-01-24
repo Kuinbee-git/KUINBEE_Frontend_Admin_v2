@@ -84,14 +84,14 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
       } else if (action === "request_changes") {
         await requestChangesMutation.mutateAsync({
           datasetId,
-          data: { notes }
+          data: { changeRationale: notes }
         });
         toast.success("Changes requested");
       }
       refetch();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to ${action} proposal: ${message}`);
+      const message = error instanceof Error ? error.message : '';
+      toast.error(message || `Failed to ${action} proposal`);
     }
   }, [datasetId, pickProposalMutation, approveProposalMutation, rejectProposalMutation, requestChangesMutation, refetch]);
   

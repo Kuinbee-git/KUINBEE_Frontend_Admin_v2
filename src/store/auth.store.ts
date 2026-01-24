@@ -10,7 +10,6 @@ import type { AuthUser } from '@/types';
 
 interface AuthState {
   user: AuthUser | null;
-  isAuthenticated: boolean;
   permissions: string[];
   
   // Actions
@@ -24,35 +23,27 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      isAuthenticated: false,
       permissions: [],
 
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      setUser: (user) => set({ user }),
       
       setPermissions: (permissions) => set({ permissions }),
 
-      login: (user) =>
-        set({
-          user,
-          isAuthenticated: true,
-        }),
+      login: (user) => set({ user }),
 
       logout: () =>
         set({
           user: null,
-          isAuthenticated: false,
           permissions: [],
         }),
     }),
     {
       name: 'kuinbee-auth-storage',
       partialize: (state) => ({ 
-        // Only persist user, not loading states
         user: state.user, 
-        isAuthenticated: state.isAuthenticated,
         permissions: state.permissions,
       }),
-      skipHydration: true,
+      skipHydration: false,
     }
   )
 );

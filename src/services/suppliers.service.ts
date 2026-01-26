@@ -116,7 +116,7 @@ export async function markOfflineContractDone(
   supplierId: string
 ): Promise<OfflineContractResponse> {
   const response = await apiClient.post<ApiSuccessResponse<OfflineContractResponse>>(
-    `v1/admin/suppliers/${supplierId}/offline-contract/mark-done`
+    `/v1/admin/suppliers/${supplierId}/offline-contract/mark-done`
   );
   return response.data.data;
 }

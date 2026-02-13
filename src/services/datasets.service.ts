@@ -251,10 +251,10 @@ export async function getUploadDownloadUrl(
   datasetId: string,
   uploadId: string
 ): Promise<DownloadUrlResponse> {
-  const response = await apiClient.get<DownloadUrlResponse>(
+  const response = await apiClient.get<{ data: DownloadUrlResponse }>(
     API_ROUTES.ADMIN.DATASETS.UPLOADS.DOWNLOAD_URL(datasetId, uploadId)
   );
-  return response.data;
+  return response.data.data;
 }
 
 // ============================================
@@ -308,10 +308,10 @@ export async function pickProposal(datasetId: string): Promise<void> {
  * Get download URL for a proposal's current upload
  */
 export async function getProposalDownloadUrl(datasetId: string): Promise<DownloadUrlResponse> {
-  const response = await apiClient.get<DownloadUrlResponse>(
+  const response = await apiClient.get<{ data: DownloadUrlResponse }>(
     API_ROUTES.ADMIN.DATASET_PROPOSALS.DOWNLOAD_URL(datasetId)
   );
-  return response.data;
+  return response.data.data;
 }
 
 /**

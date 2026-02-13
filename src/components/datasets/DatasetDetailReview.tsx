@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge, getDatasetStatusSemantic, getVerificationStatusSemantic } from "@/components/shared/StatusBadge";
 import { ReviewActions } from "./ReviewActions";
-import { useProposalReview, usePickProposal, useApproveProposal, useRejectProposal, useRequestChanges } from "@/hooks/api/useDatasets";
+import { useProposalReview, usePickProposal, useApproveProposal, useRejectProposal, useRequestChanges, useDownloadProposalUrl } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { toast } from "sonner";
 
@@ -28,6 +28,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const approveProposalMutation = useApproveProposal();
   const rejectProposalMutation = useRejectProposal();
   const requestChangesMutation = useRequestChanges();
+  const downloadUrlMutation = useDownloadProposalUrl();
   
   // Permissions
   const { data: permissionsData } = useMyPermissions();
@@ -50,16 +51,24 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   
   const handleDownloadFile = useCallback(async (uploadId: string) => {
     try {
-      // The endpoint returns 501 Not Implemented from backend
-      // For now, we can show a message
-      toast.error('Download functionality not yet available on server');
-      // TODO: Implement when backend is ready
-      // const response = await getProposalDownloadUrl(datasetId);
-      // window.open(response.url, '_blank');
+      const response = await downloadUrlMutation.mutateAsync(datasetId);
+      
+      // Create a hidden anchor element to trigger the download
+      const link = document.createElement('a');
+      link.href = response.url;
+      link.download = response.upload.originalFileName || 'download';
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Download started');
     } catch {
-      toast.error('Failed to get download URL');
+      // Error is already handled by the mutation's onError
+      // No need to show another toast
     }
-  }, []);
+  }, [datasetId, downloadUrlMutation]);
 
   const handleActionConfirm = useCallback(async (action: "approve" | "reject" | "request_changes" | "pick", notes: string) => {
     try {

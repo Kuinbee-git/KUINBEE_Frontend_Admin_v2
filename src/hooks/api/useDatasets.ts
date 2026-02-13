@@ -96,6 +96,14 @@ export function useAssignedDatasets(params: AssignedDatasetParams = {}) {
   });
 }
 
+export function useProposalDownloadUrl(datasetId: string, enabled: boolean = false) {
+  return useQuery({
+    queryKey: [...datasetsKeys.detail(datasetId), 'download'],
+    queryFn: () => datasetsService.getProposalDownloadUrl(datasetId),
+    enabled: !!datasetId && enabled,
+  });
+}
+
 // ============================================
 // Dataset Mutations
 // ============================================
@@ -308,6 +316,17 @@ export function useRequestChanges() {
       const err = error as any;
       if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to request changes');
+    },
+  });
+}
+
+export function useDownloadProposalUrl() {
+  return useMutation({
+    mutationFn: (datasetId: string) => datasetsService.getProposalDownloadUrl(datasetId),
+    onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to get download URL');
     },
   });
 }

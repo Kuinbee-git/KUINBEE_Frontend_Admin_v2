@@ -116,7 +116,9 @@ class ApiClient {
           url: response.url,
           status: response.status,
           statusText: response.statusText,
-          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
         });
       }
 

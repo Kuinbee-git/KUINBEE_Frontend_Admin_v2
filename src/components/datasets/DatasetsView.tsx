@@ -2,11 +2,12 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { DatasetFilters } from "./DatasetFilters";
 import { DatasetTable } from "./DatasetTable";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
-import { useDatasets } from "@/hooks/api/useDatasets";
+import { useDatasets, datasetsKeys } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { DatasetStatus, DatasetVisibility, OwnerType } from "@/types/dataset.types";
@@ -16,10 +17,16 @@ type AssignmentType = "all" | "assigned_to_me" | "unassigned";
 
 export function DatasetsView() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  
+  // Clear cache on mount to refresh data with new defaults
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
+  }, [queryClient]);
   
   // Filter state
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<DatasetStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<DatasetStatus | "all">("PUBLISHED");
   const [ownerFilter, setOwnerFilter] = useState<OwnerTypeFilter>("all");
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentType>("all");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
@@ -79,7 +86,7 @@ export function DatasetsView() {
   
   const clearAllFilters = useCallback(() => {
     setSearchQuery("");
-    setStatusFilter("all");
+    setStatusFilter("PUBLISHED");
     setOwnerFilter("all");
     setAssignmentFilter("all");
     setSupplierFilter("all");

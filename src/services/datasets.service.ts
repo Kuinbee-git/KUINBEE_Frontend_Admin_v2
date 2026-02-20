@@ -28,6 +28,7 @@ import type {
   RejectProposalRequest,
   RequestChangesRequest,
   ProposalReviewResponse,
+  DatasetPricingDto,
   VerificationStatus,
   AssignmentStatus,
   UploadScope,
@@ -341,7 +342,73 @@ export async function requestChanges(
   datasetId: string,
   data: RequestChangesRequest
 ): Promise<void> {
-  await apiClient.post(API_ROUTES.ADMIN.DATASET_PROPOSALS.REQUEST_CHANGES(datasetId), data);
+  await apiClient.post(API_ROUTES.ADMIN.DATASET_PROPOSALS.REQUEST_CHANGES(datasetId), {
+    notes: data.notes || '',
+    changeRationale: data.notes || data.changeRationale,
+    datasetNeedsChanges: data.datasetNeedsChanges,
+    pricingNeedsChanges: data.pricingNeedsChanges,
+  });
+}
+
+// ============================================
+// Proposal Pricing
+// ============================================
+
+/**
+ * Get pricing for a dataset proposal
+ */
+export async function getProposalPricing(datasetId: string): Promise<{ pricing: DatasetPricingDto | null }> {
+  const response = await apiClient.get<{ pricing: DatasetPricingDto | null }>(
+    API_ROUTES.ADMIN.DATASET_PROPOSALS.PRICING.GET(datasetId)
+  );
+  return response.data;
+}
+
+/**
+ * Approve proposal pricing
+ */
+export async function approvePricing(
+  datasetId: string,
+  data?: { notes?: string }
+): Promise<{ pricing: DatasetPricingDto }> {
+  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+    API_ROUTES.ADMIN.DATASET_PROPOSALS.PRICING.APPROVE(datasetId),
+    data || {}
+  );
+  return response.data;
+}
+
+/**
+ * Reject proposal pricing
+ */
+export async function rejectPricing(
+  datasetId: string,
+  data: { rejectionReason: string; notes?: string }
+): Promise<{ pricing: DatasetPricingDto }> {
+  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+    API_ROUTES.ADMIN.DATASET_PROPOSALS.PRICING.REJECT(datasetId),
+    data
+  );
+  return response.data;
+}
+
+/**
+ * Request changes on proposal pricing
+ */
+export async function requestPricingChanges(
+  datasetId: string,
+  data: { notes: string; datasetNeedsChanges: boolean; pricingNeedsChanges: boolean }
+): Promise<{ pricing: DatasetPricingDto }> {
+  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+    API_ROUTES.ADMIN.DATASET_PROPOSALS.PRICING.REQUEST_CHANGES(datasetId),
+    {
+      notes: data.notes || '',
+      changeRationale: data.notes,
+      datasetNeedsChanges: data.datasetNeedsChanges,
+      pricingNeedsChanges: data.pricingNeedsChanges,
+    }
+  );
+  return response.data;
 }
 
 // ============================================

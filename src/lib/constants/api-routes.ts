@@ -53,6 +53,14 @@ export const API_ROUTES = {
       REJECT: (datasetId: string) => `/v1/admin/dataset-proposals/${datasetId}/reject`,
       REQUEST_CHANGES: (datasetId: string) =>
         `/v1/admin/dataset-proposals/${datasetId}/request-changes`,
+      // Pricing Review
+      PRICING: {
+        GET: (datasetId: string) => `/v1/admin/dataset-proposals/${datasetId}/pricing`,
+        APPROVE: (datasetId: string) => `/v1/admin/dataset-proposals/${datasetId}/pricing/approve`,
+        REJECT: (datasetId: string) => `/v1/admin/dataset-proposals/${datasetId}/pricing/reject`,
+        REQUEST_CHANGES: (datasetId: string) =>
+          `/v1/admin/dataset-proposals/${datasetId}/pricing/request-changes`,
+      },
     },
 
     // Assigned Datasets

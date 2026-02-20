@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge, getDatasetStatusSemantic, getVerificationStatusSemantic } from "@/components/shared/StatusBadge";
 import { ReviewActions } from "./ReviewActions";
-import { useProposalReview, usePickProposal, useApproveProposal, useRejectProposal, useRequestChanges, useDownloadProposalUrl } from "@/hooks/api/useDatasets";
+import { PricingReviewCard } from "./PricingReviewCard";
+import { useProposalReview, usePickProposal, useApproveProposal, useRejectProposal, useRequestChanges, useRequestPricingChanges, useDownloadProposalUrl } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { toast } from "sonner";
 
@@ -28,6 +29,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const approveProposalMutation = useApproveProposal();
   const rejectProposalMutation = useRejectProposal();
   const requestChangesMutation = useRequestChanges();
+  const requestPricingChangesMutation = useRequestPricingChanges();
   const downloadUrlMutation = useDownloadProposalUrl();
   
   // Permissions
@@ -70,39 +72,85 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
     }
   }, [datasetId, downloadUrlMutation]);
 
-  const handleActionConfirm = useCallback(async (action: "approve" | "reject" | "request_changes" | "pick", notes: string) => {
-    try {
-      if (action === "pick") {
-        await pickProposalMutation.mutateAsync(datasetId);
-        toast.success("Proposal assigned to you");
-      } else if (action === "approve") {
-        await approveProposalMutation.mutateAsync({
-          datasetId,
-          data: notes ? { notes } : undefined
-        });
-        toast.success("Proposal approved successfully");
-      } else if (action === "reject") {
-        await rejectProposalMutation.mutateAsync({
-          datasetId,
-          data: {
-            rejectionReason: notes || "Rejected",
-            notes: notes || undefined
+  const handleActionConfirm = useCallback(
+    async (
+      action: "approve" | "reject" | "request_changes" | "pick",
+      notes: string,
+      datasetNeedsChanges?: boolean,
+      pricingNeedsChanges?: boolean
+    ) => {
+      try {
+        if (action === "pick") {
+          await pickProposalMutation.mutateAsync(datasetId);
+          toast.success("Proposal assigned to you");
+        } else if (action === "approve") {
+          await approveProposalMutation.mutateAsync({
+            datasetId,
+            data: notes ? { notes } : undefined
+          });
+          toast.success("Proposal approved successfully");
+        } else if (action === "reject") {
+          await rejectProposalMutation.mutateAsync({
+            datasetId,
+            data: {
+              rejectionReason: notes || "Rejected",
+              notes: notes || undefined
+            }
+          });
+          toast.success("Proposal rejected");
+        } else if (action === "request_changes") {
+          // Route to appropriate endpoint based on which flags are set
+          if (pricingNeedsChanges && !datasetNeedsChanges) {
+            // Only pricing changes
+            await requestPricingChangesMutation.mutateAsync({
+              datasetId,
+              data: {
+                notes,
+                datasetNeedsChanges: false,
+                pricingNeedsChanges: true
+              }
+            });
+          } else if (datasetNeedsChanges && !pricingNeedsChanges) {
+            // Only dataset changes
+            await requestChangesMutation.mutateAsync({
+              datasetId,
+              data: {
+                notes,
+                datasetNeedsChanges: true,
+                pricingNeedsChanges: false
+              }
+            });
+          } else if (datasetNeedsChanges && pricingNeedsChanges) {
+            // Both dataset and pricing changes - call both endpoints
+            await Promise.all([
+              requestChangesMutation.mutateAsync({
+                datasetId,
+                data: {
+                  notes,
+                  datasetNeedsChanges: true,
+                  pricingNeedsChanges: false
+                }
+              }),
+              requestPricingChangesMutation.mutateAsync({
+                datasetId,
+                data: {
+                  notes,
+                  datasetNeedsChanges: false,
+                  pricingNeedsChanges: true
+                }
+              })
+            ]);
           }
-        });
-        toast.success("Proposal rejected");
-      } else if (action === "request_changes") {
-        await requestChangesMutation.mutateAsync({
-          datasetId,
-          data: { changeRationale: notes }
-        });
-        toast.success("Changes requested");
+          toast.success("Changes requested");
+        }
+        refetch();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : '';
+        toast.error(message || `Failed to ${action} proposal`);
       }
-      refetch();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : '';
-      toast.error(message || `Failed to ${action} proposal`);
-    }
-  }, [datasetId, pickProposalMutation, approveProposalMutation, rejectProposalMutation, requestChangesMutation, refetch]);
+    },
+    [datasetId, pickProposalMutation, approveProposalMutation, rejectProposalMutation, requestChangesMutation, requestPricingChangesMutation, refetch]
+  );
   
   if (isLoading) {
     return (
@@ -197,6 +245,12 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                 status={verification.status.replace(/_/g, ' ')}
                 semanticType={getVerificationStatusSemantic(verification.status)}
               />
+              {datasetData.dataset.pricing && (
+                <StatusBadge 
+                  status={`Pricing: ${datasetData.dataset.pricing.status.replace(/_/g, ' ')}`}
+                  semanticType={datasetData.dataset.pricing.status === 'ACTIVE' || datasetData.dataset.pricing.status === 'VERIFIED' ? 'success' : datasetData.dataset.pricing.status === 'CHANGES_REQUESTED' ? 'warning' : datasetData.dataset.pricing.status === 'REJECTED' ? 'error' : 'neutral'}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -237,7 +291,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                   <div>
                     <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Pricing</p>
                     <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>
-                      {dataset.isPaid ? `${dataset.price} ${dataset.currency}` : 'Free'}
+                      {dataset.pricing?.isPaid ? `${dataset.pricing.price} ${dataset.pricing.currency}` : 'Free'}
                     </p>
                   </div>
                 </div>
@@ -352,6 +406,11 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Pricing Information */}
+            {datasetData?.dataset?.pricing && (
+              <PricingReviewCard pricing={datasetData.dataset.pricing} isDark={false} />
             )}
 
             {/* Features/Schema */}

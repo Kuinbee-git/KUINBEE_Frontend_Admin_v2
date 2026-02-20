@@ -64,6 +64,7 @@ export interface Dataset {
   publishedAt: string | null;
   archivedAt: string | null;
   publishedUploadId: string | null;
+  pricing?: DatasetPricingDto;
 }
 
 // ============================================
@@ -241,8 +242,32 @@ export interface RejectProposalRequest {
   notes?: string;
 }
 
+// ============================================
+// Pricing Request/Response Types
+// ============================================
+
+export interface DatasetPricingDto {
+  id: string;
+  datasetId: string;
+  isPaid: boolean;
+  price: string | null;
+  currency: 'USD' | 'INR' | 'EUR' | 'GBP';
+  status: 'SUBMITTED' | 'CHANGES_REQUESTED' | 'ACTIVE' | 'REJECTED' | 'VERIFIED';
+  submittedAt: string;
+  approvedAt?: string | null;
+  rejectionReason?: string | null;
+  changeRationale?: string | null;
+  datasetNeedsChanges?: boolean;
+  pricingNeedsChanges?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RequestChangesRequest {
-  changeRationale: string;
+  notes?: string;
+  changeRationale?: string;
+  datasetNeedsChanges?: boolean;
+  pricingNeedsChanges?: boolean;
 }
 
 export interface ApproveProposalRequest {

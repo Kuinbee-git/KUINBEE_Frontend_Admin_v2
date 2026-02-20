@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
 
 type ActionType = "approve" | "reject" | "request_changes" | null;
@@ -14,7 +15,12 @@ interface ReviewActionsProps {
   canApprove: boolean;
   canReject: boolean;
   canRequestChanges: boolean;
-  onActionConfirm: (action: "approve" | "reject" | "request_changes", notes: string) => void;
+  onActionConfirm: (
+    action: "approve" | "reject" | "request_changes",
+    notes: string,
+    datasetNeedsChanges?: boolean,
+    pricingNeedsChanges?: boolean
+  ) => void;
 }
 
 export function ReviewActions({
@@ -25,31 +31,48 @@ export function ReviewActions({
 }: ReviewActionsProps) {
   const [activeAction, setActiveAction] = useState<ActionType>(null);
   const [actionNotes, setActionNotes] = useState("");
+  const [datasetNeedsChanges, setDatasetNeedsChanges] = useState(false);
+  const [pricingNeedsChanges, setPricingNeedsChanges] = useState(false);
 
   const handleActionClick = (action: ActionType) => {
     setActiveAction(action);
     setActionNotes("");
+    setDatasetNeedsChanges(false);
+    setPricingNeedsChanges(false);
   };
 
   const handleConfirm = () => {
     if (activeAction && actionNotes.trim()) {
-      onActionConfirm(activeAction, actionNotes);
+      // If request_changes, at least one checkbox must be selected
+      if (activeAction === "request_changes" && !datasetNeedsChanges && !pricingNeedsChanges) {
+        return;
+      }
+      onActionConfirm(
+        activeAction,
+        actionNotes,
+        datasetNeedsChanges,
+        pricingNeedsChanges
+      );
       setActiveAction(null);
       setActionNotes("");
+      setDatasetNeedsChanges(false);
+      setPricingNeedsChanges(false);
     }
   };
 
   const handleCancel = () => {
     setActiveAction(null);
     setActionNotes("");
+    setDatasetNeedsChanges(false);
+    setPricingNeedsChanges(false);
   };
 
   const getActionLabel = (action: string) => {
     switch (action) {
       case "approve":
-        return "Approve Dataset";
+        return "Approve Dataset & Pricing";
       case "reject":
-        return "Reject Dataset";
+        return "Reject Dataset & Pricing";
       case "request_changes":
         return "Request Changes";
       default:
@@ -102,6 +125,10 @@ export function ReviewActions({
     return null;
   }
 
+  const isConfirmDisabled =
+    !actionNotes.trim() ||
+    (activeAction === "request_changes" && !datasetNeedsChanges && !pricingNeedsChanges);
+
   return (
     <div
       className="p-4 md:p-6 rounded-lg"
@@ -146,18 +173,60 @@ export function ReviewActions({
             </h3>
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
               {activeAction === "approve" &&
-                "This will approve the dataset and make it available in the marketplace."}
+                "This will approve both the dataset and pricing. Both will be locked and the dataset will be ready for publication."}
               {activeAction === "reject" &&
-                "This will reject the dataset. The supplier will be notified of your decision."}
+                "This will reject both the dataset and pricing. The supplier will need to submit a fresh version."}
               {activeAction === "request_changes" &&
-                "This will send the dataset back to the supplier with your requested changes."}
+                "Select what needs changes and provide feedback. The supplier can edit and resubmit."}
             </p>
           </div>
 
+          {/* Request Changes Checkboxes */}
+          {activeAction === "request_changes" && (
+            <div
+              className="p-4 rounded-lg space-y-3"
+              style={{ backgroundColor: "var(--bg-surface)" }}
+            >
+              <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                What needs to change?
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="dataset-needs-changes"
+                    checked={datasetNeedsChanges}
+                    onCheckedChange={(checked) => setDatasetNeedsChanges(checked as boolean)}
+                    style={{ accentColor: "var(--state-warning)" }}
+                  />
+                  <Label htmlFor="dataset-needs-changes" className="cursor-pointer text-sm" style={{ color: "var(--text-primary)" }}>
+                    Dataset needs revision
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="pricing-needs-changes"
+                    checked={pricingNeedsChanges}
+                    onCheckedChange={(checked) => setPricingNeedsChanges(checked as boolean)}
+                    style={{ accentColor: "var(--state-warning)" }}
+                  />
+                  <Label htmlFor="pricing-needs-changes" className="cursor-pointer text-sm" style={{ color: "var(--text-primary)" }}>
+                    Pricing needs revision
+                  </Label>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div>
             <Label className="mb-2 block" style={{ color: "var(--text-primary)" }}>
-              {activeAction === "approve" ? "Approval Notes" : activeAction === "reject" ? "Rejection Reason" : "Requested Changes"}
-              <span style={{ color: "var(--state-error)" }}> *</span>
+              {activeAction === "approve"
+                ? "Approval Notes (optional)"
+                : activeAction === "reject"
+                ? "Rejection Reason"
+                : "Feedback for Supplier"}
+              {activeAction !== "approve" && (
+                <span style={{ color: "var(--state-error)" }}> *</span>
+              )}
             </Label>
             <Textarea
               value={actionNotes}
@@ -167,7 +236,7 @@ export function ReviewActions({
                   ? "Add any notes about this approval..."
                   : activeAction === "reject"
                   ? "Explain why this dataset is being rejected..."
-                  : "Describe what changes are needed..."
+                  : "Describe what needs to be fixed..."
               }
               rows={4}
               className="w-full"
@@ -182,7 +251,7 @@ export function ReviewActions({
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
               onClick={handleConfirm}
-              disabled={!actionNotes.trim()}
+              disabled={isConfirmDisabled}
               style={getActionStyle(activeAction)}
               className="flex-1 sm:flex-none"
             >

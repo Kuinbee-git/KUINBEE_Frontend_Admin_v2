@@ -332,6 +332,75 @@ export function useDownloadProposalUrl() {
 }
 
 // ============================================
+// Proposal Pricing Mutations
+// ============================================
+
+export function useProposalPricing(datasetId: string) {
+  return useQuery({
+    queryKey: [...datasetsKeys.detail(datasetId), 'pricing'],
+    queryFn: () => datasetsService.getProposalPricing(datasetId),
+    enabled: !!datasetId,
+  });
+}
+
+export function useApprovePricing() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ datasetId, data }: { datasetId: string; data?: { notes?: string } }) =>
+      datasetsService.approvePricing(datasetId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.proposals() });
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
+      toast.success('Pricing approved');
+    },
+    onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to approve pricing');
+    },
+  });
+}
+
+export function useRejectPricing() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ datasetId, data }: { datasetId: string; data: { rejectionReason: string; notes?: string } }) =>
+      datasetsService.rejectPricing(datasetId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.proposals() });
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
+      toast.success('Pricing rejected');
+    },
+    onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to reject pricing');
+    },
+  });
+}
+
+export function useRequestPricingChanges() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ datasetId, data }: { datasetId: string; data: { notes: string; datasetNeedsChanges: boolean; pricingNeedsChanges: boolean } }) =>
+      datasetsService.requestPricingChanges(datasetId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.proposals() });
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
+      toast.success('Changes requested');
+    },
+    onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to request pricing changes');
+    },
+  });
+}
+
+// ============================================
 // Prefetch
 // ============================================
 

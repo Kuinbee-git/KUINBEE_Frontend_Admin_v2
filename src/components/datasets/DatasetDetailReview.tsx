@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { StatusBadge, getDatasetStatusSemantic, getVerificationStatusSemantic } from "@/components/shared/StatusBadge";
 import { ReviewActions } from "./ReviewActions";
 import { PricingReviewCard } from "./PricingReviewCard";
-import { useProposalReview, usePickProposal, useApproveProposal, useRejectProposal, useRequestChanges, useRequestPricingChanges, useDownloadProposalUrl } from "@/hooks/api/useDatasets";
+import { useProposalReview, useApproveProposal, useRejectProposal, useRequestChanges, useRequestPricingChanges, useDownloadProposalUrl, useApprovePricing, useRejectPricing } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { toast } from "sonner";
 
@@ -25,9 +25,10 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const { data: datasetData, isLoading, refetch } = useProposalReview(datasetId);
   
   // Proposal mutations
-  const pickProposalMutation = usePickProposal();
   const approveProposalMutation = useApproveProposal();
+  const approvePricingMutation = useApprovePricing();
   const rejectProposalMutation = useRejectProposal();
+  const rejectPricingMutation = useRejectPricing();
   const requestChangesMutation = useRequestChanges();
   const requestPricingChangesMutation = useRequestPricingChanges();
   const downloadUrlMutation = useDownloadProposalUrl();
@@ -74,30 +75,55 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
 
   const handleActionConfirm = useCallback(
     async (
-      action: "approve" | "reject" | "request_changes" | "pick",
-      notes: string,
+      action: "approve" | "reject" | "request_changes",
+      datasetNotes: string,
+      pricingNotes?: string,
       datasetNeedsChanges?: boolean,
       pricingNeedsChanges?: boolean
     ) => {
       try {
-        if (action === "pick") {
-          await pickProposalMutation.mutateAsync(datasetId);
-          toast.success("Proposal assigned to you");
-        } else if (action === "approve") {
-          await approveProposalMutation.mutateAsync({
-            datasetId,
-            data: notes ? { notes } : undefined
-          });
-          toast.success("Proposal approved successfully");
+        if (action === "approve") {
+          // Approve dataset if checkbox is selected
+          if (datasetNeedsChanges) {
+            await approveProposalMutation.mutateAsync({
+              datasetId,
+              data: datasetNotes ? { notes: datasetNotes } : undefined
+            });
+          }
+          
+          // Approve pricing if checkbox is selected
+          if (pricingNeedsChanges) {
+            await approvePricingMutation.mutateAsync({
+              datasetId,
+              data: pricingNotes ? { notes: pricingNotes } : undefined
+            });
+          }
+          
+          toast.success("Approval completed successfully");
         } else if (action === "reject") {
-          await rejectProposalMutation.mutateAsync({
-            datasetId,
-            data: {
-              rejectionReason: notes || "Rejected",
-              notes: notes || undefined
-            }
-          });
-          toast.success("Proposal rejected");
+          // Reject dataset if checkbox is selected
+          if (datasetNeedsChanges) {
+            await rejectProposalMutation.mutateAsync({
+              datasetId,
+              data: {
+                rejectionReason: datasetNotes || "Rejected",
+                notes: datasetNotes || undefined
+              }
+            });
+          }
+          
+          // Reject pricing if checkbox is selected
+          if (pricingNeedsChanges) {
+            await rejectPricingMutation.mutateAsync({
+              datasetId,
+              data: {
+                rejectionReason: pricingNotes || "Rejected",
+                notes: pricingNotes || undefined
+              }
+            });
+          }
+          
+          toast.success("Rejection completed successfully");
         } else if (action === "request_changes") {
           // Route to appropriate endpoint based on which flags are set
           if (pricingNeedsChanges && !datasetNeedsChanges) {
@@ -105,7 +131,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
             await requestPricingChangesMutation.mutateAsync({
               datasetId,
               data: {
-                notes,
+                notes: datasetNotes,
                 datasetNeedsChanges: false,
                 pricingNeedsChanges: true
               }
@@ -115,7 +141,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
             await requestChangesMutation.mutateAsync({
               datasetId,
               data: {
-                notes,
+                notes: datasetNotes,
                 datasetNeedsChanges: true,
                 pricingNeedsChanges: false
               }
@@ -126,7 +152,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
               requestChangesMutation.mutateAsync({
                 datasetId,
                 data: {
-                  notes,
+                  notes: datasetNotes,
                   datasetNeedsChanges: true,
                   pricingNeedsChanges: false
                 }
@@ -134,7 +160,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
               requestPricingChangesMutation.mutateAsync({
                 datasetId,
                 data: {
-                  notes,
+                  notes: pricingNotes || datasetNotes,
                   datasetNeedsChanges: false,
                   pricingNeedsChanges: true
                 }
@@ -149,7 +175,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
         toast.error(message || `Failed to ${action} proposal`);
       }
     },
-    [datasetId, pickProposalMutation, approveProposalMutation, rejectProposalMutation, requestChangesMutation, requestPricingChangesMutation, refetch]
+    [datasetId, approveProposalMutation, approvePricingMutation, rejectProposalMutation, rejectPricingMutation, requestChangesMutation, requestPricingChangesMutation, refetch]
   );
   
   if (isLoading) {
@@ -469,6 +495,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
               canApprove={canApprove}
               canReject={canReject}
               canRequestChanges={canRequestChanges}
+              isPicked={!!activeAssignment}
               onActionConfirm={handleActionConfirm}
             />
               </div>

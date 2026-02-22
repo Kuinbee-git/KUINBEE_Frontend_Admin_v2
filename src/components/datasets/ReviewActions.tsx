@@ -15,9 +15,11 @@ interface ReviewActionsProps {
   canApprove: boolean;
   canReject: boolean;
   canRequestChanges: boolean;
+  isPicked: boolean;
   onActionConfirm: (
     action: "approve" | "reject" | "request_changes",
-    notes: string,
+    datasetNotes: string,
+    pricingNotes?: string,
     datasetNeedsChanges?: boolean,
     pricingNeedsChanges?: boolean
   ) => void;
@@ -27,42 +29,65 @@ export function ReviewActions({
   canApprove,
   canReject,
   canRequestChanges,
+  isPicked,
   onActionConfirm,
 }: ReviewActionsProps) {
   const [activeAction, setActiveAction] = useState<ActionType>(null);
-  const [actionNotes, setActionNotes] = useState("");
+  const [datasetNotes, setDatasetNotes] = useState("");
+  const [pricingNotes, setPricingNotes] = useState("");
   const [datasetNeedsChanges, setDatasetNeedsChanges] = useState(false);
   const [pricingNeedsChanges, setPricingNeedsChanges] = useState(false);
 
   const handleActionClick = (action: ActionType) => {
     setActiveAction(action);
-    setActionNotes("");
+    setDatasetNotes("");
+    setPricingNotes("");
     setDatasetNeedsChanges(false);
     setPricingNeedsChanges(false);
   };
 
   const handleConfirm = () => {
-    if (activeAction && actionNotes.trim()) {
-      // If request_changes, at least one checkbox must be selected
-      if (activeAction === "request_changes" && !datasetNeedsChanges && !pricingNeedsChanges) {
+    if (!activeAction) return;
+
+    // Validation logic for each action type
+    if (activeAction === "request_changes") {
+      // For request_changes, at least one checkbox must be selected
+      if (!datasetNeedsChanges && !pricingNeedsChanges) {
         return;
       }
-      onActionConfirm(
-        activeAction,
-        actionNotes,
-        datasetNeedsChanges,
-        pricingNeedsChanges
-      );
-      setActiveAction(null);
-      setActionNotes("");
-      setDatasetNeedsChanges(false);
-      setPricingNeedsChanges(false);
+      // And datasetNotes must have content
+      if (!datasetNotes.trim()) {
+        return;
+      }
+    } else if (activeAction === "approve" || activeAction === "reject") {
+      // For approve/reject, at least one checkbox must be selected
+      if (!datasetNeedsChanges && !pricingNeedsChanges) {
+        return;
+      }
+      // And at least one of the notes fields should have content if that item is selected
+      if ((datasetNeedsChanges && !datasetNotes.trim()) || (pricingNeedsChanges && !pricingNotes.trim())) {
+        return;
+      }
     }
+
+    onActionConfirm(
+      activeAction,
+      datasetNotes,
+      pricingNotes,
+      datasetNeedsChanges,
+      pricingNeedsChanges
+    );
+    setActiveAction(null);
+    setDatasetNotes("");
+    setPricingNotes("");
+    setDatasetNeedsChanges(false);
+    setPricingNeedsChanges(false);
   };
 
   const handleCancel = () => {
     setActiveAction(null);
-    setActionNotes("");
+    setDatasetNotes("");
+    setPricingNotes("");
     setDatasetNeedsChanges(false);
     setPricingNeedsChanges(false);
   };
@@ -121,13 +146,37 @@ export function ReviewActions({
     { action: "request_changes" as const, canPerform: canRequestChanges },
   ].filter((item) => item.canPerform);
 
+  // Only show actions if the proposal has been picked by an admin
+  if (!isPicked) {
+    return (
+      <div className="text-center p-4">
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+          This proposal needs to be assigned to an admin before review actions can be taken.
+        </p>
+      </div>
+    );
+  }
+
   if (availableActions.length === 0) {
     return null;
   }
 
-  const isConfirmDisabled =
-    !actionNotes.trim() ||
-    (activeAction === "request_changes" && !datasetNeedsChanges && !pricingNeedsChanges);
+  const isConfirmDisabled = (() => {
+    if (!activeAction) return true;
+
+    if (activeAction === "request_changes") {
+      return !datasetNotes.trim() || (!datasetNeedsChanges && !pricingNeedsChanges);
+    }
+
+    if (activeAction === "approve" || activeAction === "reject") {
+      if (!datasetNeedsChanges && !pricingNeedsChanges) return true;
+      if (datasetNeedsChanges && !datasetNotes.trim()) return true;
+      if (pricingNeedsChanges && !pricingNotes.trim()) return true;
+      return false;
+    }
+
+    return true;
+  })();
 
   return (
     <div
@@ -173,80 +222,129 @@ export function ReviewActions({
             </h3>
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
               {activeAction === "approve" &&
-                "This will approve both the dataset and pricing. Both will be locked and the dataset will be ready for publication."}
+                "Select which items to approve. Each selected item requires approval notes."}
               {activeAction === "reject" &&
-                "This will reject both the dataset and pricing. The supplier will need to submit a fresh version."}
+                "Select which items to reject. Each selected item requires a rejection reason."}
               {activeAction === "request_changes" &&
                 "Select what needs changes and provide feedback. The supplier can edit and resubmit."}
             </p>
           </div>
 
-          {/* Request Changes Checkboxes */}
-          {activeAction === "request_changes" && (
+          {/* Checkboxes for approve, reject, and request_changes */}
+          {(activeAction === "approve" || activeAction === "reject" || activeAction === "request_changes") && (
             <div
               className="p-4 rounded-lg space-y-3"
               style={{ backgroundColor: "var(--bg-surface)" }}
             >
               <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                What needs to change?
+                {activeAction === "request_changes"
+                  ? "What needs to change?"
+                  : activeAction === "approve"
+                  ? "What would you like to approve?"
+                  : "What would you like to reject?"}
               </p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="dataset-needs-changes"
+                    id="dataset-action"
                     checked={datasetNeedsChanges}
                     onCheckedChange={(checked) => setDatasetNeedsChanges(checked as boolean)}
-                    style={{ accentColor: "var(--state-warning)" }}
+                    style={{ accentColor: activeAction === "request_changes" ? "var(--state-warning)" : activeAction === "approve" ? "var(--state-success)" : "var(--state-error)" }}
                   />
-                  <Label htmlFor="dataset-needs-changes" className="cursor-pointer text-sm" style={{ color: "var(--text-primary)" }}>
-                    Dataset needs revision
+                  <Label htmlFor="dataset-action" className="cursor-pointer text-sm" style={{ color: "var(--text-primary)" }}>
+                    {activeAction === "request_changes"
+                      ? "Dataset needs revision"
+                      : activeAction === "approve"
+                      ? "Approve Dataset"
+                      : "Reject Dataset"}
                   </Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="pricing-needs-changes"
+                    id="pricing-action"
                     checked={pricingNeedsChanges}
                     onCheckedChange={(checked) => setPricingNeedsChanges(checked as boolean)}
-                    style={{ accentColor: "var(--state-warning)" }}
+                    style={{ accentColor: activeAction === "request_changes" ? "var(--state-warning)" : activeAction === "approve" ? "var(--state-success)" : "var(--state-error)" }}
                   />
-                  <Label htmlFor="pricing-needs-changes" className="cursor-pointer text-sm" style={{ color: "var(--text-primary)" }}>
-                    Pricing needs revision
+                  <Label htmlFor="pricing-action" className="cursor-pointer text-sm" style={{ color: "var(--text-primary)" }}>
+                    {activeAction === "request_changes"
+                      ? "Pricing needs revision"
+                      : activeAction === "approve"
+                      ? "Approve Pricing"
+                      : "Reject Pricing"}
                   </Label>
                 </div>
               </div>
             </div>
           )}
 
-          <div>
-            <Label className="mb-2 block" style={{ color: "var(--text-primary)" }}>
-              {activeAction === "approve"
-                ? "Approval Notes (optional)"
-                : activeAction === "reject"
-                ? "Rejection Reason"
-                : "Feedback for Supplier"}
-              {activeAction !== "approve" && (
-                <span style={{ color: "var(--state-error)" }}> *</span>
-              )}
-            </Label>
-            <Textarea
-              value={actionNotes}
-              onChange={(e) => setActionNotes(e.target.value)}
-              placeholder={
-                activeAction === "approve"
-                  ? "Add any notes about this approval..."
+          {/* Dataset Notes */}
+          {(activeAction === "approve" || activeAction === "reject" || (activeAction === "request_changes" && datasetNeedsChanges)) && (
+            <div>
+              <Label className="mb-2 block" style={{ color: "var(--text-primary)" }}>
+                {activeAction === "approve"
+                  ? "Dataset Approval Notes"
                   : activeAction === "reject"
-                  ? "Explain why this dataset is being rejected..."
-                  : "Describe what needs to be fixed..."
-              }
-              rows={4}
-              className="w-full"
-              style={{
-                backgroundColor: "var(--bg-base)",
-                color: "var(--text-primary)",
-                borderColor: "var(--border-default)",
-              }}
-            />
-          </div>
+                  ? "Dataset Rejection Reason"
+                  : "Dataset Feedback"}
+                {(activeAction !== "approve" || (activeAction === "approve" && datasetNeedsChanges)) && (
+                  <span style={{ color: "var(--state-error)" }}> *</span>
+                )}
+              </Label>
+              <Textarea
+                value={datasetNotes}
+                onChange={(e) => setDatasetNotes(e.target.value)}
+                placeholder={
+                  activeAction === "approve"
+                    ? "Add notes about the dataset approval..."
+                    : activeAction === "reject"
+                    ? "Explain why the dataset is being rejected..."
+                    : "Describe what needs to be fixed in the dataset..."
+                }
+                rows={3}
+                className="w-full"
+                style={{
+                  backgroundColor: "var(--bg-base)",
+                  color: "var(--text-primary)",
+                  borderColor: "var(--border-default)",
+                }}
+              />
+            </div>
+          )}
+
+          {/* Pricing Notes */}
+          {(activeAction === "approve" || activeAction === "reject" || (activeAction === "request_changes" && pricingNeedsChanges)) && (
+            <div>
+              <Label className="mb-2 block" style={{ color: "var(--text-primary)" }}>
+                {activeAction === "approve"
+                  ? "Pricing Approval Notes"
+                  : activeAction === "reject"
+                  ? "Pricing Rejection Reason"
+                  : "Pricing Feedback"}
+                {(activeAction !== "approve" || (activeAction === "approve" && pricingNeedsChanges)) && (
+                  <span style={{ color: "var(--state-error)" }}> *</span>
+                )}
+              </Label>
+              <Textarea
+                value={pricingNotes}
+                onChange={(e) => setPricingNotes(e.target.value)}
+                placeholder={
+                  activeAction === "approve"
+                    ? "Add notes about the pricing approval..."
+                    : activeAction === "reject"
+                    ? "Explain why the pricing is being rejected..."
+                    : "Describe what needs to be fixed in the pricing..."
+                }
+                rows={3}
+                className="w-full"
+                style={{
+                  backgroundColor: "var(--bg-base)",
+                  color: "var(--text-primary)",
+                  borderColor: "var(--border-default)",
+                }}
+              />
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-3">
             <Button

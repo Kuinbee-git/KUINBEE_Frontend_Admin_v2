@@ -50,24 +50,11 @@ export function ReviewActions({
     if (!activeAction) return;
 
     // Validation logic for each action type
-    if (activeAction === "request_changes") {
-      // For request_changes, at least one checkbox must be selected
-      if (!datasetNeedsChanges && !pricingNeedsChanges) {
-        return;
-      }
-      // And datasetNotes must have content
-      if (!datasetNotes.trim()) {
-        return;
-      }
-    } else if (activeAction === "approve" || activeAction === "reject") {
-      // For approve/reject, at least one checkbox must be selected
-      if (!datasetNeedsChanges && !pricingNeedsChanges) {
-        return;
-      }
-      // And at least one of the notes fields should have content if that item is selected
-      if ((datasetNeedsChanges && !datasetNotes.trim()) || (pricingNeedsChanges && !pricingNotes.trim())) {
-        return;
-      }
+    if (!datasetNeedsChanges && !pricingNeedsChanges) return;
+
+    if (activeAction === "request_changes" || activeAction === "approve" || activeAction === "reject") {
+      if (datasetNeedsChanges && !datasetNotes.trim()) return;
+      if (pricingNeedsChanges && !pricingNotes.trim()) return;
     }
 
     onActionConfirm(
@@ -163,13 +150,15 @@ export function ReviewActions({
 
   const isConfirmDisabled = (() => {
     if (!activeAction) return true;
+    if (!datasetNeedsChanges && !pricingNeedsChanges) return true;
 
     if (activeAction === "request_changes") {
-      return !datasetNotes.trim() || (!datasetNeedsChanges && !pricingNeedsChanges);
+      if (datasetNeedsChanges && !datasetNotes.trim()) return true;
+      if (pricingNeedsChanges && !pricingNotes.trim()) return true;
+      return false;
     }
 
     if (activeAction === "approve" || activeAction === "reject") {
-      if (!datasetNeedsChanges && !pricingNeedsChanges) return true;
       if (datasetNeedsChanges && !datasetNotes.trim()) return true;
       if (pricingNeedsChanges && !pricingNotes.trim()) return true;
       return false;
@@ -279,7 +268,7 @@ export function ReviewActions({
           )}
 
           {/* Dataset Notes */}
-          {(activeAction === "approve" || activeAction === "reject" || (activeAction === "request_changes" && datasetNeedsChanges)) && (
+          {datasetNeedsChanges && (
             <div>
               <Label className="mb-2 block" style={{ color: "var(--text-primary)" }}>
                 {activeAction === "approve"
@@ -287,9 +276,7 @@ export function ReviewActions({
                   : activeAction === "reject"
                   ? "Dataset Rejection Reason"
                   : "Dataset Feedback"}
-                {(activeAction !== "approve" || (activeAction === "approve" && datasetNeedsChanges)) && (
-                  <span style={{ color: "var(--state-error)" }}> *</span>
-                )}
+                <span style={{ color: "var(--state-error)" }}> *</span>
               </Label>
               <Textarea
                 value={datasetNotes}
@@ -313,7 +300,7 @@ export function ReviewActions({
           )}
 
           {/* Pricing Notes */}
-          {(activeAction === "approve" || activeAction === "reject" || (activeAction === "request_changes" && pricingNeedsChanges)) && (
+          {pricingNeedsChanges && (
             <div>
               <Label className="mb-2 block" style={{ color: "var(--text-primary)" }}>
                 {activeAction === "approve"
@@ -321,9 +308,7 @@ export function ReviewActions({
                   : activeAction === "reject"
                   ? "Pricing Rejection Reason"
                   : "Pricing Feedback"}
-                {(activeAction !== "approve" || (activeAction === "approve" && pricingNeedsChanges)) && (
-                  <span style={{ color: "var(--state-error)" }}> *</span>
-                )}
+                <span style={{ color: "var(--state-error)" }}> *</span>
               </Label>
               <Textarea
                 value={pricingNotes}

@@ -131,7 +131,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
             await requestPricingChangesMutation.mutateAsync({
               datasetId,
               data: {
-                notes: datasetNotes,
+                notes: pricingNotes ?? "",
                 datasetNeedsChanges: false,
                 pricingNeedsChanges: true
               }
@@ -160,7 +160,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
               requestPricingChangesMutation.mutateAsync({
                 datasetId,
                 data: {
-                  notes: pricingNotes || datasetNotes,
+                  notes: pricingNotes ?? "",
                   datasetNeedsChanges: false,
                   pricingNeedsChanges: true
                 }

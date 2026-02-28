@@ -87,7 +87,7 @@ export function ProposalTable({ proposals, onRowClick, onPickProposal }: Proposa
               </p>
             </td>
             <td className="p-4">
-              {!proposal.assignedTo && onPickProposal && (
+              {!proposal.assignedTo && proposal.verificationStatus === "SUBMITTED" && onPickProposal && (
                 <Button
                   variant="outline"
                   size="sm"

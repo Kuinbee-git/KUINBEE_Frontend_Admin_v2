@@ -22,8 +22,8 @@ import type {
  * Auth: None (Public route)
  */
 export async function getDatasetKdts(datasetId: string): Promise<DatasetKdtsGetResponse> {
-  const response = await apiClient.get<DatasetKdtsGetResponse>(API_ROUTES.ADMIN.DATASETS.KDTS.GET(datasetId));
-  return response.data;
+  const response = await apiClient.get<{ data: DatasetKdtsGetResponse }>(API_ROUTES.ADMIN.DATASETS.KDTS.GET(datasetId));
+  return response.data.data;
 }
 
 // ============================================
@@ -38,11 +38,11 @@ export async function createOrUpdateKdts(
   datasetId: string,
   body: AdminKdtsUpsertBody
 ): Promise<AdminKdtsUpsertResponse> {
-  const response = await apiClient.post<AdminKdtsUpsertResponse>(
+  const response = await apiClient.post<{ data: AdminKdtsUpsertResponse }>(
     API_ROUTES.ADMIN.DATASETS.KDTS.CREATE_UPDATE(datasetId),
     body
   );
-  return response.data;
+  return response.data.data;
 }
 
 // ============================================
@@ -58,11 +58,11 @@ export async function updateKdtsHistory(
   historyId: string,
   body: AdminKdtsUpdateBody
 ): Promise<AdminKdtsUpdateResponse> {
-  const response = await apiClient.put<AdminKdtsUpdateResponse>(
+  const response = await apiClient.put<{ data: AdminKdtsUpdateResponse }>(
     API_ROUTES.ADMIN.DATASETS.KDTS.UPDATE_HISTORY(historyId),
     body
   );
-  return response.data;
+  return response.data.data;
 }
 
 // ============================================

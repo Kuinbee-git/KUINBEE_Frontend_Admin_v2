@@ -102,6 +102,13 @@ export const API_ROUTES = {
         DOWNLOAD_URL: (datasetId: string, uploadId: string) =>
           `/v1/admin/datasets/${datasetId}/uploads/${uploadId}/download-url`,
       },
+
+      // KDTS Scoring
+      KDTS: {
+        GET: (datasetId: string) => `/v1/datasets/${datasetId}/kdts`,
+        CREATE_UPDATE: (datasetId: string) => `/v1/admin/kdts/${datasetId}`,
+        UPDATE_HISTORY: (historyId: string) => `/v1/admin/kdts/${historyId}`,
+      },
     },
 
     // Users (Stage 5)

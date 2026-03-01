@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { StatusBadge, getDatasetStatusSemantic, getVerificationStatusSemantic } from "@/components/shared/StatusBadge";
 import { ReviewActions } from "./ReviewActions";
 import { PricingReviewCard } from "./PricingReviewCard";
+import { KdtsScorePanel } from "./KdtsScorePanel";
 import { useProposalReview, useApproveProposal, useRejectProposal, useRequestChanges, useRequestPricingChanges, useDownloadProposalUrl, useApprovePricing, useRejectPricing } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { toast } from "sonner";
@@ -553,6 +554,11 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                 )}
               </CardContent>
             </Card>
+
+            {/* KDTS Scoring Panel */}
+            <div className="col-span-full md:col-span-2 lg:col-span-1">
+              <KdtsScorePanel datasetId={datasetId} isAdmin={canApprove} />
+            </div>
 
             {/* Current Upload */}
             {verification.currentUpload && (

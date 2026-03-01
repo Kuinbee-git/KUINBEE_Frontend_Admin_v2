@@ -40,7 +40,12 @@ export async function login(credentials: LoginRequest): Promise<AuthUser> {
     API_ROUTES.AUTH.LOGIN,
     credentials
   );
-  return response.data.user;
+  // Backend wraps response in { success, data: { user } }
+  const user = (response.data as { data?: { user?: AuthUser } }).data?.user ?? response.data.user;
+  if (!user) {
+    throw new Error('Invalid login response');
+  }
+  return user;
 }
 
 /**

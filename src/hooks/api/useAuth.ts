@@ -56,7 +56,7 @@ export function useCurrentUser(options?: { enabled?: boolean; retry?: boolean; r
  */
 export function useProfile(options?: { enabled?: boolean }) {
   const user = useAuthStore(state => state.user);
-  
+
   return useQuery({
     queryKey: authKeys.profile(),
     queryFn: authService.getProfile,
@@ -93,7 +93,7 @@ export function useMyPermissions(options?: { enabled?: boolean }) {
  */
 export function useAddresses(options?: { enabled?: boolean }) {
   const user = useAuthStore(state => state.user);
-  
+
   return useQuery({
     queryKey: authKeys.addresses(),
     queryFn: authService.getAddresses,
@@ -118,16 +118,24 @@ export function useLogin() {
   return useMutation({
     mutationFn: (credentials: LoginRequest) => authService.login(credentials),
     onSuccess: async (user) => {
+      // Verify the user has admin privileges
+      if (user.userType !== 'ADMIN' && user.userType !== 'SUPERADMIN') {
+        // Wrong user type — log them out and show error
+        try { await authService.logout(); } catch { }
+        toast.error('Access denied. This portal is for administrators only.', { duration: 4000 });
+        return;
+      }
+
       // Update store with user
       storeLogin(user);
-      
+
       // Update query cache
       queryClient.setQueryData(authKeys.me(), user);
-      
+
       // Fetch user data from /auth/me to verify session
       try {
         const verifiedUser = await authService.getCurrentUser();
-        
+
         if (verifiedUser) {
           // Update store with verified user
           storeLogin(verifiedUser);
@@ -136,7 +144,7 @@ export function useLogin() {
       } catch (error) {
         // Continue anyway, we have the user from login response
       }
-      
+
       // Fetch and cache permissions (don't block navigation)
       authService.getMyPermissions()
         .then(permissions => {
@@ -144,9 +152,9 @@ export function useLogin() {
           queryClient.setQueryData(authKeys.permissions(), permissions);
         })
         .catch(() => setPermissions([]));
-      
+
       toast.success('Login successful', { duration: 1200 });
-      
+
       // Navigate to dashboard
       router.replace('/dashboard');
     },
@@ -169,11 +177,11 @@ export function useLogout() {
       // Clear local state immediately (optimistic)
       logout();
       queryClient.removeQueries({ queryKey: authKeys.all });
-      
+
       // Navigate immediately
       router.replace('/login');
       toast.success('Logged out successfully', { duration: 1200 });
-      
+
       // Call backend logout in background (don't wait for it)
       authService.logout().catch(() => {
         // Ignore errors - we're already logged out locally
@@ -196,10 +204,10 @@ export function useAcceptInvite() {
     onSuccess: async (user) => {
       // Update store with user
       storeLogin(user);
-      
+
       // Update query cache
       queryClient.setQueryData(authKeys.me(), user);
-      
+
       // Fetch and cache permissions (don't block navigation)
       authService.getMyPermissions()
         .then(permissions => {
@@ -207,9 +215,9 @@ export function useAcceptInvite() {
           queryClient.setQueryData(authKeys.permissions(), permissions);
         })
         .catch(() => setPermissions([]));
-      
+
       toast.success('Welcome! Your account has been activated', { duration: 2000 });
-      
+
       // Navigate to dashboard
       router.replace('/dashboard');
     },

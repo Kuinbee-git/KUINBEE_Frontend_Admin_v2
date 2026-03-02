@@ -21,10 +21,10 @@ interface DatasetDetailReviewProps {
 
 export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const router = useRouter();
-  
+
   // Fetch dataset proposal review details
   const { data: datasetData, isLoading, refetch } = useProposalReview(datasetId);
-  
+
   // Proposal mutations
   const approveProposalMutation = useApproveProposal();
   const approvePricingMutation = useApprovePricing();
@@ -33,15 +33,15 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const requestChangesMutation = useRequestChanges();
   const requestPricingChangesMutation = useRequestPricingChanges();
   const downloadUrlMutation = useDownloadProposalUrl();
-  
+
   // Permissions
   const { data: permissionsData } = useMyPermissions();
-  
+
   const canApprove = permissionsData?.includes('APPROVE_DATASET') ?? false;
   const canReject = permissionsData?.includes('REJECT_DATASET') ?? false;
   const canRequestChanges = permissionsData?.includes('REQUEST_DATASET_CHANGES') ?? false;
   const canPickProposal = permissionsData?.includes('VIEW_DATASET_PROPOSALS') ?? false;
-  
+
   const handleBack = useCallback(() => {
     // Prefer navigating back in browser history to preserve origin (filters, query, etc.)
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -52,21 +52,21 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
     // Fallback if no history is available (direct deep link)
     router.push("/dashboard/datasets");
   }, [router]);
-  
+
   const handleDownloadFile = useCallback(async (uploadId: string) => {
     try {
       const response = await downloadUrlMutation.mutateAsync(datasetId);
-      
+
       // Create a hidden anchor element to trigger the download
       const link = document.createElement('a');
       link.href = response.url;
       link.download = response.upload.originalFileName || 'download';
-      
+
       // Append to body, click, and remove
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast.success('Download started');
     } catch {
       // Error is already handled by the mutation's onError
@@ -84,22 +84,25 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
     ) => {
       try {
         if (action === "approve") {
-          // Approve dataset if checkbox is selected
-          if (datasetNeedsChanges) {
-            await approveProposalMutation.mutateAsync({
-              datasetId,
-              data: datasetNotes ? { notes: datasetNotes } : undefined
-            });
-          }
-          
-          // Approve pricing if checkbox is selected
+          // IMPORTANT: Pricing must be approved BEFORE the dataset
+          // The backend enforces this dependency
+
+          // 1. Approve pricing first if checkbox is selected
           if (pricingNeedsChanges) {
             await approvePricingMutation.mutateAsync({
               datasetId,
               data: pricingNotes ? { notes: pricingNotes } : undefined
             });
           }
-          
+
+          // 2. Then approve dataset if checkbox is selected
+          if (datasetNeedsChanges) {
+            await approveProposalMutation.mutateAsync({
+              datasetId,
+              data: datasetNotes ? { notes: datasetNotes } : undefined
+            });
+          }
+
           toast.success("Approval completed successfully");
         } else if (action === "reject") {
           // Reject dataset if checkbox is selected
@@ -112,7 +115,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
               }
             });
           }
-          
+
           // Reject pricing if checkbox is selected
           if (pricingNeedsChanges) {
             await rejectPricingMutation.mutateAsync({
@@ -123,7 +126,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
               }
             });
           }
-          
+
           toast.success("Rejection completed successfully");
         } else if (action === "request_changes") {
           // Route to appropriate endpoint based on which flags are set
@@ -178,7 +181,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
     },
     [datasetId, approveProposalMutation, approvePricingMutation, rejectProposalMutation, rejectPricingMutation, requestChangesMutation, requestPricingChangesMutation, refetch]
   );
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg-surface)" }}>
@@ -186,7 +189,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
       </div>
     );
   }
-  
+
   if (!datasetData) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg-surface)" }}>
@@ -199,9 +202,9 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
       </div>
     );
   }
-  
+
   const { dataset, verification, activeAssignment, primaryCategory, secondaryCategories, source, aboutDatasetInfo, dataFormatInfo, features } = datasetData;
-  
+
   const formatDate = (date: string | null) => {
     if (!date) return 'N/A';
     return new Date(date).toLocaleString('en-US', {
@@ -212,7 +215,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
       minute: '2-digit'
     });
   };
-  
+
   const formatFileSize = (bytes: string | null) => {
     if (!bytes) return 'Unknown';
     const size = parseInt(bytes);
@@ -225,11 +228,11 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   return (
     <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: "var(--bg-surface)" }}>
       {/* Header */}
-      <div 
+      <div
         className="border-b sticky top-0 z-10"
-        style={{ 
-          backgroundColor: "var(--bg-base)", 
-          borderColor: "var(--border-default)" 
+        style={{
+          backgroundColor: "var(--bg-base)",
+          borderColor: "var(--border-default)"
         }}
       >
         <div className="p-4 md:p-6 max-w-full">
@@ -245,7 +248,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
               </Button>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h1 
+                  <h1
                     className="text-xl md:text-2xl font-bold break-words"
                     style={{ color: "var(--text-primary)" }}
                   >
@@ -262,18 +265,18 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-              <StatusBadge 
+              <StatusBadge
                 status={dataset.status.replace(/_/g, ' ')}
                 semanticType={getDatasetStatusSemantic(dataset.status)}
               />
-              <StatusBadge 
+              <StatusBadge
                 status={verification.status.replace(/_/g, ' ')}
                 semanticType={getVerificationStatusSemantic(verification.status)}
               />
               {datasetData.dataset.pricing && (
-                <StatusBadge 
+                <StatusBadge
                   status={`Pricing: ${datasetData.dataset.pricing.status.replace(/_/g, ' ')}`}
                   semanticType={datasetData.dataset.pricing.status === 'ACTIVE' || datasetData.dataset.pricing.status === 'VERIFIED' ? 'success' : datasetData.dataset.pricing.status === 'CHANGES_REQUESTED' ? 'warning' : datasetData.dataset.pricing.status === 'REJECTED' ? 'error' : 'neutral'}
                 />
@@ -322,7 +325,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                     </p>
                   </div>
                 </div>
-                
+
                 {secondaryCategories.length > 0 && (
                   <>
                     <Separator />
@@ -490,15 +493,15 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                 <h3 style={{ color: "var(--text-primary)", fontWeight: "600" }}>Review Actions</h3>
               </div>
               <div style={{ padding: "1rem" }}>
-            <ReviewActions
-              currentStatus={dataset.status}
-              ownerType={dataset.ownerType.toLowerCase() as "platform" | "supplier"}
-              canApprove={canApprove}
-              canReject={canReject}
-              canRequestChanges={canRequestChanges}
-              isPicked={!!activeAssignment}
-              onActionConfirm={handleActionConfirm}
-            />
+                <ReviewActions
+                  currentStatus={dataset.status}
+                  ownerType={dataset.ownerType.toLowerCase() as "platform" | "supplier"}
+                  canApprove={canApprove}
+                  canReject={canReject}
+                  canRequestChanges={canRequestChanges}
+                  isPicked={!!activeAssignment}
+                  onActionConfirm={handleActionConfirm}
+                />
               </div>
             </div>
 
@@ -511,41 +514,41 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                 <div>
                   <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Status</p>
                   <div className="mt-1">
-                    <StatusBadge 
+                    <StatusBadge
                       status={verification.status.replace(/_/g, ' ')}
                       semanticType={getVerificationStatusSemantic(verification.status)}
                     />
                   </div>
                 </div>
-                
+
                 {verification.submittedAt && (
                   <div>
                     <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Submitted</p>
                     <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{formatDate(verification.submittedAt)}</p>
                   </div>
                 )}
-                
+
                 {verification.verifiedAt && (
                   <div>
                     <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Verified</p>
                     <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{formatDate(verification.verifiedAt)}</p>
                   </div>
                 )}
-                
+
                 {verification.rejectedAt && (
                   <div>
                     <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Rejected</p>
                     <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{formatDate(verification.rejectedAt)}</p>
                   </div>
                 )}
-                
+
                 {verification.rejectionReason && (
                   <div className="p-3 rounded-lg break-words" style={{ backgroundColor: "var(--bg-surface)" }}>
                     <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Rejection Reason</p>
                     <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{verification.rejectionReason}</p>
                   </div>
                 )}
-                
+
                 {verification.notes && (
                   <div className="p-3 rounded-lg break-words" style={{ backgroundColor: "var(--bg-surface)" }}>
                     <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Notes</p>
@@ -587,7 +590,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                       <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{formatDate(verification.currentUpload.uploadedAt)}</p>
                     </div>
                   )}
-                  
+
                   {/* Download Button */}
                   {verification.currentUpload && (
                     <Button

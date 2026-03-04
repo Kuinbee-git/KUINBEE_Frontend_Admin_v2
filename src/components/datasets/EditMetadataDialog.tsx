@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import type { UpdateDatasetMetadataRequest } from "@/types/dataset.types";
+import type { UpdateDatasetMetadataRequest, FileFormat, CompressionType } from "@/types/dataset.types";
 
 interface EditMetadataDialogProps {
   open: boolean;
@@ -100,8 +101,8 @@ export function EditMetadataDialog({
           coverage: coverage || null,
         },
         dataFormatInfo: {
-          fileFormat: fileFormat || undefined,
-          compressionType: compressionType || undefined,
+          fileFormat: (fileFormat || undefined) as FileFormat | undefined,
+          compressionType: (compressionType || undefined) as CompressionType | undefined,
           encoding: encoding || undefined,
         },
         tags: tagsInput
@@ -275,22 +276,38 @@ export function EditMetadataDialog({
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="fileFormat">File Format</Label>
-                  <Input
-                    id="fileFormat"
-                    value={fileFormat}
-                    onChange={(e) => setFileFormat(e.target.value)}
-                    placeholder="e.g., CSV, JSON"
-                  />
+                  <Select value={fileFormat} onValueChange={setFileFormat}>
+                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select format" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CSV">CSV</SelectItem>
+                      <SelectItem value="JSON">JSON</SelectItem>
+                      <SelectItem value="EXCEL">Excel</SelectItem>
+                      <SelectItem value="PARQUET">Parquet</SelectItem>
+                      <SelectItem value="SQL">SQL</SelectItem>
+                      <SelectItem value="XML">XML</SelectItem>
+                      <SelectItem value="TSV">TSV</SelectItem>
+                      <SelectItem value="AVRO">Avro</SelectItem>
+                      <SelectItem value="HDF5">HDF5</SelectItem>
+                      <SelectItem value="PICKLE">Pickle</SelectItem>
+                      <SelectItem value="FEATHER">Feather</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <Label htmlFor="compressionType">Compression</Label>
-                  <Input
-                    id="compressionType"
-                    value={compressionType}
-                    onChange={(e) => setCompressionType(e.target.value)}
-                    placeholder="e.g., GZIP, None"
-                  />
+                  <Select value={compressionType} onValueChange={setCompressionType}>
+                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select compression" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">None</SelectItem>
+                      <SelectItem value="ZIP">ZIP</SelectItem>
+                      <SelectItem value="GZIP">GZIP</SelectItem>
+                      <SelectItem value="BZIP2">BZIP2</SelectItem>
+                      <SelectItem value="TAR">TAR</SelectItem>
+                      <SelectItem value="RAR">RAR</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>

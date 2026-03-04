@@ -44,6 +44,22 @@ export type DatasetSuperType =
   | 'EVENT_HISTORY_SURVIVAL'
   | 'HIERARCHICAL_MULTILEVEL';
 
+export type FileFormat =
+  | 'CSV'
+  | 'JSON'
+  | 'EXCEL'
+  | 'PARQUET'
+  | 'SQL'
+  | 'XML'
+  | 'TSV'
+  | 'AVRO'
+  | 'HDF5'
+  | 'PICKLE'
+  | 'FEATHER'
+  | 'OTHER';
+
+export type CompressionType = 'NONE' | 'ZIP' | 'GZIP' | 'BZIP2' | 'TAR' | 'RAR';
+
 export type UploadScope = 'FINAL' | 'VERIFICATION';
 
 export type UploadStatus = 'UPLOADING' | 'UPLOADED' | 'FAILED' | 'PROMOTED';
@@ -104,11 +120,11 @@ export interface LocationInfo {
 }
 
 export interface DataFormatInfo {
-  fileFormat: string;
+  fileFormat: FileFormat;
   rows: number;
   cols: number;
   fileSize: string;
-  compressionType: string;
+  compressionType: CompressionType;
   encoding: string;
 }
 

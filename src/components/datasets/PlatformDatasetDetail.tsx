@@ -23,6 +23,7 @@ import {
   Info,
   Copy,
   Shield,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +72,8 @@ import type {
   Currency,
   UploadScope,
   UploadStatus,
+  FileFormat,
+  CompressionType,
 } from "@/types";
 
 // ============================================
@@ -291,12 +294,15 @@ export function PlatformDatasetDetail({ datasetId }: PlatformDatasetDetailProps)
   const [editCoverage, setEditCoverage] = useState("");
 
   // ---- Data Format edit state ----
-  const [editFileFormat, setEditFileFormat] = useState("");
+  const [editFileFormat, setEditFileFormat] = useState<string>("");
   const [editRows, setEditRows] = useState("");
   const [editCols, setEditCols] = useState("");
   const [editFileSize, setEditFileSize] = useState("");
-  const [editCompression, setEditCompression] = useState("");
+  const [editCompression, setEditCompression] = useState<string>("");
   const [editEncoding, setEditEncoding] = useState("");
+
+  // ---- Features edit state ----
+  const [editFeatures, setEditFeatures] = useState<Array<{ name: string; dataType: string; description: string; isNullable: boolean }>>([]);
 
   // ---- Tags edit state ----
   const [editTags, setEditTags] = useState("");
@@ -354,6 +360,17 @@ export function PlatformDatasetDetail({ datasetId }: PlatformDatasetDetailProps)
     setEditCompression(f?.compressionType || "");
     setEditEncoding(f?.encoding || "");
     setEditingSection("dataFormat");
+  }, [datasetData]);
+
+  const startEditFeatures = useCallback(() => {
+    const f = datasetData?.features || [];
+    setEditFeatures(f.map((feat) => ({
+      name: feat.name,
+      dataType: feat.dataType,
+      description: feat.description || "",
+      isNullable: feat.isNullable,
+    })));
+    setEditingSection("features");
   }, [datasetData]);
 
   const startEditTags = useCallback(() => {
@@ -441,11 +458,11 @@ export function PlatformDatasetDetail({ datasetId }: PlatformDatasetDetailProps)
     try {
       const data: UpdateDatasetMetadataRequest = {
         dataFormatInfo: {
-          fileFormat: editFileFormat || undefined,
+          fileFormat: (editFileFormat || undefined) as FileFormat | undefined,
           rows: editRows ? parseInt(editRows) : undefined,
           cols: editCols ? parseInt(editCols) : undefined,
           fileSize: editFileSize || undefined,
-          compressionType: editCompression || undefined,
+          compressionType: (editCompression || undefined) as CompressionType | undefined,
           encoding: editEncoding || undefined,
         },
       };
@@ -458,6 +475,29 @@ export function PlatformDatasetDetail({ datasetId }: PlatformDatasetDetailProps)
       setIsSaving(false);
     }
   }, [datasetId, editFileFormat, editRows, editCols, editFileSize, editCompression, editEncoding, updateMetadataMutation, refetch]);
+
+  const saveFeatures = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const data: UpdateDatasetMetadataRequest = {
+        features: editFeatures
+          .filter((f) => f.name.trim())
+          .map((f) => ({
+            name: f.name.trim(),
+            dataType: f.dataType.trim(),
+            description: f.description.trim() || null,
+            isNullable: f.isNullable,
+          })),
+      };
+      await updateMetadataMutation.mutateAsync({ datasetId, data });
+      setEditingSection(null);
+      refetch();
+    } catch {
+      // handled by mutation
+    } finally {
+      setIsSaving(false);
+    }
+  }, [datasetId, editFeatures, updateMetadataMutation, refetch]);
 
   const saveTags = useCallback(async () => {
     setIsSaving(true);
@@ -968,7 +1008,23 @@ export function PlatformDatasetDetail({ datasetId }: PlatformDatasetDetailProps)
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label className="text-xs">File Format</Label>
-                    <Input value={editFileFormat} onChange={(e) => setEditFileFormat(e.target.value)} className="mt-1.5" placeholder="e.g., CSV, JSON" />
+                    <Select value={editFileFormat} onValueChange={setEditFileFormat}>
+                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select format" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CSV">CSV</SelectItem>
+                        <SelectItem value="JSON">JSON</SelectItem>
+                        <SelectItem value="EXCEL">Excel</SelectItem>
+                        <SelectItem value="PARQUET">Parquet</SelectItem>
+                        <SelectItem value="SQL">SQL</SelectItem>
+                        <SelectItem value="XML">XML</SelectItem>
+                        <SelectItem value="TSV">TSV</SelectItem>
+                        <SelectItem value="AVRO">Avro</SelectItem>
+                        <SelectItem value="HDF5">HDF5</SelectItem>
+                        <SelectItem value="PICKLE">Pickle</SelectItem>
+                        <SelectItem value="FEATHER">Feather</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label className="text-xs">Rows</Label>
@@ -984,7 +1040,17 @@ export function PlatformDatasetDetail({ datasetId }: PlatformDatasetDetailProps)
                   </div>
                   <div>
                     <Label className="text-xs">Compression</Label>
-                    <Input value={editCompression} onChange={(e) => setEditCompression(e.target.value)} className="mt-1.5" placeholder="e.g., GZIP, None" />
+                    <Select value={editCompression} onValueChange={setEditCompression}>
+                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select compression" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NONE">None</SelectItem>
+                        <SelectItem value="ZIP">ZIP</SelectItem>
+                        <SelectItem value="GZIP">GZIP</SelectItem>
+                        <SelectItem value="BZIP2">BZIP2</SelectItem>
+                        <SelectItem value="TAR">TAR</SelectItem>
+                        <SelectItem value="RAR">RAR</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label className="text-xs">Encoding</Label>
@@ -1011,41 +1077,143 @@ export function PlatformDatasetDetail({ datasetId }: PlatformDatasetDetailProps)
             </SectionCard>
 
             {/* ---- Features ---- */}
-            {features && features.length > 0 && (
-              <div className="rounded-xl border" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-                <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border-default)" }}>
-                  <div className="flex items-center gap-2.5">
-                    <Shield className="w-[18px] h-[18px]" style={{ color: "var(--text-muted)" }} />
-                    <h3 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>Features</h3>
-                    <Badge variant="secondary" className="text-xs">{features.length}</Badge>
-                  </div>
+            <SectionCard
+              title="Features"
+              icon={Shield}
+              isEditing={editingSection === "features"}
+              onEdit={startEditFeatures}
+              onCancel={() => setEditingSection(null)}
+              onSave={saveFeatures}
+              isSaving={isSaving}
+              badge={features && features.length > 0 ? <Badge variant="secondary" className="text-xs">{features.length}</Badge> : undefined}
+              editContent={
+                <div className="space-y-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => setEditFeatures([...editFeatures, { name: "", dataType: "", description: "", isNullable: false }])}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1.5" />
+                    Add Feature
+                  </Button>
+
+                  {editFeatures.length > 0 && (
+                    <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border-default)" }}>
+                      {/* Column headers */}
+                      <div
+                        className="grid grid-cols-[1fr_1fr_1.2fr_4.5rem_2.5rem] gap-x-3 px-3 py-2 border-b text-xs font-medium"
+                        style={{ borderColor: "var(--border-default)", color: "var(--text-muted)", backgroundColor: "var(--bg-surface)" }}
+                      >
+                        <span>Name <span className="text-red-500">*</span></span>
+                        <span>Data Type <span className="text-red-500">*</span></span>
+                        <span>Description</span>
+                        <span className="text-center">Nullable</span>
+                        <span />
+                      </div>
+
+                      {/* Feature rows */}
+                      {editFeatures.map((feature, idx) => (
+                        <div
+                          key={idx}
+                          className="grid grid-cols-[1fr_1fr_1.2fr_4.5rem_2.5rem] gap-x-3 items-center px-3 py-2 border-b last:border-0"
+                          style={{ borderColor: "var(--border-default)" }}
+                        >
+                          <Input
+                            value={feature.name}
+                            onChange={(e) => {
+                              const updated = [...editFeatures];
+                              updated[idx] = { ...updated[idx], name: e.target.value };
+                              setEditFeatures(updated);
+                            }}
+                            placeholder="e.g., age"
+                            className="h-8 text-sm"
+                          />
+                          <Input
+                            value={feature.dataType}
+                            onChange={(e) => {
+                              const updated = [...editFeatures];
+                              updated[idx] = { ...updated[idx], dataType: e.target.value };
+                              setEditFeatures(updated);
+                            }}
+                            placeholder="e.g., INTEGER"
+                            className="h-8 text-sm"
+                          />
+                          <Input
+                            value={feature.description}
+                            onChange={(e) => {
+                              const updated = [...editFeatures];
+                              updated[idx] = { ...updated[idx], description: e.target.value };
+                              setEditFeatures(updated);
+                            }}
+                            placeholder="Optional"
+                            className="h-8 text-sm"
+                          />
+                          <div className="flex justify-center">
+                            <Switch
+                              checked={feature.isNullable}
+                              onCheckedChange={(checked) => {
+                                const updated = [...editFeatures];
+                                updated[idx] = { ...updated[idx], isNullable: checked };
+                                setEditFeatures(updated);
+                              }}
+                            />
+                          </div>
+                          <div className="flex justify-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => setEditFeatures(editFeatures.filter((_, i) => i !== idx))}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {editFeatures.length === 0 && (
+                    <p className="text-xs py-4 text-center" style={{ color: "var(--text-muted)" }}>
+                      No features yet. Click &ldquo;Add Feature&rdquo; to define dataset columns.
+                    </p>
+                  )}
                 </div>
-                <div className="px-6 py-4">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b" style={{ borderColor: "var(--border-default)" }}>
-                          <th className="text-left py-2 pr-4 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Name</th>
-                          <th className="text-left py-2 pr-4 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Data Type</th>
-                          <th className="text-left py-2 pr-4 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Nullable</th>
-                          <th className="text-left py-2 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Description</th>
+              }
+            >
+              {features && features.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b" style={{ borderColor: "var(--border-default)" }}>
+                        <th className="text-left py-2 pr-4 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Name</th>
+                        <th className="text-left py-2 pr-4 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Data Type</th>
+                        <th className="text-left py-2 pr-4 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Nullable</th>
+                        <th className="text-left py-2 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {features.map((feature) => (
+                        <tr key={feature.id} className="border-b last:border-0" style={{ borderColor: "var(--border-default)" }}>
+                          <td className="py-2.5 pr-4 font-medium" style={{ color: "var(--text-primary)" }}>{feature.name}</td>
+                          <td className="py-2.5 pr-4"><Badge variant="outline" className="text-xs font-mono">{feature.dataType}</Badge></td>
+                          <td className="py-2.5 pr-4" style={{ color: "var(--text-muted)" }}>{feature.isNullable ? "Yes" : "No"}</td>
+                          <td className="py-2.5" style={{ color: "var(--text-muted)" }}>{feature.description || "\u2014"}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {features.map((feature) => (
-                          <tr key={feature.id} className="border-b last:border-0" style={{ borderColor: "var(--border-default)" }}>
-                            <td className="py-2.5 pr-4 font-medium" style={{ color: "var(--text-primary)" }}>{feature.name}</td>
-                            <td className="py-2.5 pr-4"><Badge variant="outline" className="text-xs font-mono">{feature.dataType}</Badge></td>
-                            <td className="py-2.5 pr-4" style={{ color: "var(--text-muted)" }}>{feature.isNullable ? "Yes" : "No"}</td>
-                            <td className="py-2.5" style={{ color: "var(--text-muted)" }}>{feature.description || "\u2014"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="text-center py-6">
+                  <Shield className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>No features added yet. Click Edit to define dataset columns/fields.</p>
+                </div>
+              )}
+            </SectionCard>
 
             {/* ---- Tags ---- */}
             <SectionCard

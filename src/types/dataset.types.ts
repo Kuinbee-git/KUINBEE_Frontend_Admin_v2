@@ -30,6 +30,20 @@ export type OwnerType = 'PLATFORM' | 'SUPPLIER';
 
 export type Currency = 'INR' | 'USD' | 'EUR' | 'GBP';
 
+export type DatasetSuperType =
+  | 'CROSS_SECTIONAL'
+  | 'TIME_SERIES'
+  | 'PANEL'
+  | 'POOLED_CROSS_SECTIONAL'
+  | 'REPEATED_CROSS_SECTIONS'
+  | 'SPATIAL'
+  | 'SPATIO_TEMPORAL'
+  | 'EXPERIMENTAL'
+  | 'OBSERVATIONAL'
+  | 'BIG_DATA'
+  | 'EVENT_HISTORY_SURVIVAL'
+  | 'HIERARCHICAL_MULTILEVEL';
+
 export type UploadScope = 'FINAL' | 'VERIFICATION';
 
 export type UploadStatus = 'UPLOADING' | 'UPLOADED' | 'FAILED' | 'PROMOTED';
@@ -48,7 +62,7 @@ export interface Dataset {
   ownerId: string;
   status: DatasetStatus;
   visibility: DatasetVisibility;
-  superType: string;
+  superType: DatasetSuperType;
   primaryCategoryId: string;
   sourceId: string;
   isPaid: boolean;
@@ -170,7 +184,7 @@ export interface DatasetUpload {
 export interface CreateDatasetRequest {
   title: string;
   visibility?: DatasetVisibility;
-  superType: string;
+  superType: DatasetSuperType;
   primaryCategoryId: string;
   sourceId: string;
   isPaid?: boolean;
@@ -322,7 +336,7 @@ export interface DatasetProposalListItem {
     ownerType: OwnerType;
     ownerId: string;
     status: DatasetStatus;
-    superType: string;
+    superType: DatasetSuperType;
     primaryCategoryId: string;
     sourceId: string;
     isPaid: boolean;

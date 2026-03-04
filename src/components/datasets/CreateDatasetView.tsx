@@ -22,7 +22,7 @@ import { useCategories } from "@/hooks/api/useCategories";
 import { useSources } from "@/hooks/api/useSources";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { toast } from "sonner";
-import type { DatasetVisibility, Currency, CreateDatasetRequest } from "@/types";
+import type { DatasetVisibility, Currency, CreateDatasetRequest, DatasetSuperType } from "@/types";
 
 interface FormErrors {
   title?: string;
@@ -50,7 +50,7 @@ export function CreateDatasetView() {
   
   // Form state - Basic Info
   const [title, setTitle] = useState("");
-  const [superType, setSuperType] = useState("STRUCTURED");
+  const [superType, setSuperType] = useState<DatasetSuperType>("CROSS_SECTIONAL");
   const [primaryCategoryId, setPrimaryCategoryId] = useState("");
   const [sourceId, setSourceId] = useState("");
   const [visibility, setVisibility] = useState<DatasetVisibility>("PRIVATE");
@@ -153,10 +153,10 @@ export function CreateDatasetView() {
     
     try {
       const dataset = await createDatasetMutation.mutateAsync(data);
-      toast.success("Dataset created successfully");
-      router.push(`/dashboard/datasets/${dataset.datasetUniqueId}`);
+      // Toast is handled by the hook
+      router.push(`/dashboard/platform-datasets/${dataset.id}`);
     } catch {
-      toast.error("Failed to create dataset");
+      // Error toast is handled by the hook
     } finally {
       setIsSubmitting(false);
     }
@@ -263,16 +263,23 @@ export function CreateDatasetView() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="superType">Dataset Type *</Label>
-                <Select value={superType} onValueChange={setSuperType}>
+                <Select value={superType} onValueChange={(v) => setSuperType(v as DatasetSuperType)}>
                   <SelectTrigger className="mt-1.5" style={{ borderColor: errors.superType ? "var(--state-error)" : undefined }}>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="STRUCTURED">Structured Data</SelectItem>
-                    <SelectItem value="UNSTRUCTURED">Unstructured Data</SelectItem>
-                    <SelectItem value="SEMI_STRUCTURED">Semi-structured Data</SelectItem>
+                    <SelectItem value="CROSS_SECTIONAL">Cross-Sectional</SelectItem>
                     <SelectItem value="TIME_SERIES">Time Series</SelectItem>
-                    <SelectItem value="GEOSPATIAL">Geospatial</SelectItem>
+                    <SelectItem value="PANEL">Panel</SelectItem>
+                    <SelectItem value="POOLED_CROSS_SECTIONAL">Pooled Cross-Sectional</SelectItem>
+                    <SelectItem value="REPEATED_CROSS_SECTIONS">Repeated Cross-Sections</SelectItem>
+                    <SelectItem value="SPATIAL">Spatial</SelectItem>
+                    <SelectItem value="SPATIO_TEMPORAL">Spatio-Temporal</SelectItem>
+                    <SelectItem value="EXPERIMENTAL">Experimental</SelectItem>
+                    <SelectItem value="OBSERVATIONAL">Observational</SelectItem>
+                    <SelectItem value="BIG_DATA">Big Data</SelectItem>
+                    <SelectItem value="EVENT_HISTORY_SURVIVAL">Event History / Survival</SelectItem>
+                    <SelectItem value="HIERARCHICAL_MULTILEVEL">Hierarchical / Multilevel</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.superType && (

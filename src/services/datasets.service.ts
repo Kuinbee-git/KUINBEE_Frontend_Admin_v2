@@ -110,21 +110,24 @@ export async function getDatasets(
  * Get dataset detail by ID
  */
 export async function getDatasetById(datasetId: string): Promise<DatasetDetailResponse> {
-  const response = await apiClient.get<DatasetDetailResponse>(
+  const response = await apiClient.get<any>(
     API_ROUTES.ADMIN.DATASETS.DETAIL(datasetId)
   );
-  return response.data;
+  // API returns: { success: true, data: { dataset, primaryCategory, ... } }
+  return response.data?.data || response.data;
 }
 
 /**
  * Create a new platform dataset
  */
 export async function createDataset(data: CreateDatasetRequest): Promise<Dataset> {
-  const response = await apiClient.post<{ dataset: Dataset }>(
+  const response = await apiClient.post<any>(
     API_ROUTES.ADMIN.DATASETS.CREATE,
     data
   );
-  return response.data.dataset;
+  // API returns: { success: true, data: { dataset } }
+  const apiData = response.data?.data || response.data;
+  return apiData.dataset;
 }
 
 /**
@@ -134,11 +137,13 @@ export async function updateDataset(
   datasetId: string,
   data: UpdateDatasetRequest
 ): Promise<Dataset> {
-  const response = await apiClient.patch<{ dataset: Dataset }>(
+  const response = await apiClient.patch<any>(
     API_ROUTES.ADMIN.DATASETS.UPDATE(datasetId),
     data
   );
-  return response.data.dataset;
+  // API returns: { success: true, data: { dataset } }
+  const apiData = response.data?.data || response.data;
+  return apiData.dataset;
 }
 
 /**
@@ -148,11 +153,12 @@ export async function updateDatasetMetadata(
   datasetId: string,
   data: UpdateDatasetMetadataRequest
 ): Promise<DatasetDetailResponse> {
-  const response = await apiClient.patch<DatasetDetailResponse>(
+  const response = await apiClient.patch<any>(
     API_ROUTES.ADMIN.DATASETS.METADATA(datasetId),
     data
   );
-  return response.data;
+  // API returns: { success: true, data: { dataset, primaryCategory, ... } }
+  return response.data?.data || response.data;
 }
 
 /**
@@ -169,21 +175,25 @@ export async function publishDataset(
   datasetId: string,
   data: PublishDatasetRequest
 ): Promise<Dataset> {
-  const response = await apiClient.post<{ dataset: Dataset }>(
+  const response = await apiClient.post<any>(
     API_ROUTES.ADMIN.DATASETS.PUBLISH(datasetId),
     data
   );
-  return response.data.dataset;
+  // API returns: { success: true, data: { dataset } }
+  const apiData = response.data?.data || response.data;
+  return apiData.dataset;
 }
 
 /**
  * Unpublish a dataset
  */
 export async function unpublishDataset(datasetId: string): Promise<Dataset> {
-  const response = await apiClient.post<{ dataset: Dataset }>(
+  const response = await apiClient.post<any>(
     API_ROUTES.ADMIN.DATASETS.UNPUBLISH(datasetId)
   );
-  return response.data.dataset;
+  // API returns: { success: true, data: { dataset } }
+  const apiData = response.data?.data || response.data;
+  return apiData.dataset;
 }
 
 // ============================================
@@ -223,11 +233,12 @@ export async function startUpload(
   datasetId: string,
   data: StartUploadRequest = {}
 ): Promise<StartUploadResponse> {
-  const response = await apiClient.post<StartUploadResponse>(
+  const response = await apiClient.post<any>(
     API_ROUTES.ADMIN.DATASETS.UPLOADS.START(datasetId),
     data
   );
-  return response.data;
+  // API returns: { success: true, data: { upload, presignedUrl } }
+  return response.data?.data || response.data;
 }
 
 /**
@@ -238,11 +249,13 @@ export async function completeUpload(
   uploadId: string,
   data: CompleteUploadRequest = {}
 ): Promise<DatasetUpload> {
-  const response = await apiClient.post<{ upload: DatasetUpload }>(
+  const response = await apiClient.post<any>(
     API_ROUTES.ADMIN.DATASETS.UPLOADS.COMPLETE(datasetId, uploadId),
     data
   );
-  return response.data.upload;
+  // API returns: { success: true, data: { upload } }
+  const apiData = response.data?.data || response.data;
+  return apiData.upload;
 }
 
 /**
@@ -252,10 +265,11 @@ export async function getUploadDownloadUrl(
   datasetId: string,
   uploadId: string
 ): Promise<DownloadUrlResponse> {
-  const response = await apiClient.get<{ data: DownloadUrlResponse }>(
+  const response = await apiClient.get<any>(
     API_ROUTES.ADMIN.DATASETS.UPLOADS.DOWNLOAD_URL(datasetId, uploadId)
   );
-  return response.data.data;
+  // API returns: { success: true, data: { url, expiresAt, upload } }
+  return response.data?.data || response.data;
 }
 
 // ============================================

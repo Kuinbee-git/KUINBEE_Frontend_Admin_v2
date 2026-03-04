@@ -239,6 +239,18 @@ export function useUploadDatasetFile() {
   });
 }
 
+export function useDownloadUploadUrl() {
+  return useMutation({
+    mutationFn: ({ datasetId, uploadId }: { datasetId: string; uploadId: string }) =>
+      datasetsService.getUploadDownloadUrl(datasetId, uploadId),
+    onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to get download URL');
+    },
+  });
+}
+
 // ============================================
 // Proposal Mutations
 // ============================================

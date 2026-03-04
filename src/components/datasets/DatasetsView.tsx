@@ -66,10 +66,10 @@ export function DatasetsView() {
   const datasets = useMemo(() => {
     if (!data?.items) return [];
     return data.items.map((item) => ({
-      id: item.dataset.datasetUniqueId,
+      id: item.dataset.id, // Internal UUID for routing
+      datasetUniqueId: item.dataset.datasetUniqueId, // Human-readable ID for display
       name: item.dataset.title,
       owner: item.dataset.ownerType,
-      supplier: null, // TODO: Fetch supplier name from ownerId
       category: item.primaryCategory?.name || "N/A",
       source: item.source?.name || "N/A",
       status: item.dataset.status,
@@ -98,11 +98,17 @@ export function DatasetsView() {
     setPage(1);
   }, []);
 
-  const showSupplierColumn = ownerFilter !== "PLATFORM";
+  const showOwnerColumn = ownerFilter === "all";
 
   const handleRowClick = useCallback((datasetId: string) => {
-    router.push(`/dashboard/datasets/${datasetId}`);
-  }, [router]);
+    // Find the dataset to check its owner type
+    const dataset = datasets.find(d => d.id === datasetId);
+    if (dataset?.owner === "PLATFORM") {
+      router.push(`/dashboard/platform-datasets/${datasetId}`);
+    } else {
+      router.push(`/dashboard/datasets/${datasetId}`);
+    }
+  }, [router, datasets]);
   
   // Extract unique values for dropdowns (mock for now)
   const supplierList: string[] = [];
@@ -206,7 +212,7 @@ export function DatasetsView() {
           ) : (
             <DatasetTable
               datasets={datasets}
-              showSupplierColumn={showSupplierColumn}
+              showOwnerColumn={showOwnerColumn}
               onRowClick={handleRowClick}
             />
           )}

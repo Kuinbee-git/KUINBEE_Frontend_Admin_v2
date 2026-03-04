@@ -19,7 +19,8 @@ type DatasetStatus =
   | "draft";
 
 interface SupplierDataset {
-  id: string;
+  id: string; // Internal UUID for routing
+  datasetUniqueId: string; // Human-readable ID for display
   name: string;
   category: string;
   status: DatasetStatus;
@@ -143,7 +144,7 @@ export function SupplierDatasetActivity({
                         className="px-4 py-3 text-sm font-medium"
                         style={{ color: "var(--brand-primary)" }}
                       >
-                        {dataset.id}
+                        {dataset.datasetUniqueId}
                       </td>
                       <td
                         className="px-4 py-3 text-sm"

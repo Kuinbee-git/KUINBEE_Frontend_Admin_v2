@@ -5,10 +5,10 @@ import { DataTable, ColumnDef } from "@/components/shared/DataTable";
 import type { DatasetStatus, OwnerType } from "@/types/dataset.types";
 
 interface Dataset {
-  id: string;
+  id: string; // Internal UUID for routing
+  datasetUniqueId: string; // Human-readable ID for display
   name: string;
   owner: OwnerType;
-  supplier: string | null;
   category: string;
   source: string;
   status: DatasetStatus;
@@ -19,18 +19,18 @@ interface Dataset {
 
 interface DatasetTableProps {
   datasets: Dataset[];
-  showSupplierColumn: boolean;
+  showOwnerColumn: boolean;
   onRowClick: (datasetId: string) => void;
 }
 
-export function DatasetTable({ datasets, showSupplierColumn, onRowClick }: DatasetTableProps) {
+export function DatasetTable({ datasets, showOwnerColumn, onRowClick }: DatasetTableProps) {
   const baseColumns: ColumnDef<Dataset>[] = [
     {
       header: "Dataset ID",
-      accessor: "id",
-      render: (id: string) => (
+      accessor: "datasetUniqueId",
+      render: (datasetUniqueId: string) => (
         <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-          {id}
+          {datasetUniqueId}
         </span>
       ),
     },
@@ -45,17 +45,14 @@ export function DatasetTable({ datasets, showSupplierColumn, onRowClick }: Datas
     },
   ];
 
-  const supplierColumn: ColumnDef<Dataset> = {
-    header: "Supplier",
-    accessor: "supplier",
-    render: (supplier: string | null) =>
-      supplier ? (
-        <span className="text-sm">{supplier}</span>
-      ) : (
-        <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Platform
-        </span>
-      ),
+  const ownerColumn: ColumnDef<Dataset> = {
+    header: "Owner Type",
+    accessor: "owner",
+    render: (owner: OwnerType) => (
+      <span className="text-sm" style={{ color: owner === "PLATFORM" ? "var(--brand-primary)" : "var(--text-primary)" }}>
+        {owner === "PLATFORM" ? "Platform" : "Supplier"}
+      </span>
+    ),
   };
 
   const remainingColumns: ColumnDef<Dataset>[] = [
@@ -102,8 +99,8 @@ export function DatasetTable({ datasets, showSupplierColumn, onRowClick }: Datas
     },
   ];
 
-  const columns = showSupplierColumn
-    ? [...baseColumns, supplierColumn, ...remainingColumns]
+  const columns = showOwnerColumn
+    ? [...baseColumns, ownerColumn, ...remainingColumns]
     : [...baseColumns, ...remainingColumns];
 
   return (

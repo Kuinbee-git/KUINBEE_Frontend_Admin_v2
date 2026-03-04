@@ -303,3 +303,8 @@
     color: var(--text-primary) !important;
   }
 }
+@keyframes progress {
+  0%   { transform: translateX(-100%); width: 40%; }
+  50%  { width: 60%; }
+  100% { transform: translateX(250%); width: 40%; }
+}

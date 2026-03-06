@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DatasetFilters } from "./DatasetFilters";
 import { DatasetTable } from "./DatasetTable";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
-import { useDatasets, datasetsKeys } from "@/hooks/api/useDatasets";
+import { useDatasets, useUpdateDataset, datasetsKeys } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { DatasetStatus, DatasetVisibility, OwnerType } from "@/types/dataset.types";
@@ -18,12 +18,12 @@ type AssignmentType = "all" | "assigned_to_me" | "unassigned";
 export function DatasetsView() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  
+
   // Clear cache on mount to refresh data with new defaults
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
   }, [queryClient]);
-  
+
   // Filter state
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<DatasetStatus | "all">("PUBLISHED");
@@ -37,16 +37,16 @@ export function DatasetsView() {
   const [fileFormatFilter, setFileFormatFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const limit = 10;
-  
+
   // Debounce search
   const debouncedSearch = useDebounce(searchQuery, 500);
-  
+
   // Reset page when filters change
-   
+
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, statusFilter, ownerFilter, visibilityFilter, categoryFilter, sourceFilter]);
-  
+
   // Fetch datasets with filters
   const { data, isLoading, error } = useDatasets({
     page,
@@ -58,32 +58,33 @@ export function DatasetsView() {
     primaryCategoryId: categoryFilter !== "all" ? categoryFilter : undefined,
     sourceId: sourceFilter !== "all" ? sourceFilter : undefined,
   });
-  
+
   // Permissions
   const { data: permissionsData } = useMyPermissions();
-  
+
   // Transform data for UI
   const datasets = useMemo(() => {
     if (!data?.items) return [];
     return data.items.map((item) => ({
-      id: item.dataset.id, // Internal UUID for routing
-      datasetUniqueId: item.dataset.datasetUniqueId, // Human-readable ID for display
+      id: item.dataset.id,
+      datasetUniqueId: item.dataset.datasetUniqueId,
       name: item.dataset.title,
       owner: item.dataset.ownerType,
       category: item.primaryCategory?.name || "N/A",
       source: item.source?.name || "N/A",
       status: item.dataset.status,
-      assignedTo: null, // TODO: Fetch assignment from separate endpoint
+      visibility: item.dataset.visibility,
+      assignedTo: null,
       lastUpdated: new Date(item.dataset.updatedAt).toLocaleDateString(),
       createdDate: new Date(item.dataset.createdAt).toLocaleDateString(),
     }));
   }, [data]);
-  
+
   const totalPages = useMemo(() => {
     if (!data?.pagination) return 0;
     return Math.ceil(data.pagination.total / data.pagination.pageSize);
   }, [data]);
-  
+
   const clearAllFilters = useCallback(() => {
     setSearchQuery("");
     setStatusFilter("PUBLISHED");
@@ -100,6 +101,15 @@ export function DatasetsView() {
 
   const showOwnerColumn = ownerFilter === "all";
 
+  const updateDatasetMutation = useUpdateDataset();
+
+  const handleVisibilityChange = useCallback(
+    (datasetId: string, visibility: "PUBLIC" | "PRIVATE" | "UNLISTED") => {
+      updateDatasetMutation.mutate({ datasetId, data: { visibility } });
+    },
+    [updateDatasetMutation]
+  );
+
   const handleRowClick = useCallback((datasetId: string) => {
     // Find the dataset to check its owner type
     const dataset = datasets.find(d => d.id === datasetId);
@@ -109,7 +119,7 @@ export function DatasetsView() {
       router.push(`/dashboard/datasets/${datasetId}`);
     }
   }, [router, datasets]);
-  
+
   // Extract unique values for dropdowns (mock for now)
   const supplierList: string[] = [];
   const categoryList: string[] = [];
@@ -122,7 +132,7 @@ export function DatasetsView() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg-surface)" }}>
       {/* Page Header */}
-      <div 
+      <div
         className="p-6 border-b"
         style={{
           backgroundColor: "var(--bg-base)",
@@ -214,7 +224,9 @@ export function DatasetsView() {
               datasets={datasets}
               showOwnerColumn={showOwnerColumn}
               onRowClick={handleRowClick}
+              onVisibilityChange={handleVisibilityChange}
             />
+
           )}
         </div>
 

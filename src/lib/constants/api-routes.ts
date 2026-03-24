@@ -154,6 +154,16 @@ export const API_ROUTES = {
       DETAIL: (supplierId: string) => `/v1/admin/suppliers/${supplierId}`,
       ANALYTICS: (supplierId: string) => `/v1/admin/suppliers/${supplierId}/analytics`,
       KYC: (supplierId: string) => `/v1/admin/suppliers/${supplierId}/kyc`,
+      KYC_QUEUE: '/v1/admin/suppliers/kyc/queue',
+      KYC_PICK: (supplierId: string) => `/v1/admin/suppliers/kyc/${supplierId}/pick`,
+      KYC_VERIFY: (supplierId: string) => `/v1/admin/suppliers/kyc/${supplierId}/verify`,
+      KYC_REJECT: (supplierId: string) => `/v1/admin/suppliers/kyc/${supplierId}/reject`,
+    },
+
+    // Roles (read-only)
+    ROLES: {
+      LIST: '/v1/admin/roles',
+      DETAIL: (roleId: string) => `/v1/admin/roles/${roleId}`,
     },
   },
 

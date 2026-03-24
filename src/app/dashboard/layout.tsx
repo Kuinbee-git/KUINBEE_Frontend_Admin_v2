@@ -83,6 +83,12 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
       href: '/dashboard/my-queue',
     },
     {
+      id: 'supplier-kyc',
+      label: 'Supplier Queue',
+      icon: ClipboardList,
+      href: '/dashboard/supplier-kyc',
+    },
+    {
       id: 'proposals',
       label: 'Proposals',
       icon: ClipboardList,

@@ -597,6 +597,73 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
               <KdtsScorePanel datasetId={datasetId} isAdmin={canApprove} />
             </div>
 
+            {/* Location */}
+            {locationInfo && (
+              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
+                  <CardTitle style={{ color: "var(--text-primary)" }} className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    <span>Location</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Country</p>
+                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.country}</p>
+                  </div>
+                  {locationInfo.state && (
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>State</p>
+                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.state}</p>
+                    </div>
+                  )}
+                  {locationInfo.city && (
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>City</p>
+                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.city}</p>
+                    </div>
+                  )}
+                  {locationInfo.region && (
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Region</p>
+                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.region}</p>
+                    </div>
+                  )}
+                  {locationInfo.coverage && (
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Coverage</p>
+                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.coverage}</p>
+                    </div>
+                  )}
+                  {locationInfo.coordinates && (
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Coordinates</p>
+                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.coordinates}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Tags */}
+            {tags.length > 0 && (
+              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
+                  <CardTitle style={{ color: "var(--text-primary)" }} className="flex items-center gap-2">
+                    <Tag className="w-4 h-4" />
+                    <span>Tags</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag) => (
+                      <Badge key={tag.id} variant="secondary">{tag.name}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Current Upload */}
             {verification.currentUpload && (
               <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>

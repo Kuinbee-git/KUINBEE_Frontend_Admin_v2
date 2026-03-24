@@ -113,6 +113,32 @@ export interface SupplierKyc {
   } | null;
 }
 
+export type ManualKycStatus = "PENDING" | "VERIFIED" | "REJECTED";
+
+export interface SupplierManualKycQueueItem {
+  supplierId: string;
+  supplierProfileId: string;
+  submittedAt: string;
+  status: ManualKycStatus;
+  pickedByAdminId: string | null;
+  pickedAt: string | null;
+}
+
+export interface SupplierManualKycQueueResponse {
+  items: SupplierManualKycQueueItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface RejectSupplierKycRequest {
+  reason: string;
+}
+
+export interface SupplierManualKycActionResponse {
+  success: true;
+}
+
 // ============================================
 // Supplier Invite Types
 // ============================================

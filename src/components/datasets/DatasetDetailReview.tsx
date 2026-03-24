@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, MapPin, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -203,7 +203,19 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
     );
   }
 
-  const { dataset, verification, activeAssignment, primaryCategory, secondaryCategories, source, aboutDatasetInfo, dataFormatInfo, features } = datasetData;
+  const {
+    dataset,
+    verification,
+    activeAssignment,
+    primaryCategory,
+    secondaryCategories,
+    source,
+    aboutDatasetInfo,
+    locationInfo,
+    dataFormatInfo,
+    features,
+    tags,
+  } = datasetData;
 
   const formatDate = (date: string | null) => {
     if (!date) return 'N/A';

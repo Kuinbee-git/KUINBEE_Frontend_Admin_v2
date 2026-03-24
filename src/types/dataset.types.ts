@@ -414,8 +414,10 @@ export interface ProposalReviewResponse {
   };
   activeAssignment: DatasetAssignment | null;
   aboutDatasetInfo: AboutDatasetInfo | null;
+  locationInfo: LocationInfo | null;
   dataFormatInfo: DataFormatInfo | null;
   features: DatasetFeature[];
+  tags: DatasetTag[];
   primaryCategory: {
     id: string;
     name: string;

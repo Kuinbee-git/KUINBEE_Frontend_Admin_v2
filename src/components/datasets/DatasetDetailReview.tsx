@@ -336,6 +336,14 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                       {dataset.pricing?.isPaid ? `${dataset.pricing.price} ${dataset.pricing.currency}` : 'Free'}
                     </p>
                   </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Location</p>
+                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>
+                      {locationInfo
+                        ? [locationInfo.city, locationInfo.state, locationInfo.country].filter(Boolean).join(', ')
+                        : 'N/A'}
+                    </p>
+                  </div>
                 </div>
 
                 {secondaryCategories.length > 0 && (

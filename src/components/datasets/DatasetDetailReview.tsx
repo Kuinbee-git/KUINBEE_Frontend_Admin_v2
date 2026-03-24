@@ -359,6 +359,20 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                     </div>
                   </>
                 )}
+
+                {tags.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-sm font-medium mb-2" style={{ color: "var(--text-muted)" }}>Tags</p>
+                      <div className="flex flex-wrap gap-2">
+                        {tags.map((tag) => (
+                          <Badge key={tag.id} variant="secondary">{tag.name}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 

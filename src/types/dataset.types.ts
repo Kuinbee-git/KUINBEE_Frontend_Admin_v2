@@ -89,6 +89,17 @@ export interface Dataset {
   viewCount: number;
   rating: string | null;
   reviewCount: number;
+  isSample?: boolean;
+  sampleNotes?: {
+    whySample: string;
+    actualDataSize: string;
+    completeness?: string;
+    deliveryMechanism: 'API' | 'FILE' | 'OTHER';
+    deliveryMechanismNotes?: string;
+  } | null;
+  actualPrice?: number | null;
+  actualPriceCurrency?: string | null;
+  isNegotiable?: boolean | null;
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;

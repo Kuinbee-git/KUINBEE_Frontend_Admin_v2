@@ -283,6 +283,11 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                 status={dataset.status.replace(/_/g, ' ')}
                 semanticType={getDatasetStatusSemantic(dataset.status)}
               />
+              {dataset.isSample && (
+                <Badge variant="secondary" className="text-xs flex-shrink-0">
+                  SAMPLE DATASET
+                </Badge>
+              )}
               <StatusBadge
                 status={verification.status.replace(/_/g, ' ')}
                 semanticType={getVerificationStatusSemantic(verification.status)}
@@ -360,7 +365,63 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                   </>
                 )}
 
-                {tags.length > 0 && (
+                <Separator />
+                <div className="rounded-lg border p-4 space-y-3" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-default)" }}>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={dataset.isSample ? "default" : "outline"} className="text-xs">
+                      {dataset.isSample ? 'SAMPLE DATASET' : 'FULL DATASET'}
+                    </Badge>
+                  </div>
+
+                  {dataset.isSample ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Why Sample</p>
+                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{dataset.sampleNotes?.whySample || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Actual Data Size</p>
+                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{dataset.sampleNotes?.actualDataSize || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Completeness</p>
+                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{dataset.sampleNotes?.completeness || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Delivery Mechanism</p>
+                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{dataset.sampleNotes?.deliveryMechanism || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Delivery Notes</p>
+                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{dataset.sampleNotes?.deliveryMechanismNotes || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Actual Price</p>
+                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>
+                          {dataset.actualPrice !== null && dataset.actualPrice !== undefined
+                            ? `${dataset.actualPrice} ${dataset.actualPriceCurrency || ''}`.trim()
+                            : 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Negotiable</p>
+                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>
+                          {dataset.isNegotiable === null || dataset.isNegotiable === undefined
+                            ? 'N/A'
+                            : dataset.isNegotiable
+                              ? 'Yes'
+                              : 'No'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                      This proposal is marked as a full dataset.
+                    </p>
+                  )}
+                </div>
+
+                {tags?.length > 0 && (
                   <>
                     <Separator />
                     <div>
@@ -646,7 +707,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
             )}
 
             {/* Tags */}
-            {tags.length > 0 && (
+            {tags?.length > 0 && (
               <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
                 <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
                   <CardTitle style={{ color: "var(--text-primary)" }} className="flex items-center gap-2">

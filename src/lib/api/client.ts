@@ -113,7 +113,6 @@ class ApiClient {
       // Log error for debugging
       if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         console.error('[API Error]', {
-          url: response.url,
           status: response.status,
           statusText: response.statusText,
           code: error.code,

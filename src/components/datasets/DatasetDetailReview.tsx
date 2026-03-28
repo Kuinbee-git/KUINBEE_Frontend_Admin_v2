@@ -11,7 +11,7 @@ import { StatusBadge, getDatasetStatusSemantic, getVerificationStatusSemantic } 
 import { ReviewActions } from "./ReviewActions";
 import { PricingReviewCard } from "./PricingReviewCard";
 import { KdtsScorePanel } from "./KdtsScorePanel";
-import { useProposalReview, useApproveProposal, useRejectProposal, useRequestChanges, useRequestPricingChanges, useDownloadProposalUrl, useApprovePricing, useRejectPricing } from "@/hooks/api/useDatasets";
+import { useProposalReview, useApproveProposal, useRejectProposal, useRequestChanges, useRequestPricingChanges, useDownloadProposalUrl, useDownloadProposalSampleUrl, useApprovePricing, useRejectPricing } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { toast } from "sonner";
 
@@ -33,6 +33,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
   const requestChangesMutation = useRequestChanges();
   const requestPricingChangesMutation = useRequestPricingChanges();
   const downloadUrlMutation = useDownloadProposalUrl();
+  const sampleDownloadUrlMutation = useDownloadProposalSampleUrl();
 
   // Permissions
   const { data: permissionsData } = useMyPermissions();
@@ -73,6 +74,24 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
       // No need to show another toast
     }
   }, [datasetId, downloadUrlMutation]);
+
+  const handleDownloadSampleFile = useCallback(async () => {
+    try {
+      const response = await sampleDownloadUrlMutation.mutateAsync(datasetId);
+
+      const link = document.createElement('a');
+      link.href = response.url;
+      link.download = response.upload.originalFileName || 'sample-file';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success('Sample download started');
+    } catch {
+      // handled by mutation
+    }
+  }, [datasetId, sampleDownloadUrlMutation]);
 
   const handleActionConfirm = useCallback(
     async (
@@ -766,6 +785,21 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                     >
                       <Download className="w-4 h-4" />
                       <span>Download File</span>
+                    </Button>
+                  )}
+
+                  {datasetData.sampleUpload && (
+                    <Button
+                      onClick={handleDownloadSampleFile}
+                      variant="outline"
+                      className="w-full mt-2 gap-2"
+                      style={{
+                        borderColor: "var(--border-default)",
+                        color: "var(--text-primary)"
+                      }}
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download Sample File</span>
                     </Button>
                   )}
                 </CardContent>

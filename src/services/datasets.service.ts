@@ -330,6 +330,16 @@ export async function getProposalDownloadUrl(datasetId: string): Promise<Downloa
 }
 
 /**
+ * Get download URL for a proposal's sample upload
+ */
+export async function getProposalSampleDownloadUrl(datasetId: string): Promise<DownloadUrlResponse> {
+  const response = await apiClient.get<{ data: DownloadUrlResponse }>(
+    API_ROUTES.ADMIN.DATASET_PROPOSALS.SAMPLE_DOWNLOAD_URL(datasetId)
+  );
+  return response.data.data;
+}
+
+/**
  * Approve a dataset proposal
  */
 export async function approveProposal(

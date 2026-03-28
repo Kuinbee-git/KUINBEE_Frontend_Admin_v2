@@ -450,6 +450,7 @@ export interface ProposalReviewResponse {
     createdAt: string;
     updatedAt: string;
   };
+  sampleUpload?: DatasetUpload | null;
 }
 
 // ============================================

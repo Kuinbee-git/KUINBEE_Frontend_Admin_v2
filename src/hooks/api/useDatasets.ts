@@ -343,6 +343,17 @@ export function useDownloadProposalUrl() {
   });
 }
 
+export function useDownloadProposalSampleUrl() {
+  return useMutation({
+    mutationFn: (datasetId: string) => datasetsService.getProposalSampleDownloadUrl(datasetId),
+    onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to get sample download URL');
+    },
+  });
+}
+
 // ============================================
 // Proposal Pricing Mutations
 // ============================================

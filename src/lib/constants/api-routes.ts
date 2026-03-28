@@ -49,6 +49,8 @@ export const API_ROUTES = {
       PICK: (datasetId: string) => `/v1/admin/dataset-proposals/${datasetId}/pick`,
       DOWNLOAD_URL: (datasetId: string) =>
         `/v1/admin/dataset-proposals/${datasetId}/current-upload/download-url`,
+      SAMPLE_DOWNLOAD_URL: (datasetId: string) =>
+        `/v1/admin/dataset-proposals/${datasetId}/sample-upload/download-url`,
       APPROVE: (datasetId: string) => `/v1/admin/dataset-proposals/${datasetId}/approve`,
       REJECT: (datasetId: string) => `/v1/admin/dataset-proposals/${datasetId}/reject`,
       REQUEST_CHANGES: (datasetId: string) =>

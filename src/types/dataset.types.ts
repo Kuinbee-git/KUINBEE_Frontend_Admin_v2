@@ -13,6 +13,7 @@ export type DatasetStatus =
   | 'REJECTED'
   | 'VERIFIED'
   | 'PUBLISHED'
+  | 'DELISTED'
   | 'ARCHIVED';
 
 export type VerificationStatus =
@@ -164,6 +165,7 @@ export interface DatasetVerification {
   currentUploadId: string | null;
   notes: string | null;
   rejectionReason: string | null;
+  submittedAt: string | null;
   verifiedAt: string | null;
   rejectedAt: string | null;
   createdAt: string;

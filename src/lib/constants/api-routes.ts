@@ -65,6 +65,23 @@ export const API_ROUTES = {
       },
     },
 
+    // Dataset Update Requests
+    DATASET_UPDATE_REQUESTS: {
+      LIST: '/v1/admin/dataset-update-requests',
+      PICK: (datasetId: string) => `/v1/admin/dataset-update-requests/${datasetId}/pick`,
+      APPROVE: (datasetId: string) => `/v1/admin/dataset-update-requests/${datasetId}/approve`,
+      REJECT: (datasetId: string) => `/v1/admin/dataset-update-requests/${datasetId}/reject`,
+      REQUEST_CHANGES: (datasetId: string) =>
+        `/v1/admin/dataset-update-requests/${datasetId}/request-changes`,
+      PRICING: {
+        GET: (datasetId: string) => `/v1/admin/dataset-update-requests/${datasetId}/pricing`,
+        APPROVE: (datasetId: string) => `/v1/admin/dataset-update-requests/${datasetId}/pricing/approve`,
+        REJECT: (datasetId: string) => `/v1/admin/dataset-update-requests/${datasetId}/pricing/reject`,
+        REQUEST_CHANGES: (datasetId: string) =>
+          `/v1/admin/dataset-update-requests/${datasetId}/pricing/request-changes`,
+      },
+    },
+
     // Assigned Datasets
     ASSIGNED_DATASETS: '/v1/admin/assigned-datasets',
 
@@ -242,9 +259,24 @@ export interface RolesQueryParams extends PaginationParams, SortParams {
 // Dataset Proposals Query
 export interface DatasetProposalsQueryParams extends PaginationParams, SortParams {
   q?: string;
-  status?: 'SUBMITTED' | 'UNDER_REVIEW' | 'REJECTED' | 'VERIFIED' | 'PUBLISHED' | 'ARCHIVED' | 'ALL';
+  status?: 'SUBMITTED' | 'UNDER_REVIEW' | 'REJECTED' | 'VERIFIED' | 'PUBLISHED' | 'DELISTED' | 'ARCHIVED' | 'ALL';
   verificationStatus?:
     | 'PENDING'
+    | 'SUBMITTED'
+    | 'CHANGES_REQUESTED'
+    | 'RESUBMITTED'
+    | 'UNDER_REVIEW'
+    | 'VERIFIED'
+    | 'REJECTED'
+    | 'ALL';
+  assignedTo?: 'ME' | 'ANY' | 'UNASSIGNED';
+}
+
+// Dataset Update Requests Query
+export interface DatasetUpdateRequestsQueryParams extends PaginationParams, SortParams {
+  q?: string;
+  status?: 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'DELISTED' | 'REJECTED' | 'ALL';
+  verificationStatus?:
     | 'SUBMITTED'
     | 'CHANGES_REQUESTED'
     | 'RESUBMITTED'
@@ -274,7 +306,7 @@ export interface SourcesQueryParams extends PaginationParams, SortParams {
 // Datasets Query
 export interface DatasetsQueryParams extends PaginationParams, SortParams {
   q?: string;
-  status?: 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED' | 'ALL';
+  status?: 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'PUBLISHED' | 'REJECTED' | 'DELISTED' | 'ARCHIVED' | 'ALL';
   visibility?: 'PUBLIC' | 'PRIVATE' | 'UNLISTED' | 'ALL';
   ownerType?: 'PLATFORM' | 'SUPPLIER' | 'ALL';
   primaryCategoryId?: string;

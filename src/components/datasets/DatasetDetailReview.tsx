@@ -11,15 +11,32 @@ import { StatusBadge, getDatasetStatusSemantic, getVerificationStatusSemantic } 
 import { ReviewActions } from "./ReviewActions";
 import { PricingReviewCard } from "./PricingReviewCard";
 import { KdtsScorePanel } from "./KdtsScorePanel";
-import { useProposalReview, useApproveProposal, useRejectProposal, useRequestChanges, useRequestPricingChanges, useDownloadProposalUrl, useDownloadProposalSampleUrl, useApprovePricing, useRejectPricing } from "@/hooks/api/useDatasets";
+import {
+  useProposalReview,
+  useApproveProposal,
+  useApproveUpdateRequest,
+  useRejectProposal,
+  useRejectUpdateRequest,
+  useRequestChanges,
+  useRequestUpdateRequestChanges,
+  useRequestPricingChanges,
+  useRequestUpdateRequestPricingChanges,
+  useDownloadProposalUrl,
+  useDownloadProposalSampleUrl,
+  useApprovePricing,
+  useApproveUpdateRequestPricing,
+  useRejectPricing,
+  useRejectUpdateRequestPricing,
+} from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { toast } from "sonner";
 
 interface DatasetDetailReviewProps {
   datasetId: string;
+  queueType?: "proposals" | "update-requests";
 }
 
-export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
+export function DatasetDetailReview({ datasetId, queueType = "proposals" }: DatasetDetailReviewProps) {
   const router = useRouter();
 
   // Fetch dataset proposal review details
@@ -27,13 +44,21 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
 
   // Proposal mutations
   const approveProposalMutation = useApproveProposal();
+  const approveUpdateRequestMutation = useApproveUpdateRequest();
   const approvePricingMutation = useApprovePricing();
+  const approveUpdateRequestPricingMutation = useApproveUpdateRequestPricing();
   const rejectProposalMutation = useRejectProposal();
+  const rejectUpdateRequestMutation = useRejectUpdateRequest();
   const rejectPricingMutation = useRejectPricing();
+  const rejectUpdateRequestPricingMutation = useRejectUpdateRequestPricing();
   const requestChangesMutation = useRequestChanges();
+  const requestUpdateRequestChangesMutation = useRequestUpdateRequestChanges();
   const requestPricingChangesMutation = useRequestPricingChanges();
+  const requestUpdateRequestPricingChangesMutation = useRequestUpdateRequestPricingChanges();
   const downloadUrlMutation = useDownloadProposalUrl();
   const sampleDownloadUrlMutation = useDownloadProposalSampleUrl();
+
+  const isUpdateRequest = queueType === "update-requests";
 
   // Permissions
   const { data: permissionsData } = useMyPermissions();
@@ -51,8 +76,8 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
     }
 
     // Fallback if no history is available (direct deep link)
-    router.push("/dashboard/datasets");
-  }, [router]);
+    router.push(isUpdateRequest ? "/dashboard/update-requests" : "/dashboard/proposals");
+  }, [isUpdateRequest, router]);
 
   const handleDownloadFile = useCallback(async (uploadId: string) => {
     try {
@@ -108,7 +133,8 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
 
           // 1. Approve pricing first if checkbox is selected
           if (pricingNeedsChanges) {
-            await approvePricingMutation.mutateAsync({
+            const approvePricing = isUpdateRequest ? approveUpdateRequestPricingMutation : approvePricingMutation;
+            await approvePricing.mutateAsync({
               datasetId,
               data: pricingNotes ? { notes: pricingNotes } : undefined
             });
@@ -116,7 +142,8 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
 
           // 2. Then approve dataset if checkbox is selected
           if (datasetNeedsChanges) {
-            await approveProposalMutation.mutateAsync({
+            const approveDataset = isUpdateRequest ? approveUpdateRequestMutation : approveProposalMutation;
+            await approveDataset.mutateAsync({
               datasetId,
               data: datasetNotes ? { notes: datasetNotes } : undefined
             });
@@ -126,7 +153,8 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
         } else if (action === "reject") {
           // Reject dataset if checkbox is selected
           if (datasetNeedsChanges) {
-            await rejectProposalMutation.mutateAsync({
+            const rejectDataset = isUpdateRequest ? rejectUpdateRequestMutation : rejectProposalMutation;
+            await rejectDataset.mutateAsync({
               datasetId,
               data: {
                 rejectionReason: datasetNotes || "Rejected",
@@ -137,7 +165,8 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
 
           // Reject pricing if checkbox is selected
           if (pricingNeedsChanges) {
-            await rejectPricingMutation.mutateAsync({
+            const rejectPricing = isUpdateRequest ? rejectUpdateRequestPricingMutation : rejectPricingMutation;
+            await rejectPricing.mutateAsync({
               datasetId,
               data: {
                 rejectionReason: pricingNotes || "Rejected",
@@ -151,7 +180,10 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
           // Route to appropriate endpoint based on which flags are set
           if (pricingNeedsChanges && !datasetNeedsChanges) {
             // Only pricing changes
-            await requestPricingChangesMutation.mutateAsync({
+            const requestPricingChanges = isUpdateRequest
+              ? requestUpdateRequestPricingChangesMutation
+              : requestPricingChangesMutation;
+            await requestPricingChanges.mutateAsync({
               datasetId,
               data: {
                 notes: pricingNotes ?? "",
@@ -161,7 +193,8 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
             });
           } else if (datasetNeedsChanges && !pricingNeedsChanges) {
             // Only dataset changes
-            await requestChangesMutation.mutateAsync({
+            const requestDatasetChanges = isUpdateRequest ? requestUpdateRequestChangesMutation : requestChangesMutation;
+            await requestDatasetChanges.mutateAsync({
               datasetId,
               data: {
                 notes: datasetNotes,
@@ -171,8 +204,12 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
             });
           } else if (datasetNeedsChanges && pricingNeedsChanges) {
             // Both dataset and pricing changes - call both endpoints
+            const requestDatasetChanges = isUpdateRequest ? requestUpdateRequestChangesMutation : requestChangesMutation;
+            const requestPricingChanges = isUpdateRequest
+              ? requestUpdateRequestPricingChangesMutation
+              : requestPricingChangesMutation;
             await Promise.all([
-              requestChangesMutation.mutateAsync({
+              requestDatasetChanges.mutateAsync({
                 datasetId,
                 data: {
                   notes: datasetNotes,
@@ -180,7 +217,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
                   pricingNeedsChanges: false
                 }
               }),
-              requestPricingChangesMutation.mutateAsync({
+              requestPricingChanges.mutateAsync({
                 datasetId,
                 data: {
                   notes: pricingNotes ?? "",
@@ -198,7 +235,23 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
         toast.error(message || `Failed to ${action} proposal`);
       }
     },
-    [datasetId, approveProposalMutation, approvePricingMutation, rejectProposalMutation, rejectPricingMutation, requestChangesMutation, requestPricingChangesMutation, refetch]
+    [
+      datasetId,
+      isUpdateRequest,
+      approveProposalMutation,
+      approveUpdateRequestMutation,
+      approvePricingMutation,
+      approveUpdateRequestPricingMutation,
+      rejectProposalMutation,
+      rejectUpdateRequestMutation,
+      rejectPricingMutation,
+      rejectUpdateRequestPricingMutation,
+      requestChangesMutation,
+      requestUpdateRequestChangesMutation,
+      requestPricingChangesMutation,
+      requestUpdateRequestPricingChangesMutation,
+      refetch,
+    ]
   );
 
   if (isLoading) {
@@ -215,7 +268,7 @@ export function DatasetDetailReview({ datasetId }: DatasetDetailReviewProps) {
         <div className="text-center">
           <p className="text-lg font-medium mb-2 text-red-500">Failed to load dataset</p>
           <Button variant="outline" onClick={handleBack}>
-            Back to proposals
+            Back to {isUpdateRequest ? 'update requests' : 'proposals'}
           </Button>
         </div>
       </div>

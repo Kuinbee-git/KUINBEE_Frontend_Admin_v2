@@ -63,6 +63,16 @@ export interface DatasetProposalParams {
   sort?: string;
 }
 
+export interface DatasetUpdateRequestParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  status?: DatasetStatus | 'ALL';
+  verificationStatus?: VerificationStatus | 'ALL';
+  assignedTo?: 'ME' | 'ANY' | 'UNASSIGNED';
+  sort?: string;
+}
+
 export interface AssignedDatasetParams {
   page?: number;
   pageSize?: number;
@@ -375,6 +385,64 @@ export async function requestChanges(
 }
 
 // ============================================
+// Dataset Update Requests
+// ============================================
+
+/**
+ * Get list of dataset update requests (separate admin queue)
+ */
+export async function getDatasetUpdateRequests(
+  params: DatasetUpdateRequestParams = {}
+): Promise<PaginatedResponse<DatasetProposalListItem>> {
+  const query = buildQueryString(params);
+  const response = await apiClient.get<any>(
+    `${API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.LIST}${query}`
+  );
+
+  const apiData = response.data?.data || response.data;
+
+  return {
+    items: apiData.items || [],
+    pagination: {
+      page: apiData.page || 1,
+      pageSize: apiData.pageSize || 50,
+      total: apiData.total || 0,
+      totalPages: Math.ceil((apiData.total || 0) / (apiData.pageSize || 50)),
+    },
+  };
+}
+
+export async function pickUpdateRequest(datasetId: string): Promise<void> {
+  await apiClient.post(API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.PICK(datasetId));
+}
+
+export async function approveUpdateRequest(
+  datasetId: string,
+  data?: ApproveProposalRequest
+): Promise<void> {
+  await apiClient.post(API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.APPROVE(datasetId), data || {});
+}
+
+export async function rejectUpdateRequest(
+  datasetId: string,
+  data: RejectProposalRequest
+): Promise<void> {
+  await apiClient.post(API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.REJECT(datasetId), data);
+}
+
+export async function requestUpdateRequestChanges(
+  datasetId: string,
+  data: RequestChangesRequest
+): Promise<void> {
+  await apiClient.post(API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.REQUEST_CHANGES(datasetId), {
+    notes: data.notes || '',
+    changeRationale: data.notes || data.changeRationale,
+    datasetNeedsChanges: data.datasetNeedsChanges,
+    pricingNeedsChanges: data.pricingNeedsChanges,
+  });
+}
+
+// ============================================
 // Proposal Pricing
 // ============================================
 
@@ -425,6 +493,51 @@ export async function requestPricingChanges(
 ): Promise<{ pricing: DatasetPricingDto }> {
   const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
     API_ROUTES.ADMIN.DATASET_PROPOSALS.PRICING.REQUEST_CHANGES(datasetId),
+    {
+      notes: data.notes || '',
+      changeRationale: data.notes,
+      datasetNeedsChanges: data.datasetNeedsChanges,
+      pricingNeedsChanges: data.pricingNeedsChanges,
+    }
+  );
+  return response.data;
+}
+
+export async function getUpdateRequestPricing(datasetId: string): Promise<{ pricing: DatasetPricingDto | null }> {
+  const response = await apiClient.get<{ pricing: DatasetPricingDto | null }>(
+    API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.PRICING.GET(datasetId)
+  );
+  return response.data;
+}
+
+export async function approveUpdateRequestPricing(
+  datasetId: string,
+  data?: { notes?: string }
+): Promise<{ pricing: DatasetPricingDto }> {
+  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+    API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.PRICING.APPROVE(datasetId),
+    data || {}
+  );
+  return response.data;
+}
+
+export async function rejectUpdateRequestPricing(
+  datasetId: string,
+  data: { rejectionReason: string; notes?: string }
+): Promise<{ pricing: DatasetPricingDto }> {
+  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+    API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.PRICING.REJECT(datasetId),
+    data
+  );
+  return response.data;
+}
+
+export async function requestUpdateRequestPricingChanges(
+  datasetId: string,
+  data: { notes: string; datasetNeedsChanges: boolean; pricingNeedsChanges: boolean }
+): Promise<{ pricing: DatasetPricingDto }> {
+  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+    API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.PRICING.REQUEST_CHANGES(datasetId),
     {
       notes: data.notes || '',
       changeRationale: data.notes,
@@ -519,6 +632,7 @@ export function getDatasetStatusDisplay(status: DatasetStatus): {
     REJECTED: { label: 'Rejected', variant: 'error' },
     VERIFIED: { label: 'Verified', variant: 'success' },
     PUBLISHED: { label: 'Published', variant: 'success' },
+    DELISTED: { label: 'Delisted', variant: 'warning' },
     ARCHIVED: { label: 'Archived', variant: 'warning' },
   };
   return statusMap[status];

@@ -95,6 +95,13 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
       href: '/dashboard/proposals',
       primary: true,
     },
+    {
+      id: 'update-requests',
+      label: 'Update Requests',
+      icon: ClipboardList,
+      href: '/dashboard/update-requests',
+      primary: true,
+    },
     { id: 'suppliers', label: 'Suppliers', icon: Users, href: '/dashboard/suppliers' },
     { id: 'categories', label: 'Categories', icon: FolderTree, href: '/dashboard/categories' },
     { id: 'sources', label: 'Sources', icon: Link2, href: '/dashboard/sources' },

@@ -91,6 +91,7 @@ export function getDatasetStatusSemantic(status: string): SemanticStatus {
     case 'PENDING':
       return 'pending';
     case 'CHANGES_REQUESTED':
+    case 'DELISTED':
       return 'warning';
     case 'REJECTED':
       return 'error';

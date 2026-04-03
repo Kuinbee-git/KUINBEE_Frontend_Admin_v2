@@ -27,6 +27,12 @@ export const API_ROUTES = {
   // ============================================
   // ADMIN ROUTES (/api/v1/admin)
   // ============================================
+  MARKETPLACE: {
+    QUESTIONS: (datasetId: string) => `/v1/marketplace/datasets/${datasetId}/questions`,
+    ANSWER_QUESTION: (questionId: string) => `/v1/marketplace/questions/${questionId}/answers`,
+    DELETE_QUESTION: (questionId: string) => `/v1/marketplace/questions/${questionId}`,
+  },
+
   ADMIN: {
     // Self
     MY_PERMISSIONS: '/v1/admin/my-permissions',

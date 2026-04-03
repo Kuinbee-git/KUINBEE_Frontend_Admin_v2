@@ -22,6 +22,8 @@ import {
   KeyRound,
   ListChecks,
   FileText,
+  MessageSquare,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,6 +102,20 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
       label: 'Update Requests',
       icon: ClipboardList,
       href: '/dashboard/update-requests',
+      primary: true,
+    },
+    {
+      id: 'questions',
+      label: 'Questions',
+      icon: MessageSquare,
+      href: '/dashboard/questions',
+      primary: true,
+    },
+    {
+      id: 'reviews',
+      label: 'Reviews',
+      icon: Star,
+      href: '/dashboard/reviews',
       primary: true,
     },
     { id: 'suppliers', label: 'Suppliers', icon: Users, href: '/dashboard/suppliers' },

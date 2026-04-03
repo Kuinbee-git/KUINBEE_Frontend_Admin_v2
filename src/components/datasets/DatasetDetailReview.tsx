@@ -262,6 +262,19 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
     ]
   );
 
+  // Q&A handlers - must be declared before conditional returns
+  const handleAnswerQuestion = useCallback(async (questionId: string) => {
+    const answer = (answerDrafts[questionId] || "").trim();
+    if (!answer) return;
+
+    await answerQuestionMutation.mutateAsync({ questionId, answer });
+    setAnswerDrafts((prev) => ({ ...prev, [questionId]: "" }));
+  }, [answerDrafts, answerQuestionMutation]);
+
+  const handleDeleteQuestion = useCallback(async (questionId: string) => {
+    await deleteQuestionMutation.mutateAsync(questionId);
+  }, [deleteQuestionMutation]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg-surface)" }}>
@@ -316,18 +329,6 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
     if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(2)} MB`;
     return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
   };
-
-  const handleAnswerQuestion = useCallback(async (questionId: string) => {
-    const answer = (answerDrafts[questionId] || "").trim();
-    if (!answer) return;
-
-    await answerQuestionMutation.mutateAsync({ questionId, answer });
-    setAnswerDrafts((prev) => ({ ...prev, [questionId]: "" }));
-  }, [answerDrafts, answerQuestionMutation]);
-
-  const handleDeleteQuestion = useCallback(async (questionId: string) => {
-    await deleteQuestionMutation.mutateAsync(questionId);
-  }, [deleteQuestionMutation]);
 
   return (
     <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: "var(--bg-surface)" }}>

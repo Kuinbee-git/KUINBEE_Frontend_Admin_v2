@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Download, MapPin, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,9 @@ import {
   useApproveUpdateRequestPricing,
   useRejectPricing,
   useRejectUpdateRequestPricing,
+  useDatasetQuestions,
+  useAnswerDatasetQuestion,
+  useDeleteDatasetQuestion,
 } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
 import { toast } from "sonner";
@@ -59,6 +62,11 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
   const sampleDownloadUrlMutation = useDownloadProposalSampleUrl();
 
   const isUpdateRequest = queueType === "update-requests";
+  const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
+
+  const { data: questionsData, isLoading: questionsLoading } = useDatasetQuestions(datasetId);
+  const answerQuestionMutation = useAnswerDatasetQuestion(datasetId);
+  const deleteQuestionMutation = useDeleteDatasetQuestion(datasetId);
 
   // Permissions
   const { data: permissionsData } = useMyPermissions();
@@ -308,6 +316,18 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
     if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(2)} MB`;
     return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
   };
+
+  const handleAnswerQuestion = useCallback(async (questionId: string) => {
+    const answer = (answerDrafts[questionId] || "").trim();
+    if (!answer) return;
+
+    await answerQuestionMutation.mutateAsync({ questionId, answer });
+    setAnswerDrafts((prev) => ({ ...prev, [questionId]: "" }));
+  }, [answerDrafts, answerQuestionMutation]);
+
+  const handleDeleteQuestion = useCallback(async (questionId: string) => {
+    await deleteQuestionMutation.mutateAsync(questionId);
+  }, [deleteQuestionMutation]);
 
   return (
     <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: "var(--bg-surface)" }}>
@@ -609,6 +629,60 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
             {datasetData?.dataset?.pricing && (
               <PricingReviewCard pricing={datasetData.dataset.pricing} isDark={false} />
             )}
+
+            <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
+              <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
+                <CardTitle style={{ color: "var(--text-primary)" }}>Questions & Answers</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {questionsLoading ? (
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading questions...</p>
+                ) : !questionsData?.items?.length ? (
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>No questions found for this dataset.</p>
+                ) : (
+                  questionsData.items.map((q) => (
+                    <div key={q.id} className="rounded-lg border p-4" style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-surface)" }}>
+                      <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{q.question}</p>
+                      <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{formatDate(q.createdAt)}</p>
+
+                      {q.answers.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {q.answers.map((a) => (
+                            <div key={a.id} className="rounded-md p-3" style={{ backgroundColor: "var(--bg-base)", border: "1px solid var(--border-default)" }}>
+                              <p className="text-sm" style={{ color: "var(--text-primary)" }}>{a.answer}</p>
+                              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{formatDate(a.createdAt)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                        <input
+                          className="flex-1 h-10 px-3 rounded-md border text-sm"
+                          style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-base)", color: "var(--text-primary)" }}
+                          placeholder="Write an answer..."
+                          value={answerDrafts[q.id] || ""}
+                          onChange={(e) => setAnswerDrafts((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                        />
+                        <Button
+                          onClick={() => handleAnswerQuestion(q.id)}
+                          disabled={answerQuestionMutation.isPending || !(answerDrafts[q.id] || "").trim()}
+                        >
+                          Answer
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => handleDeleteQuestion(q.id)}
+                          disabled={deleteQuestionMutation.isPending}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
 
             {/* Features/Schema */}
             {features.length > 0 && (

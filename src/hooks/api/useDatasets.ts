@@ -42,6 +42,7 @@ export const datasetsKeys = {
   updateRequestList: (params: DatasetUpdateRequestParams) => [...datasetsKeys.updateRequests(), params] as const,
   assigned: () => [...datasetsKeys.all, 'assigned'] as const,
   assignedList: (params: AssignedDatasetParams) => [...datasetsKeys.assigned(), params] as const,
+  questions: (datasetId: string) => [...datasetsKeys.detail(datasetId), 'questions'] as const,
 };
 
 // ============================================
@@ -68,6 +69,14 @@ export function useProposalReview(datasetId: string) {
   return useQuery({
     queryKey: [...datasetsKeys.detail(datasetId), 'review'],
     queryFn: () => datasetsService.getProposalForReview(datasetId),
+    enabled: !!datasetId,
+  });
+}
+
+export function useDatasetQuestions(datasetId: string) {
+  return useQuery({
+    queryKey: datasetsKeys.questions(datasetId),
+    queryFn: () => datasetsService.getDatasetQuestions(datasetId),
     enabled: !!datasetId,
   });
 }
@@ -280,6 +289,41 @@ export function usePickProposal() {
       const err = error as any;
       if (err?.statusCode === 401 || err?.statusCode === 403) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to pick proposal');
+    },
+  });
+}
+
+export function useAnswerDatasetQuestion(datasetId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ questionId, answer }: { questionId: string; answer: string }) =>
+      datasetsService.answerDatasetQuestion(questionId, { answer }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.questions(datasetId) });
+      toast.success('Answer submitted');
+    },
+    onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to submit answer');
+    },
+  });
+}
+
+export function useDeleteDatasetQuestion(datasetId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (questionId: string) => datasetsService.deleteDatasetQuestion(questionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.questions(datasetId) });
+      toast.success('Question deleted');
+    },
+    onError: (error) => {
+      const err = error as any;
+      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to delete question');
     },
   });
 }

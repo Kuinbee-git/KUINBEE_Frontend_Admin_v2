@@ -28,6 +28,8 @@ import type {
   RejectProposalRequest,
   RequestChangesRequest,
   ProposalReviewResponse,
+  DatasetQuestionsResponse,
+  AnswerQuestionRequest,
   DatasetPricingDto,
   VerificationStatus,
   AssignmentStatus,
@@ -382,6 +384,21 @@ export async function requestChanges(
     datasetNeedsChanges: data.datasetNeedsChanges,
     pricingNeedsChanges: data.pricingNeedsChanges,
   });
+}
+
+export async function getDatasetQuestions(datasetId: string): Promise<DatasetQuestionsResponse> {
+  const response = await apiClient.get<{ data: DatasetQuestionsResponse }>(
+    API_ROUTES.MARKETPLACE.QUESTIONS(datasetId)
+  );
+  return response.data.data;
+}
+
+export async function answerDatasetQuestion(questionId: string, data: AnswerQuestionRequest): Promise<void> {
+  await apiClient.post(API_ROUTES.MARKETPLACE.ANSWER_QUESTION(questionId), data);
+}
+
+export async function deleteDatasetQuestion(questionId: string): Promise<void> {
+  await apiClient.delete(API_ROUTES.MARKETPLACE.DELETE_QUESTION(questionId));
 }
 
 // ============================================

@@ -455,6 +455,30 @@ export interface ProposalReviewResponse {
   sampleUpload?: DatasetUpload | null;
 }
 
+export interface DatasetQuestionAnswer {
+  id: string;
+  answer: string;
+  createdAt: string;
+}
+
+export interface DatasetQuestion {
+  id: string;
+  question: string;
+  createdAt: string;
+  answers: DatasetQuestionAnswer[];
+}
+
+export interface DatasetQuestionsResponse {
+  items: DatasetQuestion[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface AnswerQuestionRequest {
+  answer: string;
+}
+
 // ============================================
 // Legacy Types (for UI compatibility)
 // ============================================

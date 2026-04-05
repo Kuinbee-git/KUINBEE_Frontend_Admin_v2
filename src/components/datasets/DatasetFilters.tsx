@@ -1,11 +1,10 @@
 "use client";
 
 import { FilterBar, FilterConfig, ActiveFilter } from "@/components/shared/FilterBar";
-import { formatStatusLabel } from "@/components/shared/StatusBadge";
+import { useCategories } from "@/hooks/api/useCategories";
+import { useSources } from "@/hooks/api/useSources";
 import type { DatasetStatus, DatasetVisibility } from "@/types/dataset.types";
-
-type OwnerTypeFilter = "all" | "PLATFORM" | "SUPPLIER";
-type AssignmentType = "all" | "assigned_to_me" | "unassigned";
+import type { OwnerTypeFilter } from "./useDatasetFilters";
 
 interface DatasetFiltersProps {
   searchQuery: string;
@@ -14,23 +13,13 @@ interface DatasetFiltersProps {
   setStatusFilter: (value: DatasetStatus | "all") => void;
   ownerFilter: OwnerTypeFilter;
   setOwnerFilter: (value: OwnerTypeFilter) => void;
-  assignmentFilter: AssignmentType;
-  setAssignmentFilter: (value: AssignmentType) => void;
-  supplierFilter: string;
-  setSupplierFilter: (value: string) => void;
   categoryFilter: string;
   setCategoryFilter: (value: string) => void;
   sourceFilter: string;
   setSourceFilter: (value: string) => void;
-  superTypeFilter: string;
-  setSuperTypeFilter: (value: string) => void;
   visibilityFilter: DatasetVisibility | "all";
   setVisibilityFilter: (value: DatasetVisibility | "all") => void;
-  fileFormatFilter: string;
-  setFileFormatFilter: (value: string) => void;
-  supplierList: string[];
-  categoryList: string[];
-  sourceList: string[];
+  activeFilters: ActiveFilter[];
   clearAllFilters: () => void;
 }
 
@@ -41,25 +30,21 @@ export function DatasetFilters({
   setStatusFilter,
   ownerFilter,
   setOwnerFilter,
-  assignmentFilter,
-  setAssignmentFilter,
-  supplierFilter,
-  setSupplierFilter,
   categoryFilter,
   setCategoryFilter,
   sourceFilter,
   setSourceFilter,
-  superTypeFilter,
-  setSuperTypeFilter,
   visibilityFilter,
   setVisibilityFilter,
-  fileFormatFilter,
-  setFileFormatFilter,
-  supplierList,
-  categoryList,
-  sourceList,
+  activeFilters,
   clearAllFilters,
 }: DatasetFiltersProps) {
+  const { data: categoriesData } = useCategories({ pageSize: 100 });
+  const { data: sourcesData } = useSources({ pageSize: 100 });
+
+  const categoryOptions = categoriesData?.items ?? [];
+  const sourceOptions = sourcesData?.items ?? [];
+
   const filters: FilterConfig<unknown>[] = [
     {
       id: "search",
@@ -83,18 +68,6 @@ export function DatasetFilters({
       ],
     },
     {
-      id: "assignment",
-      type: "toggle",
-      label: "Assignment",
-      value: assignmentFilter,
-      onChange: (value) => setAssignmentFilter(value as AssignmentType),
-      options: [
-        { value: "all", label: "All" },
-        { value: "assigned_to_me", label: "Assigned to me" },
-        { value: "unassigned", label: "Unassigned" },
-      ],
-    },
-    {
       id: "status",
       type: "select",
       label: "Status",
@@ -108,19 +81,8 @@ export function DatasetFilters({
         { value: "REJECTED", label: "Rejected" },
         { value: "VERIFIED", label: "Verified" },
         { value: "PUBLISHED", label: "Published" },
+        { value: "DELISTED", label: "Delisted" },
         { value: "ARCHIVED", label: "Archived" },
-      ],
-    },
-    {
-      id: "supplier",
-      type: "select",
-      label: "Supplier",
-      value: supplierFilter,
-      onChange: (value) => setSupplierFilter(value as string),
-      width: "w-[180px]",
-      options: [
-        { value: "all", label: "All Suppliers" },
-        ...supplierList.map((s) => ({ value: s, label: s })),
       ],
     },
     {
@@ -132,7 +94,7 @@ export function DatasetFilters({
       width: "w-[180px]",
       options: [
         { value: "all", label: "All Categories" },
-        ...categoryList.map((c) => ({ value: c, label: c })),
+        ...categoryOptions.map((category) => ({ value: category.id, label: category.name })),
       ],
     },
     {
@@ -144,22 +106,7 @@ export function DatasetFilters({
       width: "w-[180px]",
       options: [
         { value: "all", label: "All Sources" },
-        ...sourceList.map((s) => ({ value: s, label: s })),
-      ],
-    },
-    {
-      id: "superType",
-      type: "select",
-      label: "Dataset Super Type",
-      value: superTypeFilter,
-      onChange: (value) => setSuperTypeFilter(value as string),
-      width: "w-[200px]",
-      showInPrimary: false,
-      options: [
-        { value: "all", label: "All Types" },
-        { value: "transactional", label: "Transactional Data" },
-        { value: "reference", label: "Reference Data" },
-        { value: "analytics", label: "Analytics Data" },
+        ...sourceOptions.map((source) => ({ value: source.id, label: source.name })),
       ],
     },
     {
@@ -177,103 +124,14 @@ export function DatasetFilters({
         { value: "UNLISTED", label: "Unlisted" },
       ],
     },
-    {
-      id: "fileFormat",
-      type: "select",
-      label: "File Format",
-      value: fileFormatFilter,
-      onChange: (value) => setFileFormatFilter(value as string),
-      width: "w-[180px]",
-      showInPrimary: false,
-      options: [
-        { value: "all", label: "All Formats" },
-        { value: "csv", label: "CSV" },
-        { value: "json", label: "JSON" },
-        { value: "parquet", label: "Parquet" },
-      ],
-    },
   ];
-
-  const activeFilters: ActiveFilter[] = [];
-
-  if (statusFilter !== "all") {
-    activeFilters.push({
-      key: "status",
-      label: `Status: ${formatStatusLabel(statusFilter)}`,
-      onRemove: () => setStatusFilter("all"),
-    });
-  }
-
-  if (ownerFilter !== "all") {
-    activeFilters.push({
-      key: "owner",
-      label: `Owner: ${ownerFilter.charAt(0).toUpperCase() + ownerFilter.slice(1)}`,
-      onRemove: () => setOwnerFilter("all"),
-    });
-  }
-
-  if (assignmentFilter !== "all") {
-    activeFilters.push({
-      key: "assignment",
-      label: assignmentFilter === "assigned_to_me" ? "Assigned to Me" : "Unassigned",
-      onRemove: () => setAssignmentFilter("all"),
-    });
-  }
-
-  if (supplierFilter !== "all") {
-    activeFilters.push({
-      key: "supplier",
-      label: `Supplier: ${supplierFilter}`,
-      onRemove: () => setSupplierFilter("all"),
-    });
-  }
-
-  if (categoryFilter !== "all") {
-    activeFilters.push({
-      key: "category",
-      label: `Category: ${categoryFilter}`,
-      onRemove: () => setCategoryFilter("all"),
-    });
-  }
-
-  if (sourceFilter !== "all") {
-    activeFilters.push({
-      key: "source",
-      label: `Source: ${sourceFilter}`,
-      onRemove: () => setSourceFilter("all"),
-    });
-  }
-
-  if (superTypeFilter !== "all") {
-    activeFilters.push({
-      key: "superType",
-      label: `Type: ${superTypeFilter}`,
-      onRemove: () => setSuperTypeFilter("all"),
-    });
-  }
-
-  if (visibilityFilter !== "all") {
-    activeFilters.push({
-      key: "visibility",
-      label: `Visibility: ${visibilityFilter}`,
-      onRemove: () => setVisibilityFilter("all"),
-    });
-  }
-
-  if (fileFormatFilter !== "all") {
-    activeFilters.push({
-      key: "fileFormat",
-      label: `Format: ${fileFormatFilter}`,
-      onRemove: () => setFileFormatFilter("all"),
-    });
-  }
 
   return (
     <FilterBar
       filters={filters}
       activeFilters={activeFilters}
       onClearAll={clearAllFilters}
-      showAdvancedFilters={true}
+      showAdvancedFilters={false}
     />
   );
 }

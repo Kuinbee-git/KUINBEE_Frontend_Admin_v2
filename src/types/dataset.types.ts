@@ -491,6 +491,12 @@ export interface DatasetQuestion {
   answers: DatasetQuestionAnswer[];
 }
 
+export interface DatasetQuestionDataset {
+  datasetId: string;
+  datasetTitle: string;
+  questionCount: number;
+}
+
 export interface DatasetQuestionsResponse {
   items: DatasetQuestion[];
   page: number;

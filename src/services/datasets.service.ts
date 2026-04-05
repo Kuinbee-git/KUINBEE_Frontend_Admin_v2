@@ -29,6 +29,7 @@ import type {
   RequestChangesRequest,
   ProposalReviewResponse,
   DatasetQuestionsResponse,
+  DatasetQuestionDataset,
   AnswerQuestionRequest,
   DatasetPricingDto,
   VerificationStatus,
@@ -36,6 +37,7 @@ import type {
   UploadScope,
   UploadStatus,
   PaginatedResponse,
+  ApiSuccessResponse,
 } from '@/types';
 
 // ============================================
@@ -89,6 +91,12 @@ export interface UploadListParams {
   status?: UploadStatus | 'ALL';
 }
 
+export interface DatasetQuestionDatasetsListParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+}
+
 // ============================================
 // Platform Datasets (Stage 4)
 // ============================================
@@ -100,12 +108,16 @@ export async function getDatasets(
   params: DatasetListParams = {}
 ): Promise<PaginatedResponse<DatasetListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<any>(
+  const response = await apiClient.get<ApiSuccessResponse<{
+    items: DatasetListItem[];
+    page: number;
+    pageSize: number;
+    total: number;
+  }>>(
     `${API_ROUTES.ADMIN.DATASETS.LIST}${query}`
   );
   
-  // API returns: { success: true, data: { items, page, pageSize, total } }
-  const apiData = response.data?.data || response.data;
+  const apiData = response.data.data;
   
   return {
     items: apiData.items || [],
@@ -122,24 +134,21 @@ export async function getDatasets(
  * Get dataset detail by ID
  */
 export async function getDatasetById(datasetId: string): Promise<DatasetDetailResponse> {
-  const response = await apiClient.get<any>(
+  const response = await apiClient.get<ApiSuccessResponse<DatasetDetailResponse>>(
     API_ROUTES.ADMIN.DATASETS.DETAIL(datasetId)
   );
-  // API returns: { success: true, data: { dataset, primaryCategory, ... } }
-  return response.data?.data || response.data;
+  return response.data.data;
 }
 
 /**
  * Create a new platform dataset
  */
 export async function createDataset(data: CreateDatasetRequest): Promise<Dataset> {
-  const response = await apiClient.post<any>(
+  const response = await apiClient.post<ApiSuccessResponse<{ dataset: Dataset }>>(
     API_ROUTES.ADMIN.DATASETS.CREATE,
     data
   );
-  // API returns: { success: true, data: { dataset } }
-  const apiData = response.data?.data || response.data;
-  return apiData.dataset;
+  return response.data.data.dataset;
 }
 
 /**
@@ -149,13 +158,11 @@ export async function updateDataset(
   datasetId: string,
   data: UpdateDatasetRequest
 ): Promise<Dataset> {
-  const response = await apiClient.patch<any>(
+  const response = await apiClient.patch<ApiSuccessResponse<{ dataset: Dataset }>>(
     API_ROUTES.ADMIN.DATASETS.UPDATE(datasetId),
     data
   );
-  // API returns: { success: true, data: { dataset } }
-  const apiData = response.data?.data || response.data;
-  return apiData.dataset;
+  return response.data.data.dataset;
 }
 
 /**
@@ -187,13 +194,11 @@ export async function publishDataset(
   datasetId: string,
   data: PublishDatasetRequest
 ): Promise<Dataset> {
-  const response = await apiClient.post<any>(
+  const response = await apiClient.post<ApiSuccessResponse<{ dataset: Dataset }>>(
     API_ROUTES.ADMIN.DATASETS.PUBLISH(datasetId),
     data
   );
-  // API returns: { success: true, data: { dataset } }
-  const apiData = response.data?.data || response.data;
-  return apiData.dataset;
+  return response.data.data.dataset;
 }
 
 /**
@@ -387,10 +392,34 @@ export async function requestChanges(
 }
 
 export async function getDatasetQuestions(datasetId: string): Promise<DatasetQuestionsResponse> {
-  const response = await apiClient.get<{ data: DatasetQuestionsResponse }>(
+  const response = await apiClient.get<ApiSuccessResponse<DatasetQuestionsResponse>>(
     API_ROUTES.MARKETPLACE.QUESTIONS(datasetId)
   );
   return response.data.data;
+}
+
+export async function getDatasetsWithQuestions(
+  params: DatasetQuestionDatasetsListParams = {}
+): Promise<PaginatedResponse<DatasetQuestionDataset>> {
+  const query = buildQueryString(params);
+  const response = await apiClient.get<ApiSuccessResponse<{
+    items: DatasetQuestionDataset[];
+    page: number;
+    pageSize: number;
+    total: number;
+  }>>(`${API_ROUTES.MARKETPLACE.QUESTION_DATASETS}${query}`);
+
+  const apiData = response.data.data;
+
+  return {
+    items: apiData.items || [],
+    pagination: {
+      page: apiData.page || 1,
+      pageSize: apiData.pageSize || 50,
+      total: apiData.total || 0,
+      totalPages: Math.ceil((apiData.total || 0) / (apiData.pageSize || 50)),
+    },
+  };
 }
 
 export async function answerDatasetQuestion(questionId: string, data: AnswerQuestionRequest): Promise<void> {

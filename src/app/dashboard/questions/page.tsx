@@ -20,11 +20,17 @@ export default function AdminQuestionsPage() {
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
   const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalDatasets, setTotalDatasets] = useState<number>(0);
+  const pageSize = 10;
 
-  const fetchDatasetList = async (preferredDatasetId?: string | null) => {
-    const listResponse = await getDatasetsWithQuestions({ page: 1, pageSize: 100 });
+  const fetchDatasetList = async (page: number = 1, search: string = "", preferredDatasetId?: string | null) => {
+    const listResponse = await getDatasetsWithQuestions({ page, pageSize, q: search || undefined });
     const items = listResponse.items || [];
     setDatasetsWithQuestions(items);
+    setTotalDatasets(listResponse.pagination?.total || 0);
+    setCurrentPage(page);
 
     if (items.length === 0) {
       setSelectedDatasetId(null);
@@ -57,7 +63,7 @@ export default function AdminQuestionsPage() {
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const nextSelectedId = await fetchDatasetList(selectedDatasetId);
+      const nextSelectedId = await fetchDatasetList(1, "", selectedDatasetId);
       if (nextSelectedId) {
         await fetchQuestionsForDataset(nextSelectedId);
       }
@@ -66,6 +72,16 @@ export default function AdminQuestionsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+    await fetchDatasetList(1, query, selectedDatasetId);
+  };
+
+  const handlePageChange = async (newPage: number) => {
+    await fetchDatasetList(newPage, searchQuery, selectedDatasetId);
   };
 
   useEffect(() => {
@@ -87,7 +103,7 @@ export default function AdminQuestionsPage() {
   };
 
   const refreshAfterMutation = async () => {
-    const nextSelectedId = await fetchDatasetList(selectedDatasetId);
+    const nextSelectedId = await fetchDatasetList(currentPage, searchQuery, selectedDatasetId);
     if (!nextSelectedId) {
       setQuestionsByDatasetId({});
       return;
@@ -146,7 +162,18 @@ export default function AdminQuestionsPage() {
             <CardHeader>
               <CardTitle>Datasets with Questions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-4">
+              <input
+                type="text"
+                placeholder="Search datasets..."
+                value={searchQuery}
+                onChange={(e) => {
+                  void handleSearch(e.target.value);
+                }}
+                className="w-full h-10 px-3 rounded-md border text-sm"
+                style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+              />
+              <div className="space-y-2">
               {datasetsWithQuestions.map((datasetItem) => {
                 const isActive = datasetItem.datasetId === selectedDatasetId;
                 return (
@@ -170,6 +197,38 @@ export default function AdminQuestionsPage() {
                   </button>
                 );
               })}
+              </div>
+              <div className="border-t pt-4" style={{ borderColor: "var(--border-default)" }}>
+                <div className="flex items-center justify-between text-sm">
+                  <p style={{ color: "var(--text-muted)" }}>
+                    Showing {datasetsWithQuestions.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{" "}
+                    {Math.min(currentPage * pageSize, totalDatasets)} of {totalDatasets} datasets
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        void handlePageChange(currentPage - 1);
+                      }}
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 rounded border text-sm disabled:opacity-50"
+                      style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ color: "var(--text-muted)" }}>Page {currentPage}</span>
+                    <button
+                      onClick={() => {
+                        void handlePageChange(currentPage + 1);
+                      }}
+                      disabled={currentPage * pageSize >= totalDatasets}
+                      className="px-3 py-2 rounded border text-sm disabled:opacity-50"
+                      style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

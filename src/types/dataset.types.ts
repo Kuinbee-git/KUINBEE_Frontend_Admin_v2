@@ -323,6 +323,20 @@ export interface ApproveProposalRequest {
 
 export interface DatasetListItem {
   dataset: Dataset;
+  owner?: {
+    id: string;
+    email: string;
+    supplierProfile?: {
+      companyName: string | null;
+      individualName: string | null;
+      contactPersonName: string | null;
+    };
+  };
+  assignedAdmin?: {
+    id: string;
+    email: string;
+    name?: string | null;
+  } | null;
   primaryCategory?: {
     id: string;
     name: string;
@@ -372,6 +386,15 @@ export interface DatasetProposalListItem {
     createdAt: string;
     updatedAt: string;
   };
+  supplier?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  primaryCategory?: {
+    id: string;
+    name: string;
+  } | null;
   verification: DatasetVerification | null;
   activeAssignment: DatasetAssignment | null;
 }

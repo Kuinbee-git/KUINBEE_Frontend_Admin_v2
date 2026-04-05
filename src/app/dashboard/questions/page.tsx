@@ -6,58 +6,60 @@ import { Button } from "@/components/ui/button";
 import {
   answerDatasetQuestion,
   deleteDatasetQuestion,
+  getDatasetsWithQuestions,
   getDatasetQuestions,
-  getDatasets,
 } from "@/services/datasets.service";
-import type { DatasetListItem } from "@/types/dataset.types";
-
-type QuestionItem = {
-  id: string;
-  question: string;
-  createdAt: string;
-  answers: Array<{ id: string; answer: string; createdAt: string }>;
-};
-
-type QuestionBucket = {
-  datasetItem: DatasetListItem;
-  questions: QuestionItem[];
-};
+import type { DatasetQuestion, DatasetQuestionDataset } from "@/types/dataset.types";
 
 export default function AdminQuestionsPage() {
   const [loading, setLoading] = useState(true);
-  const [buckets, setBuckets] = useState<QuestionBucket[]>([]);
+  const [datasetsWithQuestions, setDatasetsWithQuestions] = useState<DatasetQuestionDataset[]>([]);
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
+  const [questionsByDatasetId, setQuestionsByDatasetId] = useState<Record<string, DatasetQuestion[]>>({});
+  const [loadingQuestionsForDatasetId, setLoadingQuestionsForDatasetId] = useState<string | null>(null);
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
   const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchDatasetList = async (preferredDatasetId?: string | null) => {
+    const listResponse = await getDatasetsWithQuestions({ page: 1, pageSize: 100 });
+    const items = listResponse.items || [];
+    setDatasetsWithQuestions(items);
+
+    if (items.length === 0) {
+      setSelectedDatasetId(null);
+      return null;
+    }
+
+    const preferredExists = preferredDatasetId
+      ? items.some((item) => item.datasetId === preferredDatasetId)
+      : false;
+    const nextSelectedId = preferredExists && preferredDatasetId
+      ? preferredDatasetId
+      : items[0].datasetId;
+    setSelectedDatasetId(nextSelectedId);
+    return nextSelectedId;
+  };
+
+  const fetchQuestionsForDataset = async (datasetId: string) => {
+    setLoadingQuestionsForDatasetId(datasetId);
+    try {
+      const questionResponse = await getDatasetQuestions(datasetId);
+      setQuestionsByDatasetId((prev) => ({
+        ...prev,
+        [datasetId]: questionResponse.items || [],
+      }));
+    } finally {
+      setLoadingQuestionsForDatasetId((current) => (current === datasetId ? null : current));
+    }
+  };
+
+  const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const datasetsResponse = await getDatasets({ page: 1, pageSize: 100 });
-      const datasets = datasetsResponse.items;
-      
-      const questionBuckets = await Promise.all(
-        datasets.map(async (datasetItem) => {
-          try {
-            const questionResponse = await getDatasetQuestions(datasetItem.dataset.id);
-            return {
-              datasetItem,
-              questions: questionResponse.items || [],
-            } as QuestionBucket;
-          } catch {
-            return {
-              datasetItem,
-              questions: [],
-            } as QuestionBucket;
-          }
-        })
-      );
-
-      const filtered = questionBuckets.filter((b) => b.questions.length > 0);
-      setBuckets(filtered);
-      if (!selectedDatasetId && filtered.length > 0) {
-        setSelectedDatasetId(filtered[0].datasetItem.dataset.id);
+      const nextSelectedId = await fetchDatasetList(selectedDatasetId);
+      if (nextSelectedId) {
+        await fetchQuestionsForDataset(nextSelectedId);
       }
     } catch (error) {
        console.error("Error fetching questions data", error);
@@ -67,13 +69,31 @@ export default function AdminQuestionsPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchInitialData();
   }, []);
 
-  const selected = useMemo(
-    () => buckets.find((b) => b.datasetItem.dataset.id === selectedDatasetId) || null,
-    [buckets, selectedDatasetId]
-  );
+  const selected = useMemo(() => {
+    if (!selectedDatasetId) return null;
+    return datasetsWithQuestions.find((item) => item.datasetId === selectedDatasetId) || null;
+  }, [datasetsWithQuestions, selectedDatasetId]);
+
+  const selectedQuestions = selectedDatasetId ? questionsByDatasetId[selectedDatasetId] || [] : [];
+
+  const handleSelectDataset = async (datasetId: string) => {
+    setSelectedDatasetId(datasetId);
+    if (!questionsByDatasetId[datasetId]) {
+      await fetchQuestionsForDataset(datasetId);
+    }
+  };
+
+  const refreshAfterMutation = async () => {
+    const nextSelectedId = await fetchDatasetList(selectedDatasetId);
+    if (!nextSelectedId) {
+      setQuestionsByDatasetId({});
+      return;
+    }
+    await fetchQuestionsForDataset(nextSelectedId);
+  };
 
   const handleAnswer = async (questionId: string) => {
     const answer = (answerDrafts[questionId] || "").trim();
@@ -83,7 +103,7 @@ export default function AdminQuestionsPage() {
       setAnsweringQuestionId(questionId);
       await answerDatasetQuestion(questionId, { answer });
       setAnswerDrafts((prev) => ({ ...prev, [questionId]: "" }));
-      await fetchData();
+      await refreshAfterMutation();
     } finally {
       setAnsweringQuestionId(null);
     }
@@ -93,7 +113,7 @@ export default function AdminQuestionsPage() {
     try {
       setDeletingQuestionId(questionId);
       await deleteDatasetQuestion(questionId);
-      await fetchData();
+      await refreshAfterMutation();
     } finally {
       setDeletingQuestionId(null);
     }
@@ -114,7 +134,7 @@ export default function AdminQuestionsPage() {
             <p style={{ color: "var(--text-muted)" }}>Loading questions...</p>
           </CardContent>
         </Card>
-      ) : buckets.length === 0 ? (
+      ) : datasetsWithQuestions.length === 0 ? (
         <Card style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
           <CardContent className="p-6">
             <p style={{ color: "var(--text-muted)" }}>No marketplace datasets with questions right now.</p>
@@ -127,12 +147,14 @@ export default function AdminQuestionsPage() {
               <CardTitle>Datasets with Questions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {buckets.map((bucket) => {
-                const isActive = bucket.datasetItem.dataset.id === selectedDatasetId;
+              {datasetsWithQuestions.map((datasetItem) => {
+                const isActive = datasetItem.datasetId === selectedDatasetId;
                 return (
                   <button
-                    key={bucket.datasetItem.dataset.id}
-                    onClick={() => setSelectedDatasetId(bucket.datasetItem.dataset.id)}
+                    key={datasetItem.datasetId}
+                    onClick={() => {
+                      void handleSelectDataset(datasetItem.datasetId);
+                    }}
                     className="w-full text-left rounded-lg p-3 border"
                     style={{
                       backgroundColor: isActive ? "var(--bg-hover)" : "var(--bg-surface)",
@@ -140,10 +162,10 @@ export default function AdminQuestionsPage() {
                     }}
                   >
                     <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
-                      {bucket.datasetItem.dataset.title}
+                      {datasetItem.datasetTitle}
                     </p>
                     <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                      {bucket.questions.length} question{bucket.questions.length === 1 ? "" : "s"}
+                      {datasetItem.questionCount} question{datasetItem.questionCount === 1 ? "" : "s"}
                     </p>
                   </button>
                 );
@@ -153,10 +175,14 @@ export default function AdminQuestionsPage() {
 
           <Card className="lg:col-span-2" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
             <CardHeader>
-              <CardTitle>{selected?.datasetItem.dataset.title || "Questions"}</CardTitle>
+              <CardTitle>{selected?.datasetTitle || "Questions"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {selected?.questions.map((question) => (
+              {selectedDatasetId && loadingQuestionsForDatasetId === selectedDatasetId ? (
+                <p style={{ color: "var(--text-muted)" }}>Loading dataset questions...</p>
+              ) : selectedQuestions.length === 0 ? (
+                <p style={{ color: "var(--text-muted)" }}>No questions in this dataset.</p>
+              ) : selectedQuestions.map((question) => (
                 <div key={question.id} className="rounded-lg border p-4" style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-surface)" }}>
                   <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{question.question}</p>
                   <p className="text-xs mt-1 mb-3" style={{ color: "var(--text-muted)" }}>

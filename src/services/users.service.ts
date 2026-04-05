@@ -14,6 +14,7 @@ import type {
   DeleteUserResponse,
   UserStatus,
   PaginatedResponse,
+  ApiSuccessResponse,
 } from '@/types';
 
 // ============================================
@@ -40,10 +41,25 @@ export async function getUsers(
   params: UserListParams = {}
 ): Promise<PaginatedResponse<UserListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<PaginatedResponse<UserListItem>>(
+  const response = await apiClient.get<ApiSuccessResponse<{
+    items: UserListItem[];
+    page: number;
+    pageSize: number;
+    total: number;
+  }>>(
     `${API_ROUTES.ADMIN.USERS.LIST}${query}`
   );
-  return response.data;
+
+  // Backend wraps paginated data in { success, data } structure
+  const result = response.data.data;
+  return {
+    items: Array.isArray(result.items) ? result.items : [],
+    pagination: {
+      page: result.page ?? 1,
+      pageSize: result.pageSize ?? 10,
+      total: result.total ?? 0,
+    },
+  };
 }
 
 // ============================================
@@ -54,10 +70,10 @@ export async function getUsers(
  * Get detailed user information by ID
  */
 export async function getUserById(userId: string): Promise<UserDetailResponse> {
-  const response = await apiClient.get<UserDetailResponse>(
+  const response = await apiClient.get<ApiSuccessResponse<UserDetailResponse>>(
     API_ROUTES.ADMIN.USERS.DETAIL(userId)
   );
-  return response.data;
+  return response.data.data;
 }
 
 // ============================================
@@ -72,11 +88,11 @@ export async function suspendUser(
   userId: string,
   data?: SuspendUserRequest
 ): Promise<SuspendUserResponse['user']> {
-  const response = await apiClient.post<SuspendUserResponse>(
+  const response = await apiClient.post<ApiSuccessResponse<SuspendUserResponse>>(
     API_ROUTES.ADMIN.USERS.SUSPEND(userId),
     data || {}
   );
-  return response.data.user;
+  return response.data.data.user;
 }
 
 /**
@@ -84,10 +100,10 @@ export async function suspendUser(
  * Sets user status to DELETED
  */
 export async function deleteUser(userId: string): Promise<DeleteUserResponse['user']> {
-  const response = await apiClient.delete<DeleteUserResponse>(
+  const response = await apiClient.delete<ApiSuccessResponse<DeleteUserResponse>>(
     API_ROUTES.ADMIN.USERS.DELETE(userId)
   );
-  return response.data.user;
+  return response.data.data.user;
 }
 
 // ============================================

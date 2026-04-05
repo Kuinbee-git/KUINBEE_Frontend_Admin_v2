@@ -19,6 +19,7 @@ export interface ProposalListItem {
   datasetUniqueId: string;
   title: string;
   supplierName: string;
+  supplierEmail: string;
   supplierId: string;
   category: string;
   source: string;
@@ -73,9 +74,10 @@ export function ProposalsView() {
       id: item.dataset.id,
       datasetUniqueId: item.dataset.datasetUniqueId,
       title: item.dataset.title,
-      supplierName: "Supplier", // TODO: Lookup supplier name via ownerId
+      supplierName: item.supplier?.name ?? "Supplier",
+      supplierEmail: item.supplier?.email ?? "",
       supplierId: item.dataset.ownerId,
-      category: item.dataset.primaryCategoryId, // TODO: Lookup category name
+      category: item.primaryCategory?.name ?? "N/A",
       source: item.dataset.sourceId, // TODO: Lookup source name
       status: item.dataset.status,
       verificationStatus: item.verification?.status || "PENDING",

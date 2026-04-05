@@ -60,9 +60,16 @@ export function ProposalTable({ proposals, onRowClick, onPickProposal }: Proposa
               </div>
             </td>
             <td className="p-4">
-              <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-                {proposal.supplierName}
-              </p>
+              <div className="flex flex-col">
+                <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+                  {proposal.supplierName}
+                </p>
+                {proposal.supplierEmail && (
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    {proposal.supplierEmail}
+                  </p>
+                )}
+              </div>
             </td>
             <td className="p-4">
               <p className="text-sm" style={{ color: "var(--text-secondary)" }}>

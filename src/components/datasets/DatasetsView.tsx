@@ -1,19 +1,17 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { DatasetFilters } from "./DatasetFilters";
 import { DatasetTable } from "./DatasetTable";
+import { DatasetPagination } from "./DatasetPagination";
+import { DatasetEmptyState } from "./DatasetEmptyState";
+import { useDatasetFilters } from "./useDatasetFilters";
 import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { useDatasets, useUpdateDataset, datasetsKeys } from "@/hooks/api/useDatasets";
 import { useMyPermissions } from "@/hooks/api/useAuth";
-import { useDebounce } from "@/hooks/useDebounce";
-import type { DatasetStatus, DatasetVisibility, OwnerType } from "@/types/dataset.types";
-
-type OwnerTypeFilter = "all" | "PLATFORM" | "SUPPLIER";
-type AssignmentType = "all" | "assigned_to_me" | "unassigned";
 
 export function DatasetsView() {
   const router = useRouter();
@@ -24,106 +22,58 @@ export function DatasetsView() {
     queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
   }, [queryClient]);
 
-  // Filter state
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<DatasetStatus | "all">("PUBLISHED");
-  const [ownerFilter, setOwnerFilter] = useState<OwnerTypeFilter>("all");
-  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentType>("all");
-  const [supplierFilter, setSupplierFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
-  const [superTypeFilter, setSuperTypeFilter] = useState<string>("all");
-  const [visibilityFilter, setVisibilityFilter] = useState<DatasetVisibility | "all">("all");
-  const [fileFormatFilter, setFileFormatFilter] = useState<string>("all");
-  const [page, setPage] = useState(1);
-  const limit = 10;
-
-  // Debounce search
-  const debouncedSearch = useDebounce(searchQuery, 500);
-
-  // Reset page when filters change
-
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, statusFilter, ownerFilter, visibilityFilter, categoryFilter, sourceFilter]);
-
-  // Fetch datasets with filters
-  const { data, isLoading, error } = useDatasets({
+  const {
     page,
-    pageSize: limit,
-    q: debouncedSearch || undefined,
-    status: statusFilter !== "all" ? statusFilter : undefined,
-    visibility: visibilityFilter !== "all" ? visibilityFilter : undefined,
-    ownerType: ownerFilter !== "all" ? ownerFilter as OwnerType : undefined,
-    primaryCategoryId: categoryFilter !== "all" ? categoryFilter : undefined,
-    sourceId: sourceFilter !== "all" ? sourceFilter : undefined,
-  });
+    pageSize,
+    setPage,
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    ownerFilter,
+    setOwnerFilter,
+    visibilityFilter,
+    setVisibilityFilter,
+    categoryFilter,
+    setCategoryFilter,
+    sourceFilter,
+    setSourceFilter,
+    activeFilters,
+    hasActiveFilters,
+    clearAllFilters,
+    filters,
+  } = useDatasetFilters();
 
-  // Permissions
+  const { data, isLoading, error } = useDatasets(filters);
+
   const { data: permissionsData } = useMyPermissions();
 
-  // Transform data for UI
-  const datasets = useMemo(() => {
-    if (!data?.items) return [];
-    return data.items.map((item) => ({
-      id: item.dataset.id,
-      datasetUniqueId: item.dataset.datasetUniqueId,
-      name: item.dataset.title,
-      owner: item.dataset.ownerType,
-      category: item.primaryCategory?.name || "N/A",
-      source: item.source?.name || "N/A",
-      status: item.dataset.status,
-      visibility: item.dataset.visibility,
-      assignedTo: null,
-      lastUpdated: new Date(item.dataset.updatedAt).toLocaleDateString(),
-      createdDate: new Date(item.dataset.createdAt).toLocaleDateString(),
-    }));
-  }, [data]);
+  const datasets = data?.items ?? [];
 
   const totalPages = useMemo(() => {
     if (!data?.pagination) return 0;
     return Math.ceil(data.pagination.total / data.pagination.pageSize);
   }, [data]);
 
-  const clearAllFilters = useCallback(() => {
-    setSearchQuery("");
-    setStatusFilter("PUBLISHED");
-    setOwnerFilter("all");
-    setAssignmentFilter("all");
-    setSupplierFilter("all");
-    setCategoryFilter("all");
-    setSourceFilter("all");
-    setSuperTypeFilter("all");
-    setVisibilityFilter("all");
-    setFileFormatFilter("all");
-    setPage(1);
-  }, []);
-
   const showOwnerColumn = ownerFilter === "all";
 
   const updateDatasetMutation = useUpdateDataset();
 
   const handleVisibilityChange = useCallback(
-    (datasetId: string, visibility: "PUBLIC" | "PRIVATE" | "UNLISTED") => {
-      updateDatasetMutation.mutate({ datasetId, data: { visibility } });
+    async (datasetId: string, visibility: "PUBLIC" | "PRIVATE" | "UNLISTED") => {
+      await updateDatasetMutation.mutateAsync({ datasetId, data: { visibility } });
     },
     [updateDatasetMutation]
   );
 
   const handleRowClick = useCallback((datasetId: string) => {
-    // Find the dataset to check its owner type
-    const dataset = datasets.find(d => d.id === datasetId);
-    if (dataset?.owner === "PLATFORM") {
+    const dataset = datasets.find((item) => item.dataset.id === datasetId);
+    if (dataset?.dataset.ownerType === "PLATFORM") {
       router.push(`/dashboard/platform-datasets/${datasetId}`);
     } else {
       router.push(`/dashboard/datasets/${datasetId}`);
     }
   }, [router, datasets]);
-
-  // Extract unique values for dropdowns (mock for now)
-  const supplierList: string[] = [];
-  const categoryList: string[] = [];
-  const sourceList: string[] = [];
 
   const handleCreateClick = useCallback(() => {
     router.push("/dashboard/datasets/new");
@@ -168,23 +118,13 @@ export function DatasetsView() {
         setStatusFilter={setStatusFilter}
         ownerFilter={ownerFilter}
         setOwnerFilter={setOwnerFilter}
-        assignmentFilter={assignmentFilter}
-        setAssignmentFilter={setAssignmentFilter}
-        supplierFilter={supplierFilter}
-        setSupplierFilter={setSupplierFilter}
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
         sourceFilter={sourceFilter}
         setSourceFilter={setSourceFilter}
-        superTypeFilter={superTypeFilter}
-        setSuperTypeFilter={setSuperTypeFilter}
         visibilityFilter={visibilityFilter}
         setVisibilityFilter={setVisibilityFilter}
-        fileFormatFilter={fileFormatFilter}
-        setFileFormatFilter={setFileFormatFilter}
-        supplierList={supplierList}
-        categoryList={categoryList}
-        sourceList={sourceList}
+        activeFilters={activeFilters}
         clearAllFilters={clearAllFilters}
       />
 
@@ -204,21 +144,7 @@ export function DatasetsView() {
               <p className="text-red-500">Failed to load datasets</p>
             </div>
           ) : datasets.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-lg font-medium mb-2" style={{ color: "var(--text-primary)" }}>
-                No datasets found
-              </p>
-              <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>
-                {debouncedSearch || statusFilter !== "all" || ownerFilter !== "all" || visibilityFilter !== "all" || categoryFilter !== "all" || sourceFilter !== "all"
-                  ? "Try adjusting your filters"
-                  : "Get started by creating your first dataset"}
-              </p>
-              {(debouncedSearch || statusFilter !== "all" || ownerFilter !== "all" || visibilityFilter !== "all" || categoryFilter !== "all" || sourceFilter !== "all") && (
-                <Button onClick={clearAllFilters} variant="outline">
-                  Clear Filters
-                </Button>
-              )}
-            </div>
+            <DatasetEmptyState hasActiveFilters={hasActiveFilters} onClearFilters={clearAllFilters} />
           ) : (
             <DatasetTable
               datasets={datasets}
@@ -226,35 +152,17 @@ export function DatasetsView() {
               onRowClick={handleRowClick}
               onVisibilityChange={handleVisibilityChange}
             />
-
           )}
         </div>
 
-        {/* Pagination */}
         {!isLoading && datasets.length > 0 && data?.pagination && (
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data.pagination.total)} of {data.pagination.total} datasets
-            </p>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                variant="outline"
-                size="sm"
-              >
-                Previous
-              </Button>
-              <Button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                variant="outline"
-                size="sm"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          <DatasetPagination
+            page={page}
+            pageSize={pageSize}
+            total={data.pagination.total}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         )}
       </div>
     </div>

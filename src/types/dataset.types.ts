@@ -165,6 +165,8 @@ export interface DatasetVerification {
   currentUploadId: string | null;
   notes: string | null;
   rejectionReason: string | null;
+  verifiedBy?: string | null;
+  verifiedByName?: string | null;
   submittedAt: string | null;
   verifiedAt: string | null;
   rejectedAt: string | null;
@@ -442,6 +444,7 @@ export interface ProposalReviewResponse {
     rejectionReason: string | null;
     notes: string | null;
     verifiedBy: string | null;
+    verifiedByName?: string | null;
     submittedAt: string | null;
     verifiedAt: string | null;
     rejectedAt: string | null;

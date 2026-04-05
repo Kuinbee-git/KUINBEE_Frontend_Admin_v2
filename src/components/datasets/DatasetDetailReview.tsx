@@ -773,7 +773,10 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                 {verification.verifiedAt && (
                   <div>
                     <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Verified</p>
-                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{formatDate(verification.verifiedAt)}</p>
+                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>
+                      {formatDate(verification.verifiedAt)}
+                      {verification.verifiedByName && ` by ${verification.verifiedByName}`}
+                    </p>
                   </div>
                 )}
 

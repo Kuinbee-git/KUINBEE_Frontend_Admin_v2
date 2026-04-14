@@ -13,3 +13,4 @@ export * as rolesService from './roles.service';
 export * as suppliersService from './suppliers.service';
 export * as supplierInvitesService from './supplier-invites.service';
 export * as kdtsService from './kdts.service';
+export * as reportsService from './reports.service';

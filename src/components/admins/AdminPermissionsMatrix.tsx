@@ -73,6 +73,11 @@ export function AdminPermissionsMatrix({
       label: 'Audit',
       permissions: Object.values(PERMISSIONS.AUDIT),
     },
+    {
+      name: 'reports',
+      label: 'Reports',
+      permissions: Object.values(PERMISSIONS.REPORTS),
+    },
   ];
 
   return (

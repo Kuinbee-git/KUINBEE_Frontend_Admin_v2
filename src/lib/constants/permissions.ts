@@ -78,6 +78,12 @@ export const PERMISSIONS = {
     VIEW: 'VIEW_AUDIT_LOGS',
     EXPORT: 'EXPORT_AUDIT_LOGS',
   },
+
+  // Reports (2 permissions)
+  REPORTS: {
+    VIEW: 'VIEW_REPORTS',
+    EXPORT: 'EXPORT_REPORTS',
+  },
 } as const;
 
 // Flat array of all permissions for iteration
@@ -90,6 +96,7 @@ export const ALL_PERMISSIONS = [
   ...Object.values(PERMISSIONS.ADMINS),
   ...Object.values(PERMISSIONS.ROLES),
   ...Object.values(PERMISSIONS.AUDIT),
+  ...Object.values(PERMISSIONS.REPORTS),
 ];
 
 // Permission labels for UI display
@@ -151,4 +158,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   // Audit
   VIEW_AUDIT_LOGS: 'View Audit Logs',
   EXPORT_AUDIT_LOGS: 'Export Audit Logs',
+
+  // Reports
+  VIEW_REPORTS: 'View Reports',
+  EXPORT_REPORTS: 'Export Reports',
 };

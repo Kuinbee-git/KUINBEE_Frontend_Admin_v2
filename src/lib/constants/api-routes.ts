@@ -191,6 +191,11 @@ export const API_ROUTES = {
       LIST: '/v1/admin/roles',
       DETAIL: (roleId: string) => `/v1/admin/roles/${roleId}`,
     },
+
+    // Reports
+    REPORTS: {
+      RUN_DAILY_DATASET: '/v1/admin/reports/daily-dataset/run',
+    },
   },
 
   // ============================================

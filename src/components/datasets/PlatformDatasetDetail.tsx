@@ -65,6 +65,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ENCODING_TYPES } from "@/types";
 import type {
   UpdateDatasetRequest,
   UpdateDatasetMetadataRequest,
@@ -74,6 +75,7 @@ import type {
   UploadStatus,
   FileFormat,
   CompressionType,
+  EncodingType,
 } from "@/types";
 
 // ============================================
@@ -299,7 +301,7 @@ export function PlatformDatasetDetail({ datasetId }: PlatformDatasetDetailProps)
   const [editCols, setEditCols] = useState("");
   const [editFileSize, setEditFileSize] = useState("");
   const [editCompression, setEditCompression] = useState<string>("");
-  const [editEncoding, setEditEncoding] = useState("");
+  const [editEncoding, setEditEncoding] = useState<EncodingType>("UTF-8");
 
   // ---- Features edit state ----
   const [editFeatures, setEditFeatures] = useState<Array<{ name: string; dataType: string; description: string; isNullable: boolean }>>([]);
@@ -353,12 +355,15 @@ export function PlatformDatasetDetail({ datasetId }: PlatformDatasetDetailProps)
 
   const startEditDataFormat = useCallback(() => {
     const f = datasetData?.dataFormatInfo;
+    const normalizedEncoding: EncodingType = f?.encoding && ENCODING_TYPES.includes(f.encoding as EncodingType)
+      ? (f.encoding as EncodingType)
+      : "UTF-8";
     setEditFileFormat(f?.fileFormat || "");
     setEditRows(f?.rows?.toString() || "");
     setEditCols(f?.cols?.toString() || "");
     setEditFileSize(f?.fileSize || "");
     setEditCompression(f?.compressionType || "");
-    setEditEncoding(f?.encoding || "");
+    setEditEncoding(normalizedEncoding);
     setEditingSection("dataFormat");
   }, [datasetData]);
 
@@ -1054,7 +1059,14 @@ export function PlatformDatasetDetail({ datasetId }: PlatformDatasetDetailProps)
                   </div>
                   <div>
                     <Label className="text-xs">Encoding</Label>
-                    <Input value={editEncoding} onChange={(e) => setEditEncoding(e.target.value)} className="mt-1.5" placeholder="e.g., UTF-8" />
+                    <Select value={editEncoding} onValueChange={(value) => setEditEncoding(value as EncodingType)}>
+                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select encoding" /></SelectTrigger>
+                      <SelectContent>
+                        {ENCODING_TYPES.map((encodingOption) => (
+                          <SelectItem key={encodingOption} value={encodingOption}>{encodingOption}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               }

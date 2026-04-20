@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import type { UpdateDatasetMetadataRequest, FileFormat, CompressionType } from "@/types/dataset.types";
+import { ENCODING_TYPES } from "@/types/dataset.types";
+import type { UpdateDatasetMetadataRequest, FileFormat, CompressionType, EncodingType } from "@/types/dataset.types";
 
 interface EditMetadataDialogProps {
   open: boolean;
@@ -50,6 +51,13 @@ export function EditMetadataDialog({
   onSave,
   initialData,
 }: EditMetadataDialogProps) {
+  const normalizeEncoding = (value?: string | null): EncodingType => {
+    if (value && ENCODING_TYPES.includes(value as EncodingType)) {
+      return value as EncodingType;
+    }
+    return "UTF-8";
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // About Dataset Info
@@ -71,7 +79,7 @@ export function EditMetadataDialog({
   // Data Format Info
   const [fileFormat, setFileFormat] = useState(initialData.dataFormatInfo?.fileFormat || "");
   const [compressionType, setCompressionType] = useState(initialData.dataFormatInfo?.compressionType || "");
-  const [encoding, setEncoding] = useState(initialData.dataFormatInfo?.encoding || "");
+  const [encoding, setEncoding] = useState<EncodingType>(normalizeEncoding(initialData.dataFormatInfo?.encoding));
 
   // Tags
   const [tagsInput, setTagsInput] = useState(
@@ -312,12 +320,14 @@ export function EditMetadataDialog({
 
                 <div>
                   <Label htmlFor="encoding">Encoding</Label>
-                  <Input
-                    id="encoding"
-                    value={encoding}
-                    onChange={(e) => setEncoding(e.target.value)}
-                    placeholder="e.g., UTF-8"
-                  />
+                  <Select value={encoding} onValueChange={(value) => setEncoding(value as EncodingType)}>
+                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select encoding" /></SelectTrigger>
+                    <SelectContent>
+                      {ENCODING_TYPES.map((encodingOption) => (
+                        <SelectItem key={encodingOption} value={encodingOption}>{encodingOption}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

@@ -2,11 +2,11 @@
  * AdminPermissionsMatrix - Permission checkboxes organized by domain
  * Uses string-based permissions matching backend
  */
-"use client";
+'use client';
 import React from 'react';
 import { Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PERMISSIONS, PERMISSION_LABELS, ALL_PERMISSIONS } from '@/lib/constants/permissions';
+import { PERMISSIONS, PERMISSION_LABELS } from '@/lib/constants/permissions';
 
 interface AdminPermissionsMatrixProps {
   permissions: string[];
@@ -78,6 +78,11 @@ export function AdminPermissionsMatrix({
       label: 'Reports',
       permissions: Object.values(PERMISSIONS.REPORTS),
     },
+    {
+      name: 'custom-collection',
+      label: 'Custom Collection',
+      permissions: Object.values(PERMISSIONS.CUSTOM_COLLECTION),
+    },
   ];
 
   return (
@@ -119,7 +124,7 @@ export function AdminPermissionsMatrix({
                 {domain.permissions.map((permissionId) => {
                   const granted = permissions.includes(permissionId);
                   const label = PERMISSION_LABELS[permissionId] || permissionId;
-                  
+
                   return (
                     <label
                       key={permissionId}

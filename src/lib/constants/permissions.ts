@@ -1,7 +1,7 @@
 /**
  * Admin Permissions
  * Matches backend permission format (uppercase with underscores)
- * 37 permissions from /api/v1/enums/permissions
+ * Permission strings used by the admin UI.
  */
 
 export const PERMISSIONS = {
@@ -84,6 +84,11 @@ export const PERMISSIONS = {
     VIEW: 'VIEW_REPORTS',
     EXPORT: 'EXPORT_REPORTS',
   },
+
+  CUSTOM_COLLECTION: {
+    REVIEW_SERVICES: 'REVIEW_CUSTOM_COLLECTION_SERVICE',
+    MANAGE_LEADS: 'MANAGE_CUSTOM_COLLECTION_LEADS',
+  },
 } as const;
 
 // Flat array of all permissions for iteration
@@ -97,6 +102,7 @@ export const ALL_PERMISSIONS = [
   ...Object.values(PERMISSIONS.ROLES),
   ...Object.values(PERMISSIONS.AUDIT),
   ...Object.values(PERMISSIONS.REPORTS),
+  ...Object.values(PERMISSIONS.CUSTOM_COLLECTION),
 ];
 
 // Permission labels for UI display
@@ -162,4 +168,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   // Reports
   VIEW_REPORTS: 'View Reports',
   EXPORT_REPORTS: 'Export Reports',
+
+  // Custom collection
+  REVIEW_CUSTOM_COLLECTION_SERVICE: 'Review Custom Services',
+  MANAGE_CUSTOM_COLLECTION_LEADS: 'Manage Custom Service Leads',
 };

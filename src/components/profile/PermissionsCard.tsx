@@ -2,19 +2,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 
 const PERMISSION_GROUPS: Record<string, string[]> = {
-  'Categories': [
-    'CREATE_CATEGORY',
-    'UPDATE_CATEGORY',
-    'DELETE_CATEGORY',
-    'VIEW_CATEGORY',
-  ],
-  'Sources': [
-    'CREATE_SOURCE',
-    'UPDATE_SOURCE',
-    'DELETE_SOURCE',
-    'VIEW_SOURCE',
-  ],
-  'Datasets': [
+  Categories: ['CREATE_CATEGORY', 'UPDATE_CATEGORY', 'DELETE_CATEGORY', 'VIEW_CATEGORY'],
+  Sources: ['CREATE_SOURCE', 'UPDATE_SOURCE', 'DELETE_SOURCE', 'VIEW_SOURCE'],
+  Datasets: [
     'CREATE_PLATFORM_DATASET',
     'UPDATE_PLATFORM_DATASET',
     'DELETE_PLATFORM_DATASET',
@@ -26,7 +16,7 @@ const PERMISSION_GROUPS: Record<string, string[]> = {
     'UNPUBLISH_DATASET',
     'VIEW_DATASET_PROPOSALS',
   ],
-  'Suppliers': [
+  Suppliers: [
     'VIEW_SUPPLIER_ANALYTICS',
     'VIEW_SUPPLIERS',
     'INVITE_SUPPLIER',
@@ -36,31 +26,16 @@ const PERMISSION_GROUPS: Record<string, string[]> = {
     'VERIFY_SUPPLIER',
     'SUSPEND_SUPPLIER',
   ],
-  'Users': [
-    'VIEW_USERS',
-    'VIEW_USER_ANALYTICS',
-    'UPDATE_USER',
-    'DELETE_USER',
-    'SUSPEND_USER',
-  ],
-  'Admins': [
-    'VIEW_ADMINS',
-    'CREATE_ADMIN',
-    'UPDATE_ADMIN',
-    'DELETE_ADMIN',
-  ],
-  'Roles': [
-    'VIEW_ROLES',
-    'CREATE_ROLE',
-    'UPDATE_ROLE',
-    'DELETE_ROLE',
-  ],
+  Users: ['VIEW_USERS', 'VIEW_USER_ANALYTICS', 'UPDATE_USER', 'DELETE_USER', 'SUSPEND_USER'],
+  Admins: ['VIEW_ADMINS', 'CREATE_ADMIN', 'UPDATE_ADMIN', 'DELETE_ADMIN'],
+  Roles: ['VIEW_ROLES', 'CREATE_ROLE', 'UPDATE_ROLE', 'DELETE_ROLE'],
+  'Custom Collection': ['REVIEW_CUSTOM_COLLECTION_SERVICE', 'MANAGE_CUSTOM_COLLECTION_LEADS'],
 };
 
 function formatPermissionName(permission: string): string {
   return permission
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 }
 
@@ -84,7 +59,7 @@ export function PermissionsCard({ permissions }: PermissionsCardProps) {
           ) : (
             <>
               {Object.entries(PERMISSION_GROUPS).map(([group, groupPermissions]) => {
-                const matchingPermissions = groupPermissions.filter((p: string) => 
+                const matchingPermissions = groupPermissions.filter((p: string) =>
                   permissions.includes(p)
                 );
 
@@ -116,8 +91,8 @@ export function PermissionsCard({ permissions }: PermissionsCardProps) {
               })}
 
               {/* Show raw permissions if they don't match groups */}
-              {permissions.filter((p: string) =>
-                !Object.values(PERMISSION_GROUPS).flat().includes(p)
+              {permissions.filter(
+                (p: string) => !Object.values(PERMISSION_GROUPS).flat().includes(p)
               ).length > 0 && (
                 <div>
                   <Label

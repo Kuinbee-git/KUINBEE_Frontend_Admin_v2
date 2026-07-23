@@ -35,3 +35,6 @@ export * from './useSuppliers';
 
 // Reports
 export * from './useReports';
+
+// Custom collection services
+export * from './useCustomCollection';

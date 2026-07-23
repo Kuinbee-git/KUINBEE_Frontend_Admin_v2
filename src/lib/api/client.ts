@@ -20,6 +20,8 @@ interface RequestConfig extends Omit<RequestInit, 'body'> {
   body?: unknown;
   /** Skip JSON content-type header (for file uploads) */
   skipContentType?: boolean;
+  /** Suppress expected development-console errors, such as an anonymous /auth/me check. */
+  suppressErrorLog?: boolean;
 }
 
 interface ApiResponse<T> {
@@ -61,7 +63,10 @@ class ApiClient {
    * Handle API response
    * Throws ApiError for non-ok responses
    */
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
+  private async handleResponse<T>(
+    response: Response,
+    suppressErrorLog = false
+  ): Promise<ApiResponse<T>> {
     const contentType = response.headers.get('content-type');
     const isJson = contentType?.includes('application/json');
 
@@ -111,7 +116,11 @@ class ApiClient {
       };
 
       // Log error for debugging
-      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      if (
+        !suppressErrorLog &&
+        typeof window !== 'undefined' &&
+        process.env.NODE_ENV === 'development'
+      ) {
         console.error('[API Error]', {
           status: response.status,
           statusText: response.statusText,
@@ -149,7 +158,7 @@ class ApiClient {
    * Automatically includes credentials (cookies) for auth
    */
   async request<T>(endpoint: string, config: RequestConfig = {}): Promise<ApiResponse<T>> {
-    const { params, body, headers, skipContentType, ...rest } = config;
+    const { params, body, headers, skipContentType, suppressErrorLog, ...rest } = config;
     const url = this.buildUrl(endpoint, params);
 
     // Default headers
@@ -173,7 +182,7 @@ class ApiClient {
         body: body ? JSON.stringify(body) : undefined,
       });
 
-      return this.handleResponse<T>(response);
+      return this.handleResponse<T>(response, suppressErrorLog);
     } catch (error) {
       // Handle network errors (CORS, connection refused, timeout, etc.)
       if (error instanceof TypeError) {

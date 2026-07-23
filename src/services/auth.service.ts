@@ -63,13 +63,20 @@ export async function logout(): Promise<void> {
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
-    const response = await apiClient.get<MeResponse>(API_ROUTES.AUTH.ME);
+    const response = await apiClient.request<MeResponse>(API_ROUTES.AUTH.ME, {
+      method: 'GET',
+      suppressErrorLog: true,
+    });
     // Backend wraps response in { success, data: { user } }
     const user = (response.data as { data?: { user?: AuthUser } }).data?.user ?? response.data.user ?? null;
     return user;
-  } catch {
-    // Return null for auth errors (401, 403) instead of throwing
-    return null;
+  } catch (error) {
+    const statusCode =
+      error && typeof error === 'object' && 'statusCode' in error
+        ? Number(error.statusCode)
+        : undefined;
+    if (statusCode === 401 || statusCode === 403) return null;
+    throw error;
   }
 }
 

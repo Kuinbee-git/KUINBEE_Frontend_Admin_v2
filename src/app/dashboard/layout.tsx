@@ -1,8 +1,9 @@
 'use client';
 
-import { ReactNode, useCallback, useMemo, useEffect } from 'react';
+import { ReactNode, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
   Database,
@@ -24,6 +25,8 @@ import {
   FileText,
   MessageSquare,
   Star,
+  BadgePercent,
+  WandSparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +43,7 @@ import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { useAuthStore } from '@/store/auth.store';
 import { useSidebarStore } from '@/store/sidebar.store';
 import { useThemeStore } from '@/store/theme.store';
-import { useLogout } from '@/hooks';
+import { useLogout, useMyPermissions } from '@/hooks';
 import { AntiFlickerWrapper } from '@/components/auth/AntiFlickerWrapper';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 
@@ -48,12 +51,24 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
+interface AdminNavItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  href: string;
+  primary?: boolean;
+  requiredPermission?: string;
+}
+
 export default function DashboardLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const { isCollapsed, setCollapsed } = useSidebarStore();
   const { theme } = useThemeStore();
-  const user = useAuthStore(state => state.user);
+  const user = useAuthStore((state) => state.user);
+  const storedPermissions = useAuthStore((state) => state.permissions);
+  const permissionsQuery = useMyPermissions({ enabled: Boolean(user) });
   const logoutMutation = useLogout();
+  const permissions = permissionsQuery.data ?? storedPermissions;
 
   const isDark = theme === 'dark';
 
@@ -69,64 +84,95 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
     });
   }, [logoutMutation]);
 
-  const navItems = useMemo(() => [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-    {
-      id: 'datasets',
-      label: 'Datasets',
-      icon: Database,
-      href: '/dashboard/datasets',
-      primary: true,
-    },
-    {
-      id: 'my-queue',
-      label: 'My Queue',
-      icon: ListChecks,
-      href: '/dashboard/my-queue',
-    },
-    {
-      id: 'supplier-kyc',
-      label: 'Supplier Queue',
-      icon: ClipboardList,
-      href: '/dashboard/supplier-kyc',
-    },
-    {
-      id: 'proposals',
-      label: 'Proposals',
-      icon: ClipboardList,
-      href: '/dashboard/proposals',
-      primary: true,
-    },
-    {
-      id: 'update-requests',
-      label: 'Update Requests',
-      icon: ClipboardList,
-      href: '/dashboard/update-requests',
-      primary: true,
-    },
-    {
-      id: 'questions',
-      label: 'Questions',
-      icon: MessageSquare,
-      href: '/dashboard/questions',
-      primary: true,
-    },
-    {
-      id: 'reviews',
-      label: 'Reviews',
-      icon: Star,
-      href: '/dashboard/reviews',
-      primary: true,
-    },
-    { id: 'suppliers', label: 'Suppliers', icon: Users, href: '/dashboard/suppliers' },
-    { id: 'categories', label: 'Categories', icon: FolderTree, href: '/dashboard/categories' },
-    { id: 'sources', label: 'Sources', icon: Link2, href: '/dashboard/sources' },
-    { id: 'users', label: 'Users & Admins', icon: Shield, href: '/dashboard/admins' },
-    { id: 'invites', label: 'Invites', icon: Mail, href: '/dashboard/invites' },
-    { id: 'roles', label: 'Roles', icon: KeyRound, href: '/dashboard/roles' },
-    { id: 'audit', label: 'Audit Logs', icon: FileText, href: '/dashboard/audit' },
-    { id: 'reports', label: 'Reports & Analytics', icon: BarChart3, href: '/dashboard/reports' },
-  ], []);
+  const navItems = useMemo(() => {
+    const items: AdminNavItem[] = [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+      {
+        id: 'datasets',
+        label: 'Datasets',
+        icon: Database,
+        href: '/dashboard/datasets',
+        primary: true,
+      },
+      {
+        id: 'my-queue',
+        label: 'My Queue',
+        icon: ListChecks,
+        href: '/dashboard/my-queue',
+      },
+      {
+        id: 'supplier-kyc',
+        label: 'Supplier Queue',
+        icon: ClipboardList,
+        href: '/dashboard/supplier-kyc',
+      },
+      {
+        id: 'proposals',
+        label: 'Proposals',
+        icon: ClipboardList,
+        href: '/dashboard/proposals',
+        primary: true,
+      },
+      {
+        id: 'update-requests',
+        label: 'Update Requests',
+        icon: ClipboardList,
+        href: '/dashboard/update-requests',
+        primary: true,
+      },
+      {
+        id: 'discount-proposals',
+        label: 'Discount Proposals',
+        icon: BadgePercent,
+        href: '/dashboard/discount-proposals',
+        primary: true,
+        requiredPermission: 'VIEW_DATASET_PROPOSALS',
+      },
+      {
+        id: 'custom-collection-services',
+        label: 'Custom Services',
+        icon: WandSparkles,
+        href: '/dashboard/custom-collection-services',
+        primary: true,
+        requiredPermission: 'REVIEW_CUSTOM_COLLECTION_SERVICE',
+      },
+      {
+        id: 'custom-collection-leads',
+        label: 'Custom Leads',
+        icon: Mail,
+        href: '/dashboard/custom-collection-leads',
+        primary: true,
+        requiredPermission: 'MANAGE_CUSTOM_COLLECTION_LEADS',
+      },
+      {
+        id: 'questions',
+        label: 'Questions',
+        icon: MessageSquare,
+        href: '/dashboard/questions',
+        primary: true,
+      },
+      {
+        id: 'reviews',
+        label: 'Reviews',
+        icon: Star,
+        href: '/dashboard/reviews',
+        primary: true,
+      },
+      { id: 'suppliers', label: 'Suppliers', icon: Users, href: '/dashboard/suppliers' },
+      { id: 'categories', label: 'Categories', icon: FolderTree, href: '/dashboard/categories' },
+      { id: 'sources', label: 'Sources', icon: Link2, href: '/dashboard/sources' },
+      { id: 'users', label: 'Users & Admins', icon: Shield, href: '/dashboard/admins' },
+      { id: 'invites', label: 'Invites', icon: Mail, href: '/dashboard/invites' },
+      { id: 'roles', label: 'Roles', icon: KeyRound, href: '/dashboard/roles' },
+      { id: 'audit', label: 'Audit Logs', icon: FileText, href: '/dashboard/audit' },
+      { id: 'reports', label: 'Reports & Analytics', icon: BarChart3, href: '/dashboard/reports' },
+    ];
+
+    if (user?.userType === 'SUPERADMIN') return items;
+    return items.filter(
+      (item) => !item.requiredPermission || permissions.includes(item.requiredPermission)
+    );
+  }, [permissions, user?.userType]);
 
   // Get initials for avatar - memoized
   const getInitials = useCallback((email?: string) => {
@@ -198,9 +244,10 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.href === '/dashboard' 
-              ? pathname === '/dashboard'
-              : pathname.startsWith(item.href);
+            const isActive =
+              item.href === '/dashboard'
+                ? pathname === '/dashboard'
+                : pathname.startsWith(item.href);
             const isPrimary = item.primary;
 
             return (
@@ -222,10 +269,10 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
                       : 'var(--brand-primary)'
                     : 'var(--text-secondary)',
                   justifyContent: isCollapsed ? 'center' : 'flex-start',
-                  borderLeft: isActive 
-                    ? isDark 
-                      ? '3px solid var(--border-nav-active)' 
-                      : '3px solid var(--brand-primary)' 
+                  borderLeft: isActive
+                    ? isDark
+                      ? '3px solid var(--border-nav-active)'
+                      : '3px solid var(--brand-primary)'
                     : 'none',
                   paddingLeft: isActive ? 'calc(0.75rem - 3px)' : '0.75rem',
                   fontWeight: isActive ? '600' : isPrimary ? '600' : '400',
@@ -293,7 +340,12 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
             {/* Admin Profile Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2"
+                  suppressHydrationWarning
+                >
                   <Avatar className="h-7 w-7">
                     <AvatarFallback
                       className="text-xs font-semibold"
@@ -330,10 +382,7 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
                 </DropdownMenuItem>
                 {/* Settings button removed */}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="text-red-600 cursor-pointer"
-                >
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>

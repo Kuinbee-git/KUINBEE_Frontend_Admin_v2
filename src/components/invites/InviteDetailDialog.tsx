@@ -207,7 +207,10 @@ export function InviteDetailDialog({
               Created By
             </p>
             <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-              {invite.createdBy}
+              {invite.createdByUser.name}
+            </p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {invite.createdByUser.email}
             </p>
           </div>
         </div>

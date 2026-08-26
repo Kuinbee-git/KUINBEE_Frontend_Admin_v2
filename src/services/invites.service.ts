@@ -40,6 +40,7 @@ export interface InviteAuditParams {
   inviteId?: string;
   eventType?: InviteAuditEventType;
   actorId?: string;
+  q?: string;
   sort?: string;
 }
 

@@ -30,6 +30,11 @@ export interface Invite {
   resendCount: number;
   lastSentAt: string | null;
   createdBy: string;
+  createdByUser: {
+    id: string;
+    name: string;
+    email: string;
+  };
   createdAt: string;
   updatedAt: string;
   roles: InviteRole[];
@@ -86,6 +91,7 @@ export interface InviteAuditEntry {
   eventType: InviteAuditEventType;
   actor: {
     id: string;
+    name: string;
     email: string;
   };
   createdAt: string;

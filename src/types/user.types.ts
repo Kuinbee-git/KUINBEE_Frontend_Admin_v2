@@ -33,9 +33,12 @@ export interface UserListItem {
   updatedAt: string;
   lastLoginAt: string | null;
   deletedAt: string | null;
-  organization?: string | null;
-  datasetsAccessed?: number;
-  orders?: number;
+  personalInfo: {
+    firstName: string;
+    lastName: string;
+    fullName: string | null;
+  } | null;
+  organization: string | null;
 }
 
 // ============================================
@@ -45,6 +48,7 @@ export interface UserListItem {
 export interface UserPersonalInfo {
   firstName: string;
   lastName: string;
+  fullName: string | null;
   dateOfBirth: string | null;
   gender: Gender | null;
   profileImage: string | null;

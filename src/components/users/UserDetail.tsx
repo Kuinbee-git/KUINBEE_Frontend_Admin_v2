@@ -20,6 +20,9 @@ export function UserDetailView({ userId }: UserDetailViewProps) {
   const deleteMutation = useDeleteUser();
 
   const user = data?.user;
+  const displayName = data?.personalInfo?.fullName?.trim()
+    || [data?.personalInfo?.firstName, data?.personalInfo?.lastName].filter(Boolean).join(' ').trim()
+    || user?.email;
 
   const handleSuspend = () => {
     if (!user) return;
@@ -105,7 +108,7 @@ export function UserDetailView({ userId }: UserDetailViewProps) {
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-              {user.email}
+              {displayName}
             </h1>
             <StatusBadge 
               status={user.status} 
@@ -123,7 +126,7 @@ export function UserDetailView({ userId }: UserDetailViewProps) {
             )}
           </div>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            User ID: {user.id}
+            {user.email}
           </p>
         </div>
 

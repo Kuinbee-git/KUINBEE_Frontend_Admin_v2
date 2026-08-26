@@ -25,7 +25,12 @@ export function UserTable({ users, onUserClick }: UserTableProps) {
       accessor: 'email',
       render: (email: string, row: UserListItem) => (
         <div>
-          <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
+          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            {row.personalInfo?.fullName?.trim()
+              || [row.personalInfo?.firstName, row.personalInfo?.lastName].filter(Boolean).join(' ').trim()
+              || email}
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
             {email}
           </p>
           {row.organization && (
@@ -77,26 +82,6 @@ export function UserTable({ users, onUserClick }: UserTableProps) {
             ✗
           </span>
         ),
-    },
-    {
-      header: 'Datasets Accessed',
-      accessor: 'datasetsAccessed',
-      align: 'center',
-      render: (count: number) => (
-        <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-          {count}
-        </span>
-      ),
-    },
-    {
-      header: 'Orders',
-      accessor: 'orders',
-      align: 'center',
-      render: (count: number) => (
-        <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-          {count}
-        </span>
-      ),
     },
     {
       header: 'Last Login',

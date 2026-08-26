@@ -9,7 +9,6 @@ import { FilterBar, FilterConfig, ActiveFilter } from '@/components/shared/Filte
 import {
   USER_STATUS_OPTIONS,
   EMAIL_VERIFIED_OPTIONS,
-  DATASET_ACCESS_OPTIONS,
 } from '@/constants/user.constants';
 
 interface UserFiltersProps {
@@ -19,8 +18,6 @@ interface UserFiltersProps {
   onStatusChange: (value: string) => void;
   emailVerifiedFilter: string;
   onEmailVerifiedChange: (value: string) => void;
-  hasDatasetAccessFilter: string;
-  onHasDatasetAccessChange: (value: string) => void;
   activeFilters: ActiveFilter[];
   onClearAll: () => void;
 }
@@ -32,8 +29,6 @@ export function UserFilters({
   onStatusChange,
   emailVerifiedFilter,
   onEmailVerifiedChange,
-  hasDatasetAccessFilter,
-  onHasDatasetAccessChange,
   activeFilters,
   onClearAll,
 }: UserFiltersProps) {
@@ -42,7 +37,7 @@ export function UserFilters({
       id: 'search',
       type: 'search',
       label: 'Search',
-      placeholder: 'Search by email, phone, or organization...',
+      placeholder: 'Search by name, email, phone, or organization...',
       value: searchQuery,
       onChange: (value) => onSearchChange(value as string),
       showInPrimary: true,
@@ -64,16 +59,6 @@ export function UserFilters({
       value: emailVerifiedFilter,
       onChange: (value) => onEmailVerifiedChange(value as string),
       options: EMAIL_VERIFIED_OPTIONS,
-      width: 'w-[150px]',
-      showInPrimary: true,
-    },
-    {
-      id: 'hasDatasetAccess',
-      type: 'select',
-      label: 'Has Dataset Access',
-      value: hasDatasetAccessFilter,
-      onChange: (value) => onHasDatasetAccessChange(value as string),
-      options: DATASET_ACCESS_OPTIONS,
       width: 'w-[150px]',
       showInPrimary: true,
     },

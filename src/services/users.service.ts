@@ -23,11 +23,12 @@ import type {
 
 export interface UserListParams {
   page?: number;
-  limit?: number;
-  status?: UserStatus;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  pageSize?: number;
+  status?: UserStatus | 'ALL';
+  q?: string;
+  userType?: 'USER' | 'SUPPLIER' | 'ADMIN' | 'SUPERADMIN' | 'ALL';
+  emailVerified?: boolean;
+  sort?: 'createdAt:desc' | 'createdAt:asc' | 'lastLoginAt:desc' | 'lastLoginAt:asc';
 }
 
 // ============================================

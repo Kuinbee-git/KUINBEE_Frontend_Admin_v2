@@ -17,7 +17,6 @@ type KYCStatus =
   | "expired";
 
 interface SupplierHeaderProps {
-  supplierId: string;
   supplierName: string;
   supplierType: "individual" | "company";
   kycStatus: KYCStatus;
@@ -26,7 +25,6 @@ interface SupplierHeaderProps {
 }
 
 export function SupplierHeader({
-  supplierId,
   supplierName,
   supplierType,
   kycStatus,
@@ -78,21 +76,6 @@ export function SupplierHeader({
                 style={{ color: "var(--text-primary)" }}
               >
                 {supplierType.charAt(0).toUpperCase() + supplierType.slice(1)}
-              </span>
-            </div>
-
-            <div
-              className="h-4 w-px"
-              style={{ backgroundColor: "var(--border-default)" }}
-            />
-
-            <div className="flex items-center gap-2">
-              <span style={{ color: "var(--text-muted)" }}>Supplier ID:</span>
-              <span
-                className="font-mono font-medium"
-                style={{ color: "var(--brand-primary)" }}
-              >
-                {supplierId}
               </span>
             </div>
 

@@ -62,6 +62,11 @@ export interface SupplierDetail {
     isOfflineContractDone: boolean;
     offlineContractDoneAt: string | null; // ISO
     offlineContractDoneBy: string | null; // Admin userId
+    offlineContractDoneByAdmin?: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
     createdAt: string; // ISO
     updatedAt: string; // ISO
   };
@@ -118,9 +123,19 @@ export type ManualKycStatus = "PENDING" | "VERIFIED" | "REJECTED";
 export interface SupplierManualKycQueueItem {
   supplierId: string;
   supplierProfileId: string;
+  supplier: {
+    id: string;
+    name: string;
+    email: string;
+  };
   submittedAt: string;
   status: ManualKycStatus;
   pickedByAdminId: string | null;
+  pickedByAdmin: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   pickedAt: string | null;
 }
 

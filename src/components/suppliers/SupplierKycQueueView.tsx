@@ -142,7 +142,7 @@ export function SupplierKycQueueView() {
           }}
         >
           {queueQuery.isLoading ? (
-            <TableSkeleton columns={7} rows={6} />
+            <TableSkeleton columns={6} rows={6} />
           ) : queueQuery.isError ? (
             <div className="p-8 text-center">
               <p className="text-red-500">Failed to load supplier KYC queue.</p>
@@ -163,8 +163,7 @@ export function SupplierKycQueueView() {
             <Table>
               <TableHeader>
                 <TableRow style={{ borderColor: "var(--border-default)" }}>
-                  <TableHead>Supplier ID</TableHead>
-                  <TableHead>Supplier Profile ID</TableHead>
+                  <TableHead>Supplier</TableHead>
                   <TableHead>Submitted</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Picked By</TableHead>
@@ -180,13 +179,32 @@ export function SupplierKycQueueView() {
 
                   return (
                     <TableRow key={item.supplierId} style={{ borderColor: "var(--border-default)" }}>
-                      <TableCell className="font-mono text-xs">{item.supplierId}</TableCell>
-                      <TableCell className="font-mono text-xs">{item.supplierProfileId}</TableCell>
+                      <TableCell>
+                        <p className="font-medium" style={{ color: "var(--text-primary)" }}>
+                          {item.supplier.name}
+                        </p>
+                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                          {item.supplier.email}
+                        </p>
+                      </TableCell>
                       <TableCell>{new Date(item.submittedAt).toLocaleString()}</TableCell>
                       <TableCell>
                         <Badge className={statusBadgeClass[item.status]}>{item.status}</Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{item.pickedByAdminId || "—"}</TableCell>
+                      <TableCell>
+                        {item.pickedByAdmin ? (
+                          <div>
+                            <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+                              {item.pickedByAdmin.name}
+                            </p>
+                            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                              {item.pickedByAdmin.email}
+                            </p>
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>Unassigned</span>
+                        )}
+                      </TableCell>
                       <TableCell>{item.pickedAt ? new Date(item.pickedAt).toLocaleString() : "—"}</TableCell>
                       <TableCell className="text-right">
                         <div className="inline-flex items-center gap-2">

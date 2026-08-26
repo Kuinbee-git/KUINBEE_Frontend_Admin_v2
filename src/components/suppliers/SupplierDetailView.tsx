@@ -388,13 +388,20 @@ export function SupplierDetailView({ supplierId }: SupplierDetailViewProps) {
                       </div>
                       <div>
                         <label className="text-xs font-medium uppercase tracking-wide mb-2 block" style={{ color: "var(--text-muted)" }}>
-                          Verified By (Admin ID)
+                          Verified By
                         </label>
                         <div className="flex items-center gap-2">
                           <Shield className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
-                          <p className="text-sm font-mono font-medium" style={{ color: "var(--text-primary)" }}>
-                            {supplier.supplierProfile.offlineContractDoneBy || "—"}
-                          </p>
+                          <div>
+                            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                              {supplier.supplierProfile.offlineContractDoneByAdmin?.name || "Admin unavailable"}
+                            </p>
+                            {supplier.supplierProfile.offlineContractDoneByAdmin?.email ? (
+                              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                                {supplier.supplierProfile.offlineContractDoneByAdmin.email}
+                              </p>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </div>

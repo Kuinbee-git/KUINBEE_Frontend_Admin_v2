@@ -104,10 +104,10 @@ export function RolePermissionAuditTable({ logs }: RolePermissionAuditTableProps
             <TableCell>
               <div className="flex flex-col gap-1">
                 <span className="text-sm" style={{ color: "var(--text-primary)" }}>
-                  {log.actor.email}
+                  {log.actor.name}
                 </span>
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  ID: {log.actor.id.substring(0, 8)}...
+                  {log.actor.email}
                 </span>
               </div>
             </TableCell>

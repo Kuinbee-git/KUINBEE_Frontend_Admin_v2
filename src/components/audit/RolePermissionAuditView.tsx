@@ -33,7 +33,7 @@ export function RolePermissionAuditView() {
     () => ({
       page,
       pageSize: limit,
-      roleId: debouncedSearch || undefined,
+      q: debouncedSearch || undefined,
       eventType: eventTypeFilter !== "ALL" ? eventTypeFilter : undefined,
       from: dateRange.from,
       to: dateRange.to,
@@ -67,7 +67,7 @@ export function RolePermissionAuditView() {
       <AuditFilters
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        searchPlaceholder="Search by role ID..."
+        searchPlaceholder="Search by role..."
         statusFilter={eventTypeFilter}
         setStatusFilter={setEventTypeFilter}
         statusOptions={eventTypes}

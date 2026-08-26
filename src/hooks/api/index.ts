@@ -38,3 +38,4 @@ export * from './useReports';
 
 // Custom collection services
 export * from './useCustomCollection';
+export * from './useDataRequirements';

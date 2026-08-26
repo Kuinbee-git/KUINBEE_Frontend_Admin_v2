@@ -16,3 +16,4 @@ export * from './invite.types';
 export * from './role.types';
 export * from './kdts.types';
 export * from './custom-collection.types';
+export * from './data-requirement.types';

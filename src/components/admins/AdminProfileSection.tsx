@@ -29,7 +29,9 @@ export function AdminProfileSection({
   editData,
   onEditChange,
 }: AdminProfileSectionProps) {
-  const displayName = admin.admin.email.split('@')[0];
+  const displayName = admin.personalInfo?.fullName?.trim()
+    || [admin.personalInfo?.firstName, admin.personalInfo?.lastName].filter(Boolean).join(' ').trim()
+    || admin.admin.email;
   
   return (
     <div
@@ -108,7 +110,7 @@ export function AdminProfileSection({
               />
             ) : (
               <p style={{ color: 'var(--text-primary)' }}>
-                {admin.admin.id}
+                {admin.adminProfile?.employeeId || 'N/A'}
               </p>
             )}
           </div>

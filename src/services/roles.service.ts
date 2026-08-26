@@ -45,6 +45,7 @@ export interface AdminRoleAuditParams {
   to?: string;
   adminId?: string;
   roleId?: string;
+  q?: string;
   eventType?: AdminRoleAuditEventType;
   actorId?: string;
   sort?: string;
@@ -56,6 +57,7 @@ export interface RolePermissionAuditParams {
   from?: string;
   to?: string;
   roleId?: string;
+  q?: string;
   permission?: string;
   eventType?: RolePermissionAuditEventType;
   actorId?: string;

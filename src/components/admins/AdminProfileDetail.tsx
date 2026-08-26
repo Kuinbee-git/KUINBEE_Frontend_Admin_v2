@@ -60,6 +60,7 @@ export function AdminProfileDetail({ adminId, onBack }: AdminProfileDetailProps)
         adminId,
         data: {
           adminProfile: {
+            employeeId: editProfileData.employeeId || null,
             department: editProfileData.department || null,
           },
         },

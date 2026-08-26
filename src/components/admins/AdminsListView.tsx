@@ -66,7 +66,7 @@ export function AdminsListView({ onAdminClick, onBack }: AdminsListViewProps) {
       updatedAt: item.admin.updatedAt,
       lastLoginAt: item.admin.lastLoginAt,
       deletedAt: item.admin.deletedAt,
-      personalInfo: null, // Not available in list response
+      personalInfo: item.personalInfo,
       adminProfile: item.adminProfile,
       roles: item.roles || [],
     }));

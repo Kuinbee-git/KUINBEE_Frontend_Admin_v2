@@ -17,9 +17,10 @@ interface AdminTableProps {
 // Helper to get display name from AdminListItem
 function getDisplayName(admin: AdminListItem): string {
   if (admin.personalInfo) {
-    return `${admin.personalInfo.firstName} ${admin.personalInfo.lastName}`;
+    return admin.personalInfo.fullName?.trim()
+      || `${admin.personalInfo.firstName} ${admin.personalInfo.lastName}`.trim();
   }
-  return admin.email.split('@')[0];
+  return admin.email;
 }
 
 // Helper to format last login
@@ -87,9 +88,11 @@ export function AdminTable({ admins, onRowClick }: AdminTableProps) {
       ),
     },
     {
-      header: 'Admin ID',
+      header: 'Employee ID',
       render: (_, admin) => (
-        <span style={{ color: 'var(--text-muted)' }}>{admin.id}</span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          {admin.adminProfile?.employeeId || 'N/A'}
+        </span>
       ),
     },
     {

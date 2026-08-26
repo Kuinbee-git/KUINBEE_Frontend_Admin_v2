@@ -188,6 +188,7 @@ export interface AdminListItemResponse {
     lastLoginAt: string | null;
     deletedAt: string | null;
   };
+  personalInfo: PersonalInfo | null;
   adminProfile: AdminProfileInfo | null;
   roles: AdminRole[];
 }
@@ -205,6 +206,7 @@ export interface AdminDetailResponse {
     lastLoginAt: string | null;
     deletedAt: string | null;
   };
+  personalInfo: PersonalInfo | null;
   adminProfile: AdminProfileInfo | null;
   roles: AdminRole[];
 }
@@ -212,6 +214,7 @@ export interface AdminDetailResponse {
 export interface UpdateAdminRequest {
   status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   adminProfile?: {
+    employeeId?: string | null;
     department?: string | null;
   };
 }

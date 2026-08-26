@@ -92,6 +92,7 @@ export interface AdminRoleAuditEntry {
   eventType: AdminRoleAuditEventType;
   admin: {
     id: string;
+    name: string;
     email: string;
   };
   role: {
@@ -101,6 +102,7 @@ export interface AdminRoleAuditEntry {
   };
   actor: {
     id: string;
+    name: string;
     email: string;
   };
   createdAt: string;
@@ -118,6 +120,7 @@ export interface RolePermissionAuditEntry {
   permission: string;
   actor: {
     id: string;
+    name: string;
     email: string;
   };
   createdAt: string;

@@ -78,10 +78,10 @@ export function AdminRoleAuditTable({ logs }: AdminRoleAuditTableProps) {
             <TableCell>
               <div className="flex flex-col gap-1">
                 <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                  {log.admin.email}
+                  {log.admin.name}
                 </span>
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  ID: {log.admin.id.substring(0, 8)}...
+                  {log.admin.email}
                 </span>
               </div>
             </TableCell>
@@ -101,10 +101,10 @@ export function AdminRoleAuditTable({ logs }: AdminRoleAuditTableProps) {
             <TableCell>
               <div className="flex flex-col gap-1">
                 <span className="text-sm" style={{ color: "var(--text-primary)" }}>
-                  {log.actor.email}
+                  {log.actor.name}
                 </span>
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  ID: {log.actor.id.substring(0, 8)}...
+                  {log.actor.email}
                 </span>
               </div>
             </TableCell>

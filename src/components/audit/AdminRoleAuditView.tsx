@@ -33,7 +33,7 @@ export function AdminRoleAuditView() {
     () => ({
       page,
       pageSize: limit,
-      adminId: debouncedSearch || undefined,
+      q: debouncedSearch || undefined,
       eventType: eventTypeFilter !== "ALL" ? eventTypeFilter : undefined,
       from: dateRange.from,
       to: dateRange.to,
@@ -66,7 +66,7 @@ export function AdminRoleAuditView() {
       <AuditFilters
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        searchPlaceholder="Search by admin ID..."
+        searchPlaceholder="Search by admin, email, or role..."
         statusFilter={eventTypeFilter}
         setStatusFilter={setEventTypeFilter}
         statusOptions={eventTypes}

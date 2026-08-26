@@ -27,6 +27,7 @@ import {
   Star,
   BadgePercent,
   WandSparkles,
+  ClipboardPenLine,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -127,6 +128,14 @@ export default function DashboardLayout({ children }: AdminLayoutProps) {
         href: '/dashboard/discount-proposals',
         primary: true,
         requiredPermission: 'VIEW_DATASET_PROPOSALS',
+      },
+      {
+        id: 'data-requirements',
+        label: 'Data Requirements',
+        icon: ClipboardPenLine,
+        href: '/dashboard/data-requirements',
+        primary: true,
+        requiredPermission: 'VIEW_DATA_REQUIREMENTS',
       },
       {
         id: 'custom-collection-services',

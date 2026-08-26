@@ -307,7 +307,6 @@ export function DiscountProposalDetail({ discountProposalId }: { discountProposa
                 <CardTitle>Review record</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <InfoBlock label="Proposal ID" value={proposal.id} muted />
                 <InfoBlock label="Reviewed" value={formatDateTime(proposal.reviewedAt)} />
                 <InfoBlock label="Approved" value={formatDateTime(proposal.approvedAt)} />
                 <InfoBlock

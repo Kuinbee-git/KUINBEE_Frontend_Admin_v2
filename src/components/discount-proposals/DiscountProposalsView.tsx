@@ -46,7 +46,7 @@ export function DiscountProposalsView() {
         id: 'search',
         type: 'search',
         label: 'Search',
-        placeholder: 'Search dataset, supplier, or proposal id...',
+        placeholder: 'Search by dataset or supplier...',
         value: searchQuery,
         onChange: (value) => {
           setSearchQuery(value as string);

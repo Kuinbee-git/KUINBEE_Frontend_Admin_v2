@@ -10,9 +10,8 @@ interface UpdateRequestListItem {
   datasetUniqueId: string;
   title: string;
   supplierName: string;
-  supplierId: string;
+  supplierEmail: string | null;
   category: string;
-  source: string;
   status: DatasetStatus;
   verificationStatus: VerificationStatus;
   assignedTo: string | null;
@@ -78,6 +77,11 @@ export function UpdateRequestTable({ proposals, onRowClick, onPickProposal }: Up
               <p className="text-sm" style={{ color: "var(--text-primary)" }}>
                 {proposal.supplierName}
               </p>
+              {proposal.supplierEmail ? (
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                  {proposal.supplierEmail}
+                </p>
+              ) : null}
             </td>
             <td className="p-4">
               <p className="text-sm" style={{ color: "var(--text-secondary)" }}>

@@ -339,7 +339,7 @@ export function CustomCollectionServiceDetail({ serviceId }: { serviceId: string
               {reviewRevision.title}
             </h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-              {service.supplier.displayName} · service ID {service.id} · slug {service.slug}
+              Submitted by {service.supplier.displayName}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">

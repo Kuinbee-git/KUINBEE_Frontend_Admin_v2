@@ -19,9 +19,8 @@ export interface UpdateRequestListItem {
   datasetUniqueId: string;
   title: string;
   supplierName: string;
-  supplierId: string;
+  supplierEmail: string | null;
   category: string;
-  source: string;
   status: DatasetStatus;
   verificationStatus: VerificationStatus;
   assignedTo: string | null;
@@ -65,10 +64,9 @@ export function UpdateRequestsView() {
       id: item.dataset.id,
       datasetUniqueId: item.dataset.datasetUniqueId,
       title: item.dataset.title,
-      supplierName: "Supplier",
-      supplierId: item.dataset.ownerId,
-      category: item.dataset.primaryCategoryId,
-      source: item.dataset.sourceId,
+      supplierName: item.supplier?.name || "Supplier unavailable",
+      supplierEmail: item.supplier?.email || null,
+      category: item.primaryCategory?.name || "Uncategorised",
       status: item.dataset.status,
       verificationStatus: item.verification?.status || "PENDING",
       assignedTo: item.activeAssignment?.adminId || null,

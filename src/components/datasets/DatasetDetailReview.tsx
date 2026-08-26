@@ -298,8 +298,10 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
   const {
     dataset,
+    supplier,
     verification,
     activeAssignment,
+    assignedAdmin,
     primaryCategory,
     secondaryCategories,
     source,
@@ -364,7 +366,13 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                   </Badge>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap text-sm" style={{ color: "var(--text-muted)" }}>
-                  <span className="truncate">Owner: {dataset.ownerType}</span>
+                  <span className="truncate">Supplier: {supplier?.name || "Unavailable"}</span>
+                  {supplier?.email ? (
+                    <>
+                      <span className="flex-shrink-0">•</span>
+                      <span className="truncate">{supplier.email}</span>
+                    </>
+                  ) : null}
                   <span className="flex-shrink-0">•</span>
                   <span className="truncate">Updated: {formatDate(dataset.updatedAt)}</span>
                 </div>
@@ -946,7 +954,14 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                 <CardContent className="space-y-3">
                   <div>
                     <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Assigned To</p>
-                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{activeAssignment.adminId}</p>
+                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>
+                      {assignedAdmin?.name || "Admin unavailable"}
+                    </p>
+                    {assignedAdmin?.email ? (
+                      <p className="text-xs mt-0.5 break-words" style={{ color: "var(--text-muted)" }}>
+                        {assignedAdmin.email}
+                      </p>
+                    ) : null}
                   </div>
                   <div>
                     <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Status</p>

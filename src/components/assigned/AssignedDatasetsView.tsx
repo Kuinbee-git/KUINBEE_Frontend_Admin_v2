@@ -246,7 +246,7 @@ export function AssignedDatasetsView() {
                   }}
                 >
                   <TableHead style={{ color: "var(--text-muted)" }}>Dataset</TableHead>
-                  <TableHead style={{ color: "var(--text-muted)" }}>Owner Type</TableHead>
+                  <TableHead style={{ color: "var(--text-muted)" }}>Supplier</TableHead>
                   <TableHead style={{ color: "var(--text-muted)" }}>Dataset Status</TableHead>
                   <TableHead style={{ color: "var(--text-muted)" }}>Assignment Status</TableHead>
                   <TableHead style={{ color: "var(--text-muted)" }}>Assigned</TableHead>
@@ -271,9 +271,16 @@ export function AssignedDatasetsView() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {item.dataset.ownerType === "PLATFORM" ? "Platform" : "Supplier"}
-                      </Badge>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                          {item.supplier?.name || "Supplier unavailable"}
+                        </p>
+                        {item.supplier?.email ? (
+                          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                            {item.supplier.email}
+                          </p>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {getDatasetStatusBadge(item.dataset.status)}

@@ -433,8 +433,12 @@ export interface AssignedDatasetListItem {
     datasetUniqueId: string;
     title: string;
     status: DatasetStatus;
-    ownerType: OwnerType;
   };
+  supplier: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   verification: DatasetVerification | null;
 }
 
@@ -461,6 +465,11 @@ export interface DownloadUrlResponse {
 
 export interface ProposalReviewResponse {
   dataset: Dataset;
+  supplier: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   verification: {
     id: string;
     status: VerificationStatus;
@@ -477,6 +486,11 @@ export interface ProposalReviewResponse {
     updatedAt: string;
   };
   activeAssignment: DatasetAssignment | null;
+  assignedAdmin: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   aboutDatasetInfo: AboutDatasetInfo | null;
   locationInfo: LocationInfo | null;
   dataFormatInfo: DataFormatInfo | null;

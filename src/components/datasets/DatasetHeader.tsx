@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge, getDatasetStatusSemantic, formatStatusLabel } from "@/components/shared/StatusBadge";
 
 interface DatasetHeaderProps {
-  datasetId: string;
   datasetName: string;
   ownerType: "platform" | "supplier";
   currentStatus: string;
@@ -20,7 +19,6 @@ interface DatasetHeaderProps {
 }
 
 export function DatasetHeader({
-  datasetId,
   datasetName,
   ownerType,
   currentStatus,
@@ -61,12 +59,6 @@ export function DatasetHeader({
             />
             <span className="text-sm" style={{ color: "var(--text-muted)" }}>
               {ownerType === "platform" ? "Platform Dataset" : "Supplier Dataset"}
-            </span>
-            <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-              •
-            </span>
-            <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-              ID: {datasetId}
             </span>
             <span className="text-sm" style={{ color: "var(--text-muted)" }}>
               •

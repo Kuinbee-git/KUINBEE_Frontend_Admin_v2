@@ -356,8 +356,13 @@ export function CategoriesView() {
                       className="text-sm"
                       style={{ color: "var(--text-secondary)" }}
                     >
-                      {selectedCategory.createdBy}
+                      {selectedCategory.createdByUser?.name || "Admin unavailable"}
                     </p>
+                    {selectedCategory.createdByUser?.email ? (
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                        {selectedCategory.createdByUser.email}
+                      </p>
+                    ) : null}
                   </div>
                   <div>
                     <Label

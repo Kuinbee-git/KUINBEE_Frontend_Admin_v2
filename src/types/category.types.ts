@@ -12,6 +12,11 @@ export interface Category {
   name: string;
   createdAt: string;
   createdBy: string;
+  createdByUser?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   /** Optional: computed field for dataset count */
   datasetCount?: number;
 }

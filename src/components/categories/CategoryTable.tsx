@@ -38,9 +38,17 @@ export function CategoryTable({
     },
     {
       header: "Created By",
-      accessor: "createdBy",
-      render: (createdBy: string) => (
-        <span className="text-sm">{createdBy}</span>
+      render: (_: unknown, category: Category) => (
+        <div>
+          <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+            {category.createdByUser?.name || "Admin unavailable"}
+          </p>
+          {category.createdByUser?.email ? (
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {category.createdByUser.email}
+            </p>
+          ) : null}
+        </div>
       ),
     },
     {

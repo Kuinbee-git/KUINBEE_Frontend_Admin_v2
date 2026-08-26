@@ -163,8 +163,13 @@ export function SourceDialogs({
                       className="text-sm"
                       style={{ color: "var(--text-secondary)" }}
                     >
-                      {selectedSource.createdBy}
+                      {selectedSource.createdByUser?.name || "Creator unavailable"}
                     </p>
+                    {selectedSource.createdByUser?.email ? (
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                        {selectedSource.createdByUser.email}
+                      </p>
+                    ) : null}
                   </div>
                   <div>
                     <Label

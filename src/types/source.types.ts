@@ -20,6 +20,11 @@ export interface Source {
   websiteUrl: string | null;
   createdBy: string;
   createdByType: SourceCreatedByType;
+  createdByUser?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   isVerified: boolean;
   createdAt: string;
   updatedAt: string;

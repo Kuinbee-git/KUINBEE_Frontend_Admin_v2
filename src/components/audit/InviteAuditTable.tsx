@@ -66,7 +66,6 @@ export function InviteAuditTable({ logs }: InviteAuditTableProps) {
           <TableHead style={{ color: "var(--text-muted)" }}>Timestamp</TableHead>
           <TableHead style={{ color: "var(--text-muted)" }}>Event</TableHead>
           <TableHead style={{ color: "var(--text-muted)" }}>Invite Email</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Invite ID</TableHead>
           <TableHead style={{ color: "var(--text-muted)" }}>Actor</TableHead>
           <TableHead style={{ color: "var(--text-muted)" }}>Metadata</TableHead>
         </TableRow>
@@ -92,17 +91,12 @@ export function InviteAuditTable({ logs }: InviteAuditTableProps) {
               </div>
             </TableCell>
             <TableCell>
-              <code className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--bg-surface)" }}>
-                {log.inviteId.substring(0, 8)}...
-              </code>
-            </TableCell>
-            <TableCell>
               <div className="flex flex-col gap-1">
                 <span className="text-sm" style={{ color: "var(--text-primary)" }}>
-                  {log.actor.email}
+                  {log.actor.name}
                 </span>
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  ID: {log.actor.id.substring(0, 8)}...
+                  {log.actor.email}
                 </span>
               </div>
             </TableCell>

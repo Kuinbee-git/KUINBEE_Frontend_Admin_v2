@@ -33,7 +33,7 @@ export function InviteAuditView() {
     () => ({
       page,
       pageSize: limit,
-      inviteId: debouncedSearch || undefined,
+      q: debouncedSearch || undefined,
       eventType: eventTypeFilter !== "ALL" ? eventTypeFilter : undefined,
       from: dateRange.from,
       to: dateRange.to,
@@ -68,7 +68,7 @@ export function InviteAuditView() {
       <AuditFilters
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        searchPlaceholder="Search by invite ID..."
+        searchPlaceholder="Search by invite email..."
         statusFilter={eventTypeFilter}
         setStatusFilter={setEventTypeFilter}
         statusOptions={eventTypes}
@@ -87,7 +87,7 @@ export function InviteAuditView() {
         }}
       >
         {isLoading ? (
-          <TableSkeleton columns={6} rows={10} />
+          <TableSkeleton columns={5} rows={10} />
         ) : isError ? (
           <div className="p-8 text-center">
             <p className="text-red-500">Failed to load audit logs. Please try again.</p>

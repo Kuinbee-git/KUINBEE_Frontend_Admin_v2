@@ -45,7 +45,7 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --destructive-foreground: #ffffff;
   --border: oklch(0.95 0.008 240);
   --input: oklch(0.95 0.008 240);
   --ring: oklch(0.708 0 0);
@@ -84,26 +84,26 @@
   --state-error: #ef4444;
   --state-info: #38bdf8; /* Sky Blue for info state */
 
-  /* Dark theme - shadcn compatibility */
-  --background: oklch(0.11 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.15 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.15 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.2 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.22 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.25 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.2 0 0);
-  --input: oklch(0.22 0 0);
-  --ring: oklch(0.35 0 0);
+  /* Dark theme - shadcn compatibility, mapped to the admin navy system */
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+  --card: var(--bg-base);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-base);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--text-primary);
+  --primary-foreground: var(--brand-primary);
+  --secondary: var(--bg-hover);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-hover);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--bg-selected);
+  --accent-foreground: var(--text-primary);
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --border: var(--border-default);
+  --input: var(--border-default);
+  --ring: var(--text-muted);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -302,6 +302,45 @@
   [data-slot='select-trigger'] [data-slot='select-value'] {
     color: var(--text-primary) !important;
   }
+}
+
+/* Data requirement management follows the admin navy surface system. */
+.data-requirement-detail .requirement-panel {
+  border-color: var(--border-default);
+  background: var(--bg-base);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 8%);
+}
+
+.data-requirement-detail .requirement-panel input,
+.data-requirement-detail .requirement-panel textarea {
+  border-color: var(--border-default);
+  background: var(--bg-surface);
+  box-shadow: none;
+}
+
+.data-requirement-detail .requirement-panel input:hover:not(:disabled),
+.data-requirement-detail .requirement-panel textarea:hover:not(:disabled) {
+  border-color: var(--text-disabled);
+}
+
+.data-requirement-detail .requirement-panel input:focus-visible,
+.data-requirement-detail .requirement-panel textarea:focus-visible {
+  border-color: var(--text-muted);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-muted) 18%, transparent);
+  outline: none;
+}
+
+.data-requirement-detail .requirement-panel input:disabled,
+.data-requirement-detail .requirement-panel textarea:disabled {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  opacity: 0.72;
+}
+
+.dark .data-requirement-detail .requirement-panel {
+  box-shadow:
+    0 18px 40px -32px rgb(0 0 0 / 80%),
+    inset 0 1px 0 rgb(255 255 255 / 2%);
 }
 @keyframes progress {
   0% {

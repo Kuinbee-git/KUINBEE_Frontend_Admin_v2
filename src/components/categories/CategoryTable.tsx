@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { DataTable, ColumnDef, ActionButton } from "@/components/shared/DataTable";
-import type { Category } from "@/types";
+import { DataTable, ColumnDef, ActionButton } from '@/components/shared/DataTable';
+import type { Category } from '@/types';
 
 interface CategoryTableProps {
   categories: Category[];
@@ -18,33 +18,33 @@ export function CategoryTable({
 }: CategoryTableProps) {
   const columns: ColumnDef<Category>[] = [
     {
-      header: "Category Name",
-      accessor: "name",
-      render: (name: string) => (
-        <span className="text-sm" style={{ color: "var(--text-primary)" }}>
-          {name}
+      header: 'Category Name',
+      accessor: 'name',
+      render: (category) => (
+        <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+          {category.name}
         </span>
       ),
     },
     {
-      header: "Datasets Count",
-      accessor: "datasetCount",
-      align: "center",
-      render: (_: unknown, row: Category) => (
-        <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+      header: 'Datasets Count',
+      accessor: 'datasetCount',
+      align: 'center',
+      render: (row) => (
+        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
           {row.datasetCount || 0}
         </span>
       ),
     },
     {
-      header: "Created By",
-      render: (_: unknown, category: Category) => (
+      header: 'Created By',
+      render: (category) => (
         <div>
-          <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-            {category.createdByUser?.name || "Admin unavailable"}
+          <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
+            {category.createdByUser?.name || 'Admin unavailable'}
           </p>
           {category.createdByUser?.email ? (
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {category.createdByUser.email}
             </p>
           ) : null}
@@ -52,14 +52,14 @@ export function CategoryTable({
       ),
     },
     {
-      header: "Created At",
-      accessor: "createdAt",
-      render: (date: string) => (
+      header: 'Created At',
+      accessor: 'createdAt',
+      render: (category) => (
         <span className="text-sm">
-          {new Date(date).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
+          {new Date(category.createdAt).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
           })}
         </span>
       ),
@@ -69,9 +69,9 @@ export function CategoryTable({
   const actions: ActionButton<Category>[] = canDelete
     ? [
         {
-          label: "Delete",
+          label: 'Delete',
           onClick: onDeleteClick,
-          variant: "danger",
+          variant: 'danger',
         },
       ]
     : [];
@@ -84,6 +84,8 @@ export function CategoryTable({
       actions={actions}
       getRowKey={(category) => category.id}
       emptyMessage="No categories found"
+      ariaLabel="Categories"
+      getRowLabel={(category) => `Edit category ${category.name}`}
     />
   );
 }

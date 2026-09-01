@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { CategoriesView } from "@/components/categories/CategoriesView";
+import { CategoriesView } from '@/components/categories/CategoriesView';
 
 export default function CategoriesPage() {
   return <CategoriesView />;

@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState, useCallback } from 'react';
+import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -12,14 +12,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { CategoryTable } from "./CategoryTable";
-import { CategoryFilters } from "./CategoryFilters";
-import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory, useMyPermissions } from "@/hooks";
-import { TableSkeleton } from "@/components/shared";
-import { useDebounce } from "@/hooks/useDebounce";
-import type { Category } from "@/types";
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { CategoryTable } from './CategoryTable';
+import { CategoryFilters } from './CategoryFilters';
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/hooks';
+import { TableSkeleton } from '@/components/shared';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { useDebounce } from '@/hooks/useDebounce';
+import type { Category } from '@/types';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/lib/constants/permissions';
 
 export function CategoriesView() {
   // Pagination state
@@ -27,218 +30,178 @@ export function CategoriesView() {
   const [limit] = useState(10);
 
   // Filter state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [usageFilter, setUsageFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [usageFilter, setUsageFilter] = useState<string>('all');
 
   // Dialog state
-  const [dialogMode, setDialogMode] = useState<
-    "create" | "edit" | "delete" | null
-  >(null);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
-    null
-  );
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'delete' | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
   // Form state
-  const [categoryName, setCategoryName] = useState("");
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [categoryName, setCategoryName] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
   // Debounce search
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  // Reset page to 1 when filters change
-   
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearchQuery, usageFilter]);
-
   // Fetch categories
-  const { data, isLoading, isError } = useCategories();
-  const categories = useMemo(() => data?.items || [], [data?.items]);
+  const { data, isLoading, isError, refetch } = useCategories({
+    page,
+    pageSize: limit,
+    q: debouncedSearchQuery || undefined,
+    usage: usageFilter === 'all' ? undefined : usageFilter === 'used' ? 'USED' : 'UNUSED',
+  });
+  const categories = data?.items ?? [];
 
   // Mutations
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
   const deleteMutation = useDeleteCategory();
 
-  // Permissions from API
-  const { data: permissionsData } = useMyPermissions();
-  const permissions = {
-    canCreateCategory: permissionsData?.includes('CREATE_CATEGORY') ?? false,
-    canUpdateCategory: permissionsData?.includes('UPDATE_CATEGORY') ?? false,
-    canDeleteCategory: permissionsData?.includes('DELETE_CATEGORY') ?? false,
-  };
+  const { can } = useAuthorization();
+  const canCreateCategory = can({ anyOf: [PERMISSIONS.CATEGORIES.CREATE] });
+  const canUpdateCategory = can({ anyOf: [PERMISSIONS.CATEGORIES.UPDATE] });
+  const canDeleteCategory = can({ anyOf: [PERMISSIONS.CATEGORIES.DELETE] });
 
-  // Apply filters
-  const filteredCategories = useMemo(() => {
-    return categories.filter((category) => {
-      if (
-        debouncedSearchQuery &&
-        !category.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-      ) {
-        return false;
-      }
+  const total = data?.pagination.total ?? 0;
+  const totalPages = data?.pagination.totalPages ?? Math.ceil(total / limit);
 
-      const datasetsCount = category.datasetCount || 0;
-      if (usageFilter === "used" && datasetsCount === 0) {
-        return false;
-      }
-      if (usageFilter === "unused" && datasetsCount > 0) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [categories, debouncedSearchQuery, usageFilter]);
-
-  // Paginated categories
-  const paginatedCategories = useMemo(() => {
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    return filteredCategories.slice(startIndex, endIndex);
-  }, [filteredCategories, page, limit]);
-
-  const totalPages = Math.ceil(filteredCategories.length / limit);
-
-  const handleRowClick = useCallback((category: Category) => {
-    if (!permissions.canUpdateCategory) return;
-    setSelectedCategory(category);
-    setCategoryName(category.name);
-    setDialogMode("edit");
-  }, [permissions.canUpdateCategory]);
+  const handleRowClick = useCallback(
+    (category: Category) => {
+      if (!canUpdateCategory) return;
+      setSelectedCategory(category);
+      setCategoryName(category.name);
+      setDialogMode('edit');
+    },
+    [canUpdateCategory]
+  );
 
   const handleCreateClick = useCallback(() => {
     setSelectedCategory(null);
-    setCategoryName("");
-    setDialogMode("create");
+    setCategoryName('');
+    setDialogMode('create');
   }, []);
 
   const handleDeleteClick = useCallback((category: Category, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedCategory(category);
-    setDeleteConfirmation("");
-    setDialogMode("delete");
+    setDeleteConfirmation('');
+    setDialogMode('delete');
   }, []);
 
   const handleSave = useCallback(async () => {
     if (!categoryName.trim()) return;
 
-    if (dialogMode === "create") {
-      await createMutation.mutateAsync({ name: categoryName.trim() });
-    } else if (dialogMode === "edit" && selectedCategory) {
-      await updateMutation.mutateAsync({
-        categoryId: selectedCategory.id,
-        data: { name: categoryName.trim() },
-      });
-    }
+    try {
+      if (dialogMode === 'create') {
+        await createMutation.mutateAsync({ name: categoryName.trim() });
+      } else if (dialogMode === 'edit' && selectedCategory) {
+        await updateMutation.mutateAsync({
+          categoryId: selectedCategory.id,
+          data: { name: categoryName.trim() },
+        });
+      }
 
-    setDialogMode(null);
-    setCategoryName("");
-    setSelectedCategory(null);
+      setDialogMode(null);
+      setCategoryName('');
+      setSelectedCategory(null);
+    } catch {
+      // The mutation hook presents the error and keeps the form available for correction.
+    }
   }, [categoryName, dialogMode, selectedCategory, createMutation, updateMutation]);
 
   const handleDelete = useCallback(async () => {
     if (!selectedCategory) return;
 
-    await deleteMutation.mutateAsync(selectedCategory.id);
-    setDialogMode(null);
-    setDeleteConfirmation("");
-    setSelectedCategory(null);
-  }, [selectedCategory, deleteMutation]);
+    try {
+      await deleteMutation.mutateAsync(selectedCategory.id);
+      if (categories.length === 1 && page > 1) setPage(page - 1);
+      setDialogMode(null);
+      setDeleteConfirmation('');
+      setSelectedCategory(null);
+    } catch {
+      // The mutation hook presents the error and keeps the confirmation open.
+    }
+  }, [categories.length, deleteMutation, page, selectedCategory]);
 
   const handleCancel = useCallback(() => {
     setDialogMode(null);
-    setCategoryName("");
+    setCategoryName('');
     setSelectedCategory(null);
-    setDeleteConfirmation("");
+    setDeleteConfirmation('');
   }, []);
 
-  const canDelete =
-    selectedCategory && deleteConfirmation === selectedCategory.name;
+  const canDelete = selectedCategory && deleteConfirmation === selectedCategory.name;
 
   const clearAllFilters = useCallback(() => {
-    setSearchQuery("");
-    setUsageFilter("all");
+    setSearchQuery('');
+    setUsageFilter('all');
     setPage(1);
   }, []);
 
   if (isError) {
     return (
       <div className="p-8 text-center">
-        <p className="text-red-500">Failed to load categories. Please try again.</p>
+        <p className="text-[var(--status-error)]">Failed to load categories. Please try again.</p>
+        <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+          Retry
+        </Button>
       </div>
     );
   }
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: "var(--bg-surface)" }}
-    >
-      {/* Page Header */}
-      <div
-        className="p-6 border-b"
-        style={{
-          backgroundColor: "var(--bg-base)",
-          borderColor: "var(--border-default)",
-        }}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <h1
-              className="text-2xl font-bold mb-1"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Categories
-            </h1>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Manage dataset classification taxonomy
-            </p>
-          </div>
-          {permissions.canCreateCategory && (
-            <Button
-              onClick={handleCreateClick}
-              style={{
-                backgroundColor: "var(--brand-primary)",
-                color: "#ffffff",
-              }}
-            >
-              Create Category
-            </Button>
-          )}
-        </div>
-      </div>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-surface)' }}>
+      <PageHeader
+        title="Categories"
+        description="Manage dataset classification taxonomy"
+        actions={
+          canCreateCategory ? (
+            <Button onClick={handleCreateClick}>Create Category</Button>
+          ) : undefined
+        }
+      />
 
       {/* Filter Bar */}
       <CategoryFilters
         searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
+        setSearchQuery={(value) => {
+          setSearchQuery(value);
+          setPage(1);
+        }}
         usageFilter={usageFilter}
-        setUsageFilter={setUsageFilter}
+        setUsageFilter={(value) => {
+          setUsageFilter(value);
+          setPage(1);
+        }}
         clearAllFilters={clearAllFilters}
       />
 
       {/* Table */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {isLoading ? (
           <TableSkeleton rows={8} columns={4} />
-        ) : filteredCategories.length === 0 ? (
-          <div className="p-12 text-center border rounded-lg" style={{ borderColor: 'var(--border-primary)' }}>
-            <p
-              className="text-lg font-medium"
-              style={{ color: "var(--text-primary)" }}
-            >
+        ) : categories.length === 0 ? (
+          <div
+            className="p-12 text-center border rounded-lg"
+            style={{ borderColor: 'var(--border-primary)' }}
+          >
+            <p className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
               No categories found
             </p>
-            <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>
+            <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
               {searchQuery
-                ? "No categories match your search"
-                : "No categories match the selected filters"}
+                ? 'No categories match your search'
+                : 'No categories match the selected filters'}
             </p>
             {searchQuery && (
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() => setSearchQuery("")}
+                onClick={() => {
+                  setSearchQuery('');
+                  setPage(1);
+                }}
               >
                 Clear search
               </Button>
@@ -249,25 +212,24 @@ export function CategoriesView() {
             <div
               className="rounded-lg border overflow-hidden"
               style={{
-                backgroundColor: "var(--bg-base)",
-                borderColor: "var(--border-default)",
+                backgroundColor: 'var(--bg-base)',
+                borderColor: 'var(--border-default)',
               }}
             >
               <CategoryTable
-                categories={paginatedCategories}
+                categories={categories}
                 onRowClick={handleRowClick}
                 onDeleteClick={handleDeleteClick}
-                canDelete={permissions.canDeleteCategory}
+                canDelete={canDeleteCategory}
               />
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-4">
+              <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                  Showing {(page - 1) * limit + 1} to{' '}
-                  {Math.min(page * limit, filteredCategories.length)} of{' '}
-                  {filteredCategories.length} categories
+                  Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total}{' '}
+                  categories
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -294,24 +256,21 @@ export function CategoriesView() {
       </div>
 
       {/* Create/Edit Dialog */}
-      <Dialog
-        open={dialogMode === "create" || dialogMode === "edit"}
-        onOpenChange={handleCancel}
-      >
+      <Dialog open={dialogMode === 'create' || dialogMode === 'edit'} onOpenChange={handleCancel}>
         <DialogContent
           style={{
-            backgroundColor: "var(--bg-surface)",
-            borderColor: "var(--border-default)",
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-default)',
           }}
         >
           <DialogHeader>
-            <DialogTitle style={{ color: "var(--text-primary)" }}>
-              {dialogMode === "create" ? "Create Category" : "Edit Category"}
+            <DialogTitle style={{ color: 'var(--text-primary)' }}>
+              {dialogMode === 'create' ? 'Create Category' : 'Edit Category'}
             </DialogTitle>
-            <DialogDescription style={{ color: "var(--text-muted)" }}>
-              {dialogMode === "create"
-                ? "Create a new dataset classification category."
-                : "Update category information."}
+            <DialogDescription style={{ color: 'var(--text-muted)' }}>
+              {dialogMode === 'create'
+                ? 'Create a new dataset classification category.'
+                : 'Update category information.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -320,69 +279,52 @@ export function CategoriesView() {
               <Label
                 htmlFor="category-name"
                 className="text-xs mb-2 block"
-                style={{ color: "var(--text-muted)" }}
+                style={{ color: 'var(--text-muted)' }}
               >
-                Category Name{" "}
-                <span style={{ color: "var(--status-error)" }}>*</span>
+                Category Name <span style={{ color: 'var(--status-error)' }}>*</span>
               </Label>
               <Input
                 id="category-name"
                 value={categoryName}
                 onChange={(e) => setCategoryName(e.target.value)}
                 placeholder="Enter category name..."
+                maxLength={200}
                 style={{
-                  backgroundColor: "var(--bg-base)",
-                  borderColor: "var(--border-default)",
-                  color: "var(--text-primary)",
+                  backgroundColor: 'var(--bg-base)',
+                  borderColor: 'var(--border-default)',
+                  color: 'var(--text-primary)',
                 }}
               />
             </div>
 
-            {dialogMode === "edit" && selectedCategory && (
+            {dialogMode === 'edit' && selectedCategory && (
               <>
-                <Separator
-                  style={{ backgroundColor: "var(--border-default)" }}
-                />
+                <Separator style={{ backgroundColor: 'var(--border-default)' }} />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <Label
-                      className="text-xs mb-1 block"
-                      style={{ color: "var(--text-muted)" }}
-                    >
+                    <p className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                       Created By
-                    </Label>
-                    <p
-                      className="text-sm"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {selectedCategory.createdByUser?.name || "Admin unavailable"}
+                    </p>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {selectedCategory.createdByUser?.name || 'Admin unavailable'}
                     </p>
                     {selectedCategory.createdByUser?.email ? (
-                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         {selectedCategory.createdByUser.email}
                       </p>
                     ) : null}
                   </div>
                   <div>
-                    <Label
-                      className="text-xs mb-1 block"
-                      style={{ color: "var(--text-muted)" }}
-                    >
+                    <p className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                       Created At
-                    </Label>
-                    <p
-                      className="text-sm"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {new Date(selectedCategory.createdAt).toLocaleDateString(
-                        "en-US",
-                        {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        }
-                      )}
+                    </p>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {new Date(selectedCategory.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
                     </p>
                   </div>
                 </div>
@@ -394,8 +336,8 @@ export function CategoriesView() {
             <Button
               onClick={handleCancel}
               style={{
-                backgroundColor: "var(--bg-hover)",
-                color: "var(--text-primary)",
+                backgroundColor: 'var(--bg-hover)',
+                color: 'var(--text-primary)',
               }}
             >
               Cancel
@@ -406,47 +348,42 @@ export function CategoriesView() {
               style={
                 !categoryName.trim()
                   ? {
-                      backgroundColor: "var(--text-disabled)",
-                      color: "#ffffff",
+                      backgroundColor: 'var(--text-disabled)',
+                      color: 'var(--brand-on-primary)',
                       opacity: 0.5,
-                      cursor: "not-allowed",
+                      cursor: 'not-allowed',
                     }
                   : {
-                      backgroundColor: "var(--brand-primary)",
-                      color: "#ffffff",
+                      backgroundColor: 'var(--brand-primary)',
+                      color: 'var(--brand-on-primary)',
                     }
               }
             >
-              {dialogMode === "create" ? "Create" : "Save Changes"}
+              {dialogMode === 'create' ? 'Create' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={dialogMode === "delete"} onOpenChange={handleCancel}>
+      <Dialog open={dialogMode === 'delete'} onOpenChange={handleCancel}>
         <DialogContent
           style={{
-            backgroundColor: "var(--bg-surface)",
-            borderColor: "var(--border-default)",
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-default)',
           }}
         >
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: "rgba(239, 68, 68, 0.1)" }}
+                style={{ backgroundColor: 'var(--status-error-bg)' }}
               >
-                <AlertTriangle
-                  className="w-5 h-5"
-                  style={{ color: "var(--status-error)" }}
-                />
+                <AlertTriangle className="w-5 h-5" style={{ color: 'var(--status-error)' }} />
               </div>
               <div>
-                <DialogTitle style={{ color: "var(--text-primary)" }}>
-                  Delete Category
-                </DialogTitle>
-                <DialogDescription style={{ color: "var(--text-muted)" }}>
+                <DialogTitle style={{ color: 'var(--text-primary)' }}>Delete Category</DialogTitle>
+                <DialogDescription style={{ color: 'var(--text-muted)' }}>
                   This action cannot be undone
                 </DialogDescription>
               </div>
@@ -458,27 +395,23 @@ export function CategoriesView() {
               <div
                 className="p-4 rounded-lg border-l-4"
                 style={{
-                  backgroundColor: "rgba(239, 68, 68, 0.05)",
-                  borderColor: "var(--status-error)",
+                  backgroundColor: 'var(--status-error-bg)',
+                  borderColor: 'var(--status-error)',
                 }}
               >
-                <p
-                  className="text-sm font-medium mb-2"
-                  style={{ color: "var(--status-error)" }}
-                >
-                  <strong>Warning:</strong> This category is used by{" "}
-                  {selectedCategory.datasetCount} dataset
-                  {selectedCategory.datasetCount !== 1 ? "s" : ""}.
+                <p className="text-sm font-medium mb-2" style={{ color: 'var(--status-error)' }}>
+                  <strong>Warning:</strong> This category is used by {selectedCategory.datasetCount}{' '}
+                  dataset
+                  {selectedCategory.datasetCount !== 1 ? 's' : ''}.
                 </p>
-                <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                  Deleting this category will not automatically reclassify
-                  these datasets. Consider cancelling or migrating datasets
-                  before deletion.
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Deleting this category will not automatically reclassify these datasets. Consider
+                  cancelling or migrating datasets before deletion.
                 </p>
               </div>
             ) : (
-              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                You are about to delete the category{" "}
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                You are about to delete the category{' '}
                 <strong>&quot;{selectedCategory?.name}&quot;</strong>.
               </p>
             )}
@@ -487,10 +420,9 @@ export function CategoriesView() {
               <Label
                 htmlFor="delete-confirmation"
                 className="text-xs mb-2 block"
-                style={{ color: "var(--text-muted)" }}
+                style={{ color: 'var(--text-muted)' }}
               >
-                Type the category name to confirm:{" "}
-                <strong>{selectedCategory?.name}</strong>
+                Type the category name to confirm: <strong>{selectedCategory?.name}</strong>
               </Label>
               <Input
                 id="delete-confirmation"
@@ -498,9 +430,9 @@ export function CategoriesView() {
                 onChange={(e) => setDeleteConfirmation(e.target.value)}
                 placeholder="Type category name..."
                 style={{
-                  backgroundColor: "var(--bg-base)",
-                  borderColor: "var(--border-default)",
-                  color: "var(--text-primary)",
+                  backgroundColor: 'var(--bg-base)',
+                  borderColor: 'var(--border-default)',
+                  color: 'var(--text-primary)',
                 }}
               />
             </div>
@@ -510,8 +442,8 @@ export function CategoriesView() {
             <Button
               onClick={handleCancel}
               style={{
-                backgroundColor: "var(--bg-hover)",
-                color: "var(--text-primary)",
+                backgroundColor: 'var(--bg-hover)',
+                color: 'var(--text-primary)',
               }}
             >
               Cancel
@@ -522,12 +454,12 @@ export function CategoriesView() {
               style={
                 !canDelete
                   ? {
-                      backgroundColor: "var(--text-disabled)",
-                      color: "#ffffff",
+                      backgroundColor: 'var(--text-disabled)',
+                      color: 'var(--brand-on-primary)',
                       opacity: 0.5,
-                      cursor: "not-allowed",
+                      cursor: 'not-allowed',
                     }
-                  : { backgroundColor: "var(--status-error)", color: "#ffffff" }
+                  : { backgroundColor: 'var(--status-error)', color: 'var(--brand-on-primary)' }
               }
             >
               Delete Category

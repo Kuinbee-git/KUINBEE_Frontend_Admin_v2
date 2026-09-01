@@ -1,16 +1,32 @@
-"use client";
+'use client';
 
-import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, MapPin, Tag } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { StatusBadge, getDatasetStatusSemantic, getVerificationStatusSemantic } from "@/components/shared/StatusBadge";
-import { ReviewActions } from "./ReviewActions";
-import { PricingReviewCard } from "./PricingReviewCard";
-import { KdtsScorePanel } from "./KdtsScorePanel";
+import { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { AlertCircle, ArrowLeft, Download, MapPin, Tag } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+import {
+  StatusBadge,
+  formatEnumLabel,
+  formatStatusLabel,
+  getDatasetStatusSemantic,
+  getVerificationStatusSemantic,
+} from '@/components/shared/StatusBadge';
+import { ReviewActions } from './ReviewActions';
+import { PricingReviewCard } from './PricingReviewCard';
+import { KdtsScorePanel } from './KdtsScorePanel';
 import {
   useProposalReview,
   useApproveProposal,
@@ -30,20 +46,25 @@ import {
   useDatasetQuestions,
   useAnswerDatasetQuestion,
   useDeleteDatasetQuestion,
-} from "@/hooks/api/useDatasets";
-import { useMyPermissions } from "@/hooks/api/useAuth";
-import { toast } from "sonner";
+} from '@/hooks/api/useDatasets';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/lib/constants/permissions';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
+import { toast } from 'sonner';
 
 interface DatasetDetailReviewProps {
   datasetId: string;
-  queueType?: "proposals" | "update-requests";
+  queueType?: 'proposals' | 'update-requests';
 }
 
-export function DatasetDetailReview({ datasetId, queueType = "proposals" }: DatasetDetailReviewProps) {
+export function DatasetDetailReview({
+  datasetId,
+  queueType = 'proposals',
+}: DatasetDetailReviewProps) {
   const router = useRouter();
 
   // Fetch dataset proposal review details
-  const { data: datasetData, isLoading, refetch } = useProposalReview(datasetId);
+  const { data: datasetData, isLoading, isError, error, refetch } = useProposalReview(datasetId);
 
   // Proposal mutations
   const approveProposalMutation = useApproveProposal();
@@ -61,33 +82,41 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
   const downloadUrlMutation = useDownloadProposalUrl();
   const sampleDownloadUrlMutation = useDownloadProposalSampleUrl();
 
-  const isUpdateRequest = queueType === "update-requests";
+  const isUpdateRequest = queueType === 'update-requests';
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
+  const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
+  const [deleteQuestionReason, setDeleteQuestionReason] = useState('');
+  const questionsAvailable =
+    datasetData?.dataset.status === 'PUBLISHED' && datasetData.dataset.visibility === 'PUBLIC';
 
-  const { data: questionsData, isLoading: questionsLoading } = useDatasetQuestions(datasetId);
+  const {
+    data: questionsData,
+    isLoading: questionsLoading,
+    isError: questionsError,
+    refetch: refetchQuestions,
+  } = useDatasetQuestions(datasetId, {}, { enabled: questionsAvailable });
   const answerQuestionMutation = useAnswerDatasetQuestion(datasetId);
   const deleteQuestionMutation = useDeleteDatasetQuestion(datasetId);
 
   // Permissions
-  const { data: permissionsData } = useMyPermissions();
-
-  const canApprove = permissionsData?.includes('APPROVE_DATASET') ?? false;
-  const canReject = permissionsData?.includes('REJECT_DATASET') ?? false;
-  const canRequestChanges = permissionsData?.includes('REQUEST_DATASET_CHANGES') ?? false;
-  const canPickProposal = permissionsData?.includes('VIEW_DATASET_PROPOSALS') ?? false;
+  const { can } = useAuthorization();
+  const canApprove = can({ anyOf: [PERMISSIONS.DATASETS.APPROVE] });
+  const canReject = can({ anyOf: [PERMISSIONS.DATASETS.REJECT] });
+  const canRequestChanges = can({ anyOf: [PERMISSIONS.DATASETS.REQUEST_CHANGES] });
+  const canEditMetadata = can({ anyOf: [PERMISSIONS.DATASETS.EDIT_METADATA] });
 
   const handleBack = useCallback(() => {
     // Prefer navigating back in browser history to preserve origin (filters, query, etc.)
-    if (typeof window !== "undefined" && window.history.length > 1) {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
       return;
     }
 
     // Fallback if no history is available (direct deep link)
-    router.push(isUpdateRequest ? "/dashboard/update-requests" : "/dashboard/proposals");
+    router.push(isUpdateRequest ? '/dashboard/update-requests' : '/dashboard/proposals');
   }, [isUpdateRequest, router]);
 
-  const handleDownloadFile = useCallback(async (uploadId: string) => {
+  const handleDownloadFile = useCallback(async () => {
     try {
       const response = await downloadUrlMutation.mutateAsync(datasetId);
 
@@ -128,63 +157,67 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
   const handleActionConfirm = useCallback(
     async (
-      action: "approve" | "reject" | "request_changes",
+      action: 'approve' | 'reject' | 'request_changes',
       datasetNotes: string,
       pricingNotes?: string,
       datasetNeedsChanges?: boolean,
       pricingNeedsChanges?: boolean
     ) => {
       try {
-        if (action === "approve") {
+        if (action === 'approve') {
           // IMPORTANT: Pricing must be approved BEFORE the dataset
           // The backend enforces this dependency
 
           // 1. Approve pricing first if checkbox is selected
           if (pricingNeedsChanges) {
-            const approvePricing = isUpdateRequest ? approveUpdateRequestPricingMutation : approvePricingMutation;
+            const approvePricing = isUpdateRequest
+              ? approveUpdateRequestPricingMutation
+              : approvePricingMutation;
             await approvePricing.mutateAsync({
               datasetId,
-              data: pricingNotes ? { notes: pricingNotes } : undefined
+              data: pricingNotes ? { notes: pricingNotes } : undefined,
             });
           }
 
           // 2. Then approve dataset if checkbox is selected
           if (datasetNeedsChanges) {
-            const approveDataset = isUpdateRequest ? approveUpdateRequestMutation : approveProposalMutation;
+            const approveDataset = isUpdateRequest
+              ? approveUpdateRequestMutation
+              : approveProposalMutation;
             await approveDataset.mutateAsync({
               datasetId,
-              data: datasetNotes ? { notes: datasetNotes } : undefined
+              data: datasetNotes ? { notes: datasetNotes } : undefined,
             });
           }
-
-          toast.success("Approval completed successfully");
-        } else if (action === "reject") {
+        } else if (action === 'reject') {
           // Reject dataset if checkbox is selected
           if (datasetNeedsChanges) {
-            const rejectDataset = isUpdateRequest ? rejectUpdateRequestMutation : rejectProposalMutation;
+            const rejectDataset = isUpdateRequest
+              ? rejectUpdateRequestMutation
+              : rejectProposalMutation;
             await rejectDataset.mutateAsync({
               datasetId,
               data: {
-                rejectionReason: datasetNotes || "Rejected",
-                notes: datasetNotes || undefined
-              }
+                rejectionReason: datasetNotes || 'Rejected',
+                notes: datasetNotes || undefined,
+              },
             });
           }
 
           // Reject pricing if checkbox is selected
           if (pricingNeedsChanges) {
-            const rejectPricing = isUpdateRequest ? rejectUpdateRequestPricingMutation : rejectPricingMutation;
+            const rejectPricing = isUpdateRequest
+              ? rejectUpdateRequestPricingMutation
+              : rejectPricingMutation;
             await rejectPricing.mutateAsync({
               datasetId,
               data: {
-                rejectionReason: pricingNotes || "Rejected",
-                notes: pricingNotes || undefined
-              }
+                rejectionReason: pricingNotes || 'Rejected',
+                notes: pricingNotes || undefined,
+              },
             });
           }
-
-          toast.success("Rejection completed successfully");
-        } else if (action === "request_changes") {
+        } else if (action === 'request_changes') {
           // Route to appropriate endpoint based on which flags are set
           if (pricingNeedsChanges && !datasetNeedsChanges) {
             // Only pricing changes
@@ -194,25 +227,29 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
             await requestPricingChanges.mutateAsync({
               datasetId,
               data: {
-                notes: pricingNotes ?? "",
+                notes: pricingNotes ?? '',
                 datasetNeedsChanges: false,
-                pricingNeedsChanges: true
-              }
+                pricingNeedsChanges: true,
+              },
             });
           } else if (datasetNeedsChanges && !pricingNeedsChanges) {
             // Only dataset changes
-            const requestDatasetChanges = isUpdateRequest ? requestUpdateRequestChangesMutation : requestChangesMutation;
+            const requestDatasetChanges = isUpdateRequest
+              ? requestUpdateRequestChangesMutation
+              : requestChangesMutation;
             await requestDatasetChanges.mutateAsync({
               datasetId,
               data: {
                 notes: datasetNotes,
                 datasetNeedsChanges: true,
-                pricingNeedsChanges: false
-              }
+                pricingNeedsChanges: false,
+              },
             });
           } else if (datasetNeedsChanges && pricingNeedsChanges) {
             // Both dataset and pricing changes - call both endpoints
-            const requestDatasetChanges = isUpdateRequest ? requestUpdateRequestChangesMutation : requestChangesMutation;
+            const requestDatasetChanges = isUpdateRequest
+              ? requestUpdateRequestChangesMutation
+              : requestChangesMutation;
             const requestPricingChanges = isUpdateRequest
               ? requestUpdateRequestPricingChangesMutation
               : requestPricingChangesMutation;
@@ -222,25 +259,23 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                 data: {
                   notes: datasetNotes,
                   datasetNeedsChanges: true,
-                  pricingNeedsChanges: false
-                }
+                  pricingNeedsChanges: false,
+                },
               }),
               requestPricingChanges.mutateAsync({
                 datasetId,
                 data: {
-                  notes: pricingNotes ?? "",
+                  notes: pricingNotes ?? '',
                   datasetNeedsChanges: false,
-                  pricingNeedsChanges: true
-                }
-              })
+                  pricingNeedsChanges: true,
+                },
+              }),
             ]);
           }
-          toast.success("Changes requested");
         }
         refetch();
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : '';
-        toast.error(message || `Failed to ${action} proposal`);
+        throw error;
       }
     },
     [
@@ -263,34 +298,73 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
   );
 
   // Q&A handlers - must be declared before conditional returns
-  const handleAnswerQuestion = useCallback(async (questionId: string) => {
-    const answer = (answerDrafts[questionId] || "").trim();
-    if (!answer) return;
+  const handleAnswerQuestion = useCallback(
+    async (questionId: string) => {
+      const answer = (answerDrafts[questionId] || '').trim();
+      if (!answer) return;
 
-    await answerQuestionMutation.mutateAsync({ questionId, answer });
-    setAnswerDrafts((prev) => ({ ...prev, [questionId]: "" }));
-  }, [answerDrafts, answerQuestionMutation]);
+      try {
+        await answerQuestionMutation.mutateAsync({ questionId, answer });
+        setAnswerDrafts((prev) => ({ ...prev, [questionId]: '' }));
+      } catch {
+        // The mutation hook presents the error and preserves the answer draft.
+      }
+    },
+    [answerDrafts, answerQuestionMutation]
+  );
 
-  const handleDeleteQuestion = useCallback(async (questionId: string) => {
-    await deleteQuestionMutation.mutateAsync(questionId);
-  }, [deleteQuestionMutation]);
+  const handleDeleteQuestion = useCallback(async () => {
+    if (!deleteQuestionId || deleteQuestionReason.trim().length < 3) return;
+    try {
+      await deleteQuestionMutation.mutateAsync({
+        questionId: deleteQuestionId,
+        data: { reason: deleteQuestionReason.trim() },
+      });
+      setDeleteQuestionId(null);
+      setDeleteQuestionReason('');
+    } catch {
+      // The mutation hook presents the error and keeps the confirmation open.
+    }
+  }, [deleteQuestionId, deleteQuestionMutation, deleteQuestionReason]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg-surface)" }}>
-        <p style={{ color: "var(--text-muted)" }}>Loading dataset...</p>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: 'var(--bg-surface)' }}
+      >
+        <p style={{ color: 'var(--text-muted)' }}>Loading dataset...</p>
       </div>
     );
   }
 
-  if (!datasetData) {
+  if (isError || !datasetData) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg-surface)" }}>
-        <div className="text-center">
-          <p className="text-lg font-medium mb-2 text-red-500">Failed to load dataset</p>
-          <Button variant="outline" onClick={handleBack}>
-            Back to {isUpdateRequest ? 'update requests' : 'proposals'}
-          </Button>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: 'var(--bg-surface)' }}
+      >
+        <div className="max-w-md p-4 text-center">
+          <AlertCircle
+            className="mx-auto mb-3 h-9 w-9 text-[var(--status-error)]"
+            aria-hidden="true"
+          />
+          <p className="text-lg font-medium mb-2 text-[var(--status-error)]">
+            Failed to load dataset
+          </p>
+          <p className="mb-4 text-sm" style={{ color: 'var(--text-muted)' }}>
+            {isError
+              ? getFriendlyErrorMessage(error)
+              : 'The dataset service returned an empty response.'}
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button variant="outline" onClick={() => refetch()}>
+              Retry
+            </Button>
+            <Button variant="ghost" onClick={handleBack}>
+              Back to {isUpdateRequest ? 'update requests' : 'proposals'}
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -319,7 +393,7 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -333,31 +407,29 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: "var(--bg-surface)" }}>
+    <div
+      className="min-h-screen overflow-x-hidden"
+      style={{ backgroundColor: 'var(--bg-surface)' }}
+    >
       {/* Header */}
       <div
         className="border-b sticky top-0 z-10"
         style={{
-          backgroundColor: "var(--bg-base)",
-          borderColor: "var(--border-default)"
+          backgroundColor: 'var(--bg-base)',
+          borderColor: 'var(--border-default)',
         }}
       >
         <div className="p-4 md:p-6 max-w-full">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0 flex-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                className="mt-1 flex-shrink-0"
-              >
+              <Button variant="ghost" size="sm" onClick={handleBack} className="mt-1 flex-shrink-0">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <h1
                     className="text-xl md:text-2xl font-bold break-words"
-                    style={{ color: "var(--text-primary)" }}
+                    style={{ color: 'var(--text-primary)' }}
                   >
                     {dataset.title}
                   </h1>
@@ -365,8 +437,11 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                     {dataset.datasetUniqueId}
                   </Badge>
                 </div>
-                <div className="flex items-center gap-3 flex-wrap text-sm" style={{ color: "var(--text-muted)" }}>
-                  <span className="truncate">Supplier: {supplier?.name || "Unavailable"}</span>
+                <div
+                  className="flex items-center gap-3 flex-wrap text-sm"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <span className="truncate">Supplier: {supplier?.name || 'Unavailable'}</span>
                   {supplier?.email ? (
                     <>
                       <span className="flex-shrink-0">•</span>
@@ -381,7 +456,7 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
             <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
               <StatusBadge
-                status={dataset.status.replace(/_/g, ' ')}
+                status={formatStatusLabel(dataset.status)}
                 semanticType={getDatasetStatusSemantic(dataset.status)}
               />
               {dataset.isSample && (
@@ -390,13 +465,21 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                 </Badge>
               )}
               <StatusBadge
-                status={verification.status.replace(/_/g, ' ')}
+                status={formatStatusLabel(verification.status)}
                 semanticType={getVerificationStatusSemantic(verification.status)}
               />
               {datasetData.dataset.pricing && (
                 <StatusBadge
-                  status={`Pricing: ${datasetData.dataset.pricing.status.replace(/_/g, ' ')}`}
-                  semanticType={datasetData.dataset.pricing.status === 'ACTIVE' || datasetData.dataset.pricing.status === 'VERIFIED' ? 'success' : datasetData.dataset.pricing.status === 'CHANGES_REQUESTED' ? 'warning' : datasetData.dataset.pricing.status === 'REJECTED' ? 'error' : 'neutral'}
+                  status={`Pricing: ${formatStatusLabel(datasetData.dataset.pricing.status)}`}
+                  semanticType={
+                    datasetData.dataset.pricing.status === 'ACTIVE'
+                      ? 'success'
+                      : datasetData.dataset.pricing.status === 'CHANGES_REQUESTED'
+                        ? 'warning'
+                        : datasetData.dataset.pricing.status === 'REJECTED'
+                          ? 'error'
+                          : 'neutral'
+                  }
                 />
               )}
             </div>
@@ -410,43 +493,80 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-4 md:space-y-6 min-w-0">
             {/* Dataset Information */}
-            <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-              <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
-                <CardTitle style={{ color: "var(--text-primary)" }}>Dataset Information</CardTitle>
+            <Card
+              className="overflow-hidden"
+              style={{
+                backgroundColor: 'var(--bg-base)',
+                borderColor: 'var(--border-default)',
+              }}
+            >
+              <CardHeader
+                style={{ borderBottomColor: 'var(--border-default)' }}
+                className="border-b"
+              >
+                <CardTitle style={{ color: 'var(--text-primary)' }}>Dataset Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Category</p>
-                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{primaryCategory.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Source</p>
-                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{source.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Type</p>
-                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataset.superType}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Visibility</p>
-                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataset.visibility}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>License</p>
-                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataset.license || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Pricing</p>
-                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>
-                      {dataset.pricing?.isPaid ? `${dataset.pricing.price} ${dataset.pricing.currency}` : 'Free'}
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Category
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                      {primaryCategory.name}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Location</p>
-                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Source
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                      {source.name}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Type
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                      {formatEnumLabel(dataset.superType)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Visibility
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                      {formatEnumLabel(dataset.visibility)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      License
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                      {dataset.license || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Pricing
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                      {dataset.pricing?.isPaid
+                        ? `${dataset.pricing.price} ${dataset.pricing.currency}`
+                        : 'Free'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Location
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
                       {locationInfo
-                        ? [locationInfo.city, locationInfo.state, locationInfo.country].filter(Boolean).join(', ')
+                        ? [locationInfo.city, locationInfo.state, locationInfo.country]
+                            .filter(Boolean)
+                            .join(', ')
                         : 'N/A'}
                     </p>
                   </div>
@@ -456,10 +576,17 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                   <>
                     <Separator />
                     <div>
-                      <p className="text-sm font-medium mb-2" style={{ color: "var(--text-muted)" }}>Secondary Categories</p>
+                      <p
+                        className="text-sm font-medium mb-2"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        Secondary Categories
+                      </p>
                       <div className="flex flex-wrap gap-2">
-                        {secondaryCategories.map(cat => (
-                          <Badge key={cat.id} variant="secondary">{cat.name}</Badge>
+                        {secondaryCategories.map((cat) => (
+                          <Badge key={cat.id} variant="secondary">
+                            {cat.name}
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -467,9 +594,15 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                 )}
 
                 <Separator />
-                <div className="rounded-lg border p-4 space-y-3" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-default)" }}>
+                <div
+                  className="rounded-lg border p-4 space-y-3"
+                  style={{
+                    backgroundColor: 'var(--bg-surface)',
+                    borderColor: 'var(--border-default)',
+                  }}
+                >
                   <div className="flex items-center gap-2">
-                    <Badge variant={dataset.isSample ? "default" : "outline"} className="text-xs">
+                    <Badge variant={dataset.isSample ? 'default' : 'outline'} className="text-xs">
                       {dataset.isSample ? 'SAMPLE DATASET' : 'FULL DATASET'}
                     </Badge>
                   </div>
@@ -477,36 +610,83 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                   {dataset.isSample ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Why Sample</p>
-                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{dataset.sampleNotes?.whySample || 'N/A'}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Why Sample
+                        </p>
+                        <p
+                          className="text-sm mt-1 break-words"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          {dataset.sampleNotes?.whySample || 'N/A'}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Actual Data Size</p>
-                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{dataset.sampleNotes?.actualDataSize || 'N/A'}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Actual Data Size
+                        </p>
+                        <p
+                          className="text-sm mt-1 break-words"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          {dataset.sampleNotes?.actualDataSize || 'N/A'}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Completeness</p>
-                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{dataset.sampleNotes?.completeness || 'N/A'}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Completeness
+                        </p>
+                        <p
+                          className="text-sm mt-1 break-words"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          {dataset.sampleNotes?.completeness || 'N/A'}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Delivery Mechanism</p>
-                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{dataset.sampleNotes?.deliveryMechanism || 'N/A'}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Delivery Mechanism
+                        </p>
+                        <p
+                          className="text-sm mt-1 break-words"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          {dataset.sampleNotes?.deliveryMechanism
+                            ? formatEnumLabel(dataset.sampleNotes.deliveryMechanism)
+                            : 'N/A'}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Delivery Notes</p>
-                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{dataset.sampleNotes?.deliveryMechanismNotes || 'N/A'}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Delivery Notes
+                        </p>
+                        <p
+                          className="text-sm mt-1 break-words"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          {dataset.sampleNotes?.deliveryMechanismNotes || 'N/A'}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Actual Price</p>
-                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Actual Price
+                        </p>
+                        <p
+                          className="text-sm mt-1 break-words"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
                           {dataset.actualPrice !== null && dataset.actualPrice !== undefined
                             ? `${dataset.actualPrice} ${dataset.actualPriceCurrency || ''}`.trim()
                             : 'N/A'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Negotiable</p>
-                        <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Negotiable
+                        </p>
+                        <p
+                          className="text-sm mt-1 break-words"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
                           {dataset.isNegotiable === null || dataset.isNegotiable === undefined
                             ? 'N/A'
                             : dataset.isNegotiable
@@ -516,7 +696,7 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                       This proposal is marked as a full dataset.
                     </p>
                   )}
@@ -526,10 +706,17 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                   <>
                     <Separator />
                     <div>
-                      <p className="text-sm font-medium mb-2" style={{ color: "var(--text-muted)" }}>Tags</p>
+                      <p
+                        className="text-sm font-medium mb-2"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        Tags
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {tags.map((tag) => (
-                          <Badge key={tag.id} variant="secondary">{tag.name}</Badge>
+                          <Badge key={tag.id} variant="secondary">
+                            {tag.name}
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -540,45 +727,93 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
             {/* About Dataset */}
             {aboutDatasetInfo && (
-              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
-                  <CardTitle style={{ color: "var(--text-primary)" }}>About Dataset</CardTitle>
+              <Card
+                className="overflow-hidden"
+                style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}
+              >
+                <CardHeader
+                  style={{ borderBottomColor: 'var(--border-default)' }}
+                  className="border-b"
+                >
+                  <CardTitle style={{ color: 'var(--text-primary)' }}>About Dataset</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {aboutDatasetInfo.overview && (
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Overview</p>
-                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.overview}</p>
+                      <p
+                        className="text-sm font-medium mb-1"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        Overview
+                      </p>
+                      <p className="text-sm break-words" style={{ color: 'var(--text-primary)' }}>
+                        {aboutDatasetInfo.overview}
+                      </p>
                     </div>
                   )}
                   {aboutDatasetInfo.description && (
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Description</p>
-                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.description}</p>
+                      <p
+                        className="text-sm font-medium mb-1"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        Description
+                      </p>
+                      <p className="text-sm break-words" style={{ color: 'var(--text-primary)' }}>
+                        {aboutDatasetInfo.description}
+                      </p>
                     </div>
                   )}
                   {aboutDatasetInfo.dataQuality && (
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Data Quality</p>
-                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.dataQuality}</p>
+                      <p
+                        className="text-sm font-medium mb-1"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        Data Quality
+                      </p>
+                      <p className="text-sm break-words" style={{ color: 'var(--text-primary)' }}>
+                        {aboutDatasetInfo.dataQuality}
+                      </p>
                     </div>
                   )}
                   {aboutDatasetInfo.useCases && (
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Use Cases</p>
-                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.useCases}</p>
+                      <p
+                        className="text-sm font-medium mb-1"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        Use Cases
+                      </p>
+                      <p className="text-sm break-words" style={{ color: 'var(--text-primary)' }}>
+                        {aboutDatasetInfo.useCases}
+                      </p>
                     </div>
                   )}
                   {aboutDatasetInfo.limitations && (
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Limitations</p>
-                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.limitations}</p>
+                      <p
+                        className="text-sm font-medium mb-1"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        Limitations
+                      </p>
+                      <p className="text-sm break-words" style={{ color: 'var(--text-primary)' }}>
+                        {aboutDatasetInfo.limitations}
+                      </p>
                     </div>
                   )}
                   {aboutDatasetInfo.methodology && (
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Methodology</p>
-                      <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{aboutDatasetInfo.methodology}</p>
+                      <p
+                        className="text-sm font-medium mb-1"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        Methodology
+                      </p>
+                      <p className="text-sm break-words" style={{ color: 'var(--text-primary)' }}>
+                        {aboutDatasetInfo.methodology}
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -587,46 +822,76 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
             {/* Data Format */}
             {dataFormatInfo && (
-              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
-                  <CardTitle style={{ color: "var(--text-primary)" }}>Data Format</CardTitle>
+              <Card
+                className="overflow-hidden"
+                style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}
+              >
+                <CardHeader
+                  style={{ borderBottomColor: 'var(--border-default)' }}
+                  className="border-b"
+                >
+                  <CardTitle style={{ color: 'var(--text-primary)' }}>Data Format</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {dataFormatInfo.fileFormat && (
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Format</p>
-                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataFormatInfo.fileFormat}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Format
+                        </p>
+                        <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                          {formatEnumLabel(dataFormatInfo.fileFormat)}
+                        </p>
                       </div>
                     )}
                     {dataFormatInfo.rows && (
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Rows</p>
-                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataFormatInfo.rows.toLocaleString()}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Rows
+                        </p>
+                        <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                          {dataFormatInfo.rows.toLocaleString()}
+                        </p>
                       </div>
                     )}
                     {dataFormatInfo.cols && (
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Columns</p>
-                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataFormatInfo.cols}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Columns
+                        </p>
+                        <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                          {dataFormatInfo.cols}
+                        </p>
                       </div>
                     )}
                     {dataFormatInfo.fileSize && (
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>File Size</p>
-                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{formatFileSize(dataFormatInfo.fileSize)}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          File Size
+                        </p>
+                        <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                          {formatFileSize(dataFormatInfo.fileSize)}
+                        </p>
                       </div>
                     )}
                     {dataFormatInfo.encoding && (
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Encoding</p>
-                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataFormatInfo.encoding}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Encoding
+                        </p>
+                        <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                          {dataFormatInfo.encoding}
+                        </p>
                       </div>
                     )}
                     {dataFormatInfo.compressionType && (
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Compression</p>
-                        <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{dataFormatInfo.compressionType}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Compression
+                        </p>
+                        <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                          {dataFormatInfo.compressionType}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -636,94 +901,208 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
             {/* Pricing Information */}
             {datasetData?.dataset?.pricing && (
-              <PricingReviewCard pricing={datasetData.dataset.pricing} isDark={false} />
+              <PricingReviewCard pricing={datasetData.dataset.pricing} />
             )}
 
-            <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-              <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
-                <CardTitle style={{ color: "var(--text-primary)" }}>Questions & Answers</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {questionsLoading ? (
-                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading questions...</p>
-                ) : !questionsData?.items?.length ? (
-                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>No questions found for this dataset.</p>
-                ) : (
-                  questionsData.items.map((q) => (
-                    <div key={q.id} className="rounded-lg border p-4" style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-surface)" }}>
-                      <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{q.question}</p>
-                      <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{formatDate(q.createdAt)}</p>
-
-                      {q.answers.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {q.answers.map((a) => (
-                            <div key={a.id} className="rounded-md p-3" style={{ backgroundColor: "var(--bg-base)", border: "1px solid var(--border-default)" }}>
-                              <p className="text-sm" style={{ color: "var(--text-primary)" }}>{a.answer}</p>
-                              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{formatDate(a.createdAt)}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                        <input
-                          className="flex-1 h-10 px-3 rounded-md border text-sm"
-                          style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-base)", color: "var(--text-primary)" }}
-                          placeholder="Write an answer..."
-                          value={answerDrafts[q.id] || ""}
-                          onChange={(e) => setAnswerDrafts((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                        />
-                        <Button
-                          onClick={() => handleAnswerQuestion(q.id)}
-                          disabled={answerQuestionMutation.isPending || !(answerDrafts[q.id] || "").trim()}
-                        >
-                          Answer
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          onClick={() => handleDeleteQuestion(q.id)}
-                          disabled={deleteQuestionMutation.isPending}
-                        >
-                          Delete
-                        </Button>
-                      </div>
+            {questionsAvailable ? (
+              <Card
+                className="overflow-hidden"
+                style={{
+                  backgroundColor: 'var(--bg-base)',
+                  borderColor: 'var(--border-default)',
+                }}
+              >
+                <CardHeader
+                  style={{ borderBottomColor: 'var(--border-default)' }}
+                  className="border-b"
+                >
+                  <CardTitle style={{ color: 'var(--text-primary)' }}>
+                    Questions & Answers
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {questionsLoading ? (
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                      Loading questions...
+                    </p>
+                  ) : questionsError ? (
+                    <div className="rounded-lg border p-4 text-sm">
+                      <p className="font-medium text-[var(--status-error)]">
+                        Could not load questions
+                      </p>
+                      <Button
+                        className="mt-3"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => refetchQuestions()}
+                      >
+                        Retry
+                      </Button>
                     </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+                  ) : !questionsData?.items?.length ? (
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                      No questions found for this dataset.
+                    </p>
+                  ) : (
+                    questionsData.items.map((q) => (
+                      <div
+                        key={q.id}
+                        className="rounded-lg border p-4"
+                        style={{
+                          borderColor: 'var(--border-default)',
+                          backgroundColor: 'var(--bg-surface)',
+                        }}
+                      >
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {q.question}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                          {formatDate(q.createdAt)}
+                        </p>
+
+                        {q.answers.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {q.answers.map((a) => (
+                              <div
+                                key={a.id}
+                                className="rounded-md p-3"
+                                style={{
+                                  backgroundColor: 'var(--bg-base)',
+                                  border: '1px solid var(--border-default)',
+                                }}
+                              >
+                                <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                                  {a.answer}
+                                </p>
+                                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                                  {formatDate(a.createdAt)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                          <input
+                            aria-label={`Answer question: ${q.question}`}
+                            maxLength={5000}
+                            className="flex-1 h-10 px-3 rounded-md border text-sm"
+                            style={{
+                              borderColor: 'var(--border-default)',
+                              backgroundColor: 'var(--bg-base)',
+                              color: 'var(--text-primary)',
+                            }}
+                            placeholder="Write an answer..."
+                            value={answerDrafts[q.id] || ''}
+                            onChange={(e) =>
+                              setAnswerDrafts((prev) => ({ ...prev, [q.id]: e.target.value }))
+                            }
+                          />
+                          <Button
+                            onClick={() => handleAnswerQuestion(q.id)}
+                            disabled={
+                              answerQuestionMutation.isPending || !(answerDrafts[q.id] || '').trim()
+                            }
+                          >
+                            Answer
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => setDeleteQuestionId(q.id)}
+                            disabled={deleteQuestionMutation.isPending}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            ) : null}
 
             {/* Features/Schema */}
             {features.length > 0 && (
-              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
-                  <CardTitle style={{ color: "var(--text-primary)" }}>Features ({features.length})</CardTitle>
+              <Card
+                className="overflow-hidden"
+                style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}
+              >
+                <CardHeader
+                  style={{ borderBottomColor: 'var(--border-default)' }}
+                  className="border-b"
+                >
+                  <CardTitle style={{ color: 'var(--text-primary)' }}>
+                    Features ({features.length})
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto -mx-4 sm:mx-0">
                     <div className="inline-block min-w-full align-middle">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b" style={{ borderColor: "var(--border-default)" }}>
-                            <th className="text-left p-2 font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>Name</th>
-                            <th className="text-left p-2 font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>Data Type</th>
-                            <th className="text-left p-2 font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>Nullable</th>
-                            <th className="text-left p-2 font-medium whitespace-nowrap" style={{ color: "var(--text-muted)" }}>Description</th>
+                          <tr className="border-b" style={{ borderColor: 'var(--border-default)' }}>
+                            <th
+                              className="text-left p-2 font-medium whitespace-nowrap"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Name
+                            </th>
+                            <th
+                              className="text-left p-2 font-medium whitespace-nowrap"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Data Type
+                            </th>
+                            <th
+                              className="text-left p-2 font-medium whitespace-nowrap"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Nullable
+                            </th>
+                            <th
+                              className="text-left p-2 font-medium whitespace-nowrap"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Description
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {features.map((feature) => (
-                            <tr key={feature.id} className="border-b" style={{ borderColor: "var(--border-default)" }}>
-                              <td className="p-2 break-words" style={{ color: "var(--text-primary)" }}>{feature.name}</td>
-                              <td className="p-2 whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{feature.dataType}</td>
+                            <tr
+                              key={feature.id}
+                              className="border-b"
+                              style={{ borderColor: 'var(--border-default)' }}
+                            >
+                              <td
+                                className="p-2 break-words"
+                                style={{ color: 'var(--text-primary)' }}
+                              >
+                                {feature.name}
+                              </td>
+                              <td
+                                className="p-2 whitespace-nowrap"
+                                style={{ color: 'var(--text-secondary)' }}
+                              >
+                                {feature.dataType}
+                              </td>
                               <td className="p-2">
                                 {feature.isNullable ? (
-                                  <Badge variant="outline" className="text-xs whitespace-nowrap">Yes</Badge>
+                                  <Badge variant="outline" className="text-xs whitespace-nowrap">
+                                    Yes
+                                  </Badge>
                                 ) : (
-                                  <Badge variant="secondary" className="text-xs whitespace-nowrap">No</Badge>
+                                  <Badge variant="secondary" className="text-xs whitespace-nowrap">
+                                    No
+                                  </Badge>
                                 )}
                               </td>
-                              <td className="p-2 break-words" style={{ color: "var(--text-muted)" }}>{feature.description || '-'}</td>
+                              <td
+                                className="p-2 break-words"
+                                style={{ color: 'var(--text-muted)' }}
+                              >
+                                {feature.description || '-'}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -738,14 +1117,28 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
           {/* Right Column - Sidebar */}
           <div className="space-y-4 md:space-y-6 min-w-0 lg:sticky lg:top-24 lg:h-fit">
             {/* Review Actions - Wrapped in Card for consistency */}
-            <div style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)", border: "1px solid var(--border-default)", borderRadius: "var(--radius, 0.5rem)", overflow: "hidden" }}>
-              <div style={{ borderBottomColor: "var(--border-default)", borderBottom: "1px solid var(--border-default)", padding: "1rem" }}>
-                <h3 style={{ color: "var(--text-primary)", fontWeight: "600" }}>Review Actions</h3>
+            <div
+              style={{
+                backgroundColor: 'var(--bg-base)',
+                borderColor: 'var(--border-default)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius, 0.5rem)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  borderBottomColor: 'var(--border-default)',
+                  borderBottom: '1px solid var(--border-default)',
+                  padding: '1rem',
+                }}
+              >
+                <h3 style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Review Actions</h3>
               </div>
-              <div style={{ padding: "1rem" }}>
+              <div style={{ padding: '1rem' }}>
                 <ReviewActions
                   currentStatus={dataset.status}
-                  ownerType={dataset.ownerType.toLowerCase() as "platform" | "supplier"}
+                  ownerType={dataset.ownerType.toLowerCase() as 'platform' | 'supplier'}
                   canApprove={canApprove}
                   canReject={canReject}
                   canRequestChanges={canRequestChanges}
@@ -756,16 +1149,24 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
             </div>
 
             {/* Verification Status */}
-            <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-              <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
-                <CardTitle style={{ color: "var(--text-primary)" }}>Verification</CardTitle>
+            <Card
+              className="overflow-hidden"
+              style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}
+            >
+              <CardHeader
+                style={{ borderBottomColor: 'var(--border-default)' }}
+                className="border-b"
+              >
+                <CardTitle style={{ color: 'var(--text-primary)' }}>Verification</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Status</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                    Status
+                  </p>
                   <div className="mt-1">
                     <StatusBadge
-                      status={verification.status.replace(/_/g, ' ')}
+                      status={formatStatusLabel(verification.status)}
                       semanticType={getVerificationStatusSemantic(verification.status)}
                     />
                   </div>
@@ -773,15 +1174,27 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
                 {verification.submittedAt && (
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Submitted</p>
-                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{formatDate(verification.submittedAt)}</p>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Submitted
+                    </p>
+                    <p
+                      className="text-sm mt-1 break-words"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {formatDate(verification.submittedAt)}
+                    </p>
                   </div>
                 )}
 
                 {verification.verifiedAt && (
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Verified</p>
-                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Verified
+                    </p>
+                    <p
+                      className="text-sm mt-1 break-words"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
                       {formatDate(verification.verifiedAt)}
                       {verification.verifiedByName && ` by ${verification.verifiedByName}`}
                     </p>
@@ -790,22 +1203,43 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
                 {verification.rejectedAt && (
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Rejected</p>
-                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>{formatDate(verification.rejectedAt)}</p>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Rejected
+                    </p>
+                    <p
+                      className="text-sm mt-1 break-words"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {formatDate(verification.rejectedAt)}
+                    </p>
                   </div>
                 )}
 
                 {verification.rejectionReason && (
-                  <div className="p-3 rounded-lg break-words" style={{ backgroundColor: "var(--bg-surface)" }}>
-                    <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Rejection Reason</p>
-                    <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{verification.rejectionReason}</p>
+                  <div
+                    className="p-3 rounded-lg break-words"
+                    style={{ backgroundColor: 'var(--bg-surface)' }}
+                  >
+                    <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
+                      Rejection Reason
+                    </p>
+                    <p className="text-sm break-words" style={{ color: 'var(--text-primary)' }}>
+                      {verification.rejectionReason}
+                    </p>
                   </div>
                 )}
 
                 {verification.notes && (
-                  <div className="p-3 rounded-lg break-words" style={{ backgroundColor: "var(--bg-surface)" }}>
-                    <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>Notes</p>
-                    <p className="text-sm break-words" style={{ color: "var(--text-primary)" }}>{verification.notes}</p>
+                  <div
+                    className="p-3 rounded-lg break-words"
+                    style={{ backgroundColor: 'var(--bg-surface)' }}
+                  >
+                    <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
+                      Notes
+                    </p>
+                    <p className="text-sm break-words" style={{ color: 'var(--text-primary)' }}>
+                      {verification.notes}
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -813,51 +1247,84 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
             {/* KDTS Scoring Panel */}
             <div className="col-span-full md:col-span-2 lg:col-span-1">
-              <KdtsScorePanel datasetId={datasetId} isAdmin={canApprove} />
+              <KdtsScorePanel datasetId={datasetId} canEdit={canEditMetadata} />
             </div>
 
             {/* Location */}
             {locationInfo && (
-              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
-                  <CardTitle style={{ color: "var(--text-primary)" }} className="flex items-center gap-2">
+              <Card
+                className="overflow-hidden"
+                style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}
+              >
+                <CardHeader
+                  style={{ borderBottomColor: 'var(--border-default)' }}
+                  className="border-b"
+                >
+                  <CardTitle
+                    style={{ color: 'var(--text-primary)' }}
+                    className="flex items-center gap-2"
+                  >
                     <MapPin className="w-4 h-4" />
                     <span>Location</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Country</p>
-                    <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.country}</p>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Country
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                      {locationInfo.country}
+                    </p>
                   </div>
                   {locationInfo.state && (
                     <div>
-                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>State</p>
-                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.state}</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                        State
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                        {locationInfo.state}
+                      </p>
                     </div>
                   )}
                   {locationInfo.city && (
                     <div>
-                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>City</p>
-                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.city}</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                        City
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                        {locationInfo.city}
+                      </p>
                     </div>
                   )}
                   {locationInfo.region && (
                     <div>
-                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Region</p>
-                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.region}</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                        Region
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                        {locationInfo.region}
+                      </p>
                     </div>
                   )}
                   {locationInfo.coverage && (
                     <div>
-                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Coverage</p>
-                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.coverage}</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                        Coverage
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                        {locationInfo.coverage}
+                      </p>
                     </div>
                   )}
                   {locationInfo.coordinates && (
                     <div>
-                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Coordinates</p>
-                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{locationInfo.coordinates}</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                        Coordinates
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                        {locationInfo.coordinates}
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -866,9 +1333,18 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
             {/* Tags */}
             {tags?.length > 0 && (
-              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
-                  <CardTitle style={{ color: "var(--text-primary)" }} className="flex items-center gap-2">
+              <Card
+                className="overflow-hidden"
+                style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}
+              >
+                <CardHeader
+                  style={{ borderBottomColor: 'var(--border-default)' }}
+                  className="border-b"
+                >
+                  <CardTitle
+                    style={{ color: 'var(--text-primary)' }}
+                    className="flex items-center gap-2"
+                  >
                     <Tag className="w-4 h-4" />
                     <span>Tags</span>
                   </CardTitle>
@@ -876,7 +1352,9 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {tags.map((tag) => (
-                      <Badge key={tag.id} variant="secondary">{tag.name}</Badge>
+                      <Badge key={tag.id} variant="secondary">
+                        {tag.name}
+                      </Badge>
                     ))}
                   </div>
                 </CardContent>
@@ -885,41 +1363,63 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
             {/* Current Upload */}
             {verification.currentUpload && (
-              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
-                  <CardTitle style={{ color: "var(--text-primary)" }}>Current Upload</CardTitle>
+              <Card
+                className="overflow-hidden"
+                style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}
+              >
+                <CardHeader
+                  style={{ borderBottomColor: 'var(--border-default)' }}
+                  className="border-b"
+                >
+                  <CardTitle style={{ color: 'var(--text-primary)' }}>Current Upload</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Scope</p>
-                    <Badge variant="outline" className="mt-1">{verification.currentUpload.scope}</Badge>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Scope
+                    </p>
+                    <Badge variant="outline" className="mt-1">
+                      {formatEnumLabel(verification.currentUpload.scope)}
+                    </Badge>
                   </div>
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Status</p>
-                    <Badge variant="outline" className="mt-1">{verification.currentUpload.status}</Badge>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Status
+                    </p>
+                    <Badge variant="outline" className="mt-1">
+                      {formatStatusLabel(verification.currentUpload.status)}
+                    </Badge>
                   </div>
                   {verification.currentUpload.sizeBytes && (
                     <div>
-                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Size</p>
-                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{formatFileSize(verification.currentUpload.sizeBytes)}</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                        Size
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                        {formatFileSize(verification.currentUpload.sizeBytes)}
+                      </p>
                     </div>
                   )}
                   {verification.currentUpload.uploadedAt && (
                     <div>
-                      <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Uploaded</p>
-                      <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{formatDate(verification.currentUpload.uploadedAt)}</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                        Uploaded
+                      </p>
+                      <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>
+                        {formatDate(verification.currentUpload.uploadedAt)}
+                      </p>
                     </div>
                   )}
 
                   {/* Download Button */}
                   {verification.currentUpload && (
                     <Button
-                      onClick={() => handleDownloadFile(verification.currentUpload!.id)}
+                      onClick={handleDownloadFile}
                       variant="outline"
                       className="w-full mt-4 gap-2"
                       style={{
-                        borderColor: "var(--border-default)",
-                        color: "var(--text-primary)"
+                        borderColor: 'var(--border-default)',
+                        color: 'var(--text-primary)',
                       }}
                     >
                       <Download className="w-4 h-4" />
@@ -933,8 +1433,8 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
                       variant="outline"
                       className="w-full mt-2 gap-2"
                       style={{
-                        borderColor: "var(--border-default)",
-                        color: "var(--text-primary)"
+                        borderColor: 'var(--border-default)',
+                        color: 'var(--text-primary)',
                       }}
                     >
                       <Download className="w-4 h-4" />
@@ -947,25 +1447,43 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
 
             {/* Assignment */}
             {activeAssignment && (
-              <Card className="overflow-hidden" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-                <CardHeader style={{ borderBottomColor: "var(--border-default)" }} className="border-b">
-                  <CardTitle style={{ color: "var(--text-primary)" }}>Assignment</CardTitle>
+              <Card
+                className="overflow-hidden"
+                style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}
+              >
+                <CardHeader
+                  style={{ borderBottomColor: 'var(--border-default)' }}
+                  className="border-b"
+                >
+                  <CardTitle style={{ color: 'var(--text-primary)' }}>Assignment</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Assigned To</p>
-                    <p className="text-sm mt-1 break-words" style={{ color: "var(--text-primary)" }}>
-                      {assignedAdmin?.name || "Admin unavailable"}
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Assigned To
+                    </p>
+                    <p
+                      className="text-sm mt-1 break-words"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {assignedAdmin?.name || 'Admin unavailable'}
                     </p>
                     {assignedAdmin?.email ? (
-                      <p className="text-xs mt-0.5 break-words" style={{ color: "var(--text-muted)" }}>
+                      <p
+                        className="text-xs mt-0.5 break-words"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
                         {assignedAdmin.email}
                       </p>
                     ) : null}
                   </div>
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Status</p>
-                    <Badge variant="outline" className="mt-1">{activeAssignment.status}</Badge>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Status
+                    </p>
+                    <Badge variant="outline" className="mt-1">
+                      {formatStatusLabel(activeAssignment.status)}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -973,6 +1491,54 @@ export function DatasetDetailReview({ datasetId, queueType = "proposals" }: Data
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={Boolean(deleteQuestionId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteQuestionId(null);
+            setDeleteQuestionReason('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete question</DialogTitle>
+            <DialogDescription>
+              This removes the question and every answer attached to it. The reason is retained in
+              the audit trail.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="proposal-question-delete-reason">Reason</Label>
+            <Textarea
+              id="proposal-question-delete-reason"
+              value={deleteQuestionReason}
+              maxLength={1000}
+              placeholder="Explain why this question is being removed."
+              onChange={(event) => setDeleteQuestionReason(event.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteQuestionId(null);
+                setDeleteQuestionReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteQuestionMutation.isPending || deleteQuestionReason.trim().length < 3}
+              onClick={handleDeleteQuestion}
+            >
+              {deleteQuestionMutation.isPending ? 'Deleting…' : 'Delete question'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

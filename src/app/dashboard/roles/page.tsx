@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { RolesView } from "@/components/roles";
+import { RolesView } from '@/components/roles';
 
 export default function RolesPage() {
   return <RolesView />;

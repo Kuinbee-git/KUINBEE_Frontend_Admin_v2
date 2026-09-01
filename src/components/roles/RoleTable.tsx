@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { MoreHorizontal, Edit, Key, CheckCircle, XCircle } from "lucide-react";
+import { MoreHorizontal, Edit, Key, CheckCircle, XCircle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -8,16 +8,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import type { RoleListItem } from "@/types";
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import type { RoleListItem } from '@/types';
 
 interface RoleTableProps {
   roles: RoleListItem[];
@@ -26,29 +26,24 @@ interface RoleTableProps {
   canManageRoles: boolean;
 }
 
-export function RoleTable({
-  roles,
-  onEdit,
-  onManagePermissions,
-  canManageRoles,
-}: RoleTableProps) {
+export function RoleTable({ roles, onEdit, onManagePermissions, canManageRoles }: RoleTableProps) {
   return (
     <Table>
       <TableHeader>
         <TableRow
           style={{
-            backgroundColor: "var(--bg-surface)",
-            borderColor: "var(--border-default)",
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-default)',
           }}
         >
-          <TableHead style={{ color: "var(--text-muted)" }}>Name</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Display Name</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Description</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Permissions</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Status</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Created</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Name</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Display Name</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Description</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Permissions</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Status</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Created</TableHead>
           {canManageRoles && (
-            <TableHead className="w-[60px]" style={{ color: "var(--text-muted)" }}>
+            <TableHead className="w-[60px]" style={{ color: 'var(--text-muted)' }}>
               Actions
             </TableHead>
           )}
@@ -56,29 +51,21 @@ export function RoleTable({
       </TableHeader>
       <TableBody>
         {roles.map((role) => (
-          <TableRow
-            key={role.id}
-            style={{ borderColor: "var(--border-default)" }}
-          >
+          <TableRow key={role.id} style={{ borderColor: 'var(--border-default)' }}>
             <TableCell>
               <code
                 className="px-2 py-1 rounded text-sm"
                 style={{
-                  backgroundColor: "var(--bg-surface)",
-                  color: "var(--text-primary)",
+                  backgroundColor: 'var(--bg-surface)',
+                  color: 'var(--text-primary)',
                 }}
               >
                 {role.name}
               </code>
             </TableCell>
-            <TableCell style={{ color: "var(--text-primary)" }}>
-              {role.displayName}
-            </TableCell>
-            <TableCell
-              className="max-w-[200px] truncate"
-              style={{ color: "var(--text-muted)" }}
-            >
-              {role.description || "—"}
+            <TableCell style={{ color: 'var(--text-primary)' }}>{role.displayName}</TableCell>
+            <TableCell className="max-w-[200px] truncate" style={{ color: 'var(--text-muted)' }}>
+              {role.description || '—'}
             </TableCell>
             <TableCell>
               <Badge variant="secondary" className="gap-1">
@@ -90,7 +77,7 @@ export function RoleTable({
               {role.isActive ? (
                 <Badge
                   variant="outline"
-                  className="gap-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                  className="gap-1 bg-[var(--status-success-bg)] text-[var(--status-success)] border-[var(--status-success-border)]"
                 >
                   <CheckCircle className="w-3 h-3" />
                   Active
@@ -98,22 +85,27 @@ export function RoleTable({
               ) : (
                 <Badge
                   variant="outline"
-                  className="gap-1 bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+                  className="gap-1 bg-[var(--status-neutral-bg)] text-[var(--status-neutral)] border-[var(--status-neutral-border)]"
                 >
                   <XCircle className="w-3 h-3" />
                   Inactive
                 </Badge>
               )}
             </TableCell>
-            <TableCell style={{ color: "var(--text-muted)" }}>
+            <TableCell style={{ color: 'var(--text-muted)' }}>
               {new Date(role.createdAt).toLocaleDateString()}
             </TableCell>
             {canManageRoles && (
               <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreHorizontal className="h-4 w-4" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      aria-label={`Actions for ${role.displayName}`}
+                    >
+                      <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

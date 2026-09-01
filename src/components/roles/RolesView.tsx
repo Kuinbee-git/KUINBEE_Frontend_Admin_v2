@@ -1,12 +1,13 @@
-"use client";
+'use client';
 
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { RoleFilters } from "./RoleFilters";
-import { RoleTable } from "./RoleTable";
-import { CreateRoleDialog, EditRoleDialog, ManagePermissionsDialog } from "./RoleDialogs";
-import { TableSkeleton } from "@/components/shared/TableSkeleton";
+import { useState, useMemo, useCallback } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { RoleFilters } from './RoleFilters';
+import { RoleTable } from './RoleTable';
+import { CreateRoleDialog, EditRoleDialog, ManagePermissionsDialog } from './RoleDialogs';
+import { TableSkeleton } from '@/components/shared/TableSkeleton';
+import { PageHeader } from '@/components/shared/PageHeader';
 import {
   useRoles,
   useCreateRole,
@@ -14,10 +15,11 @@ import {
   useRolePermissions,
   useReplaceRolePermissions,
   useAllPermissions,
-  useMyPermissions,
-} from "@/hooks";
-import { useDebounce } from "@/hooks/useDebounce";
-import type { RoleListItem, CreateRoleRequest, UpdateRoleRequest } from "@/types";
+} from '@/hooks';
+import { useDebounce } from '@/hooks/useDebounce';
+import type { RoleListItem, CreateRoleRequest, UpdateRoleRequest } from '@/types';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS, type Permission } from '@/lib/constants/permissions';
 
 export function RolesView() {
   // Pagination
@@ -25,8 +27,8 @@ export function RolesView() {
   const [limit] = useState(10);
 
   // Filters
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -37,34 +39,44 @@ export function RolesView() {
   // Debounce search
   const debouncedSearch = useDebounce(searchQuery, 500);
 
-  // Reset page when filters change
-   
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, statusFilter]);
-
   // Build API params
-  const params = useMemo(() => ({
-    page,
-    pageSize: limit,
-    q: debouncedSearch || undefined,
-    isActive: statusFilter === "all" ? undefined : statusFilter === "active",
-  }), [page, limit, debouncedSearch, statusFilter]);
+  const params = useMemo(
+    () => ({
+      page,
+      pageSize: limit,
+      q: debouncedSearch || undefined,
+      isActive: statusFilter === 'all' ? undefined : statusFilter === 'active',
+    }),
+    [page, limit, debouncedSearch, statusFilter]
+  );
 
   // Fetch roles
-  const { data, isLoading, isError } = useRoles(params);
+  const { data, isLoading, isError, refetch } = useRoles(params);
   const roles = data?.items || [];
-  const totalPages = data?.pagination ? Math.ceil(data.pagination.total / data.pagination.pageSize) : 0;
+  const totalPages = data?.pagination
+    ? Math.ceil(data.pagination.total / data.pagination.pageSize)
+    : 0;
 
   // Fetch all available permissions
-  const { data: allPermissions, isLoading: permissionsLoading } = useAllPermissions();
+  const {
+    data: allPermissions,
+    isLoading: permissionsLoading,
+    isError: permissionsError,
+    refetch: refetchAllPermissions,
+  } = useAllPermissions();
 
   // Fetch selected role's current permissions
-  const { data: rolePermissions } = useRolePermissions(selectedRole?.id || "");
+  const {
+    data: rolePermissions,
+    isLoading: rolePermissionsLoading,
+    isFetching: rolePermissionsFetching,
+    isError: rolePermissionsError,
+    refetch: refetchRolePermissions,
+  } = useRolePermissions(selectedRole?.id || '');
 
   // Permissions check
-  const { data: myPermissions } = useMyPermissions();
-  const canManageRoles = myPermissions?.includes('MANAGE_PERMISSIONS') || myPermissions?.includes('MANAGE_ROLES') || myPermissions?.includes('CREATE_ADMIN') || false;
+  const { can } = useAuthorization();
+  const canManageRoles = can({ anyOf: [PERMISSIONS.ROLES.MANAGE] });
 
   // Mutations
   const createMutation = useCreateRole();
@@ -73,125 +85,123 @@ export function RolesView() {
 
   // Handlers
   const handleClearFilters = useCallback(() => {
-    setSearchQuery("");
-    setStatusFilter("all");
+    setSearchQuery('');
+    setStatusFilter('all');
     setPage(1);
   }, []);
 
-  const handleCreateRole = useCallback((data: CreateRoleRequest) => {
-    createMutation.mutate(data, {
-      onSuccess: () => {
-        setCreateDialogOpen(false);
-      },
-    });
-  }, [createMutation]);
+  const handleCreateRole = useCallback(
+    (data: CreateRoleRequest) => {
+      createMutation.mutate(data, {
+        onSuccess: () => {
+          setCreateDialogOpen(false);
+        },
+      });
+    },
+    [createMutation]
+  );
 
   const handleEditClick = useCallback((role: RoleListItem) => {
     setSelectedRole(role);
     setEditDialogOpen(true);
   }, []);
 
-  const handleEditRole = useCallback((data: UpdateRoleRequest) => {
-    if (!selectedRole) return;
-    updateMutation.mutate(
-      { roleId: selectedRole.id, data },
-      {
-        onSuccess: () => {
-          setEditDialogOpen(false);
-          setSelectedRole(null);
-        },
-      }
-    );
-  }, [selectedRole, updateMutation]);
+  const handleEditRole = useCallback(
+    (data: UpdateRoleRequest) => {
+      if (!selectedRole) return;
+      updateMutation.mutate(
+        { roleId: selectedRole.id, data },
+        {
+          onSuccess: () => {
+            setEditDialogOpen(false);
+            setSelectedRole(null);
+          },
+        }
+      );
+    },
+    [selectedRole, updateMutation]
+  );
 
   const handleManagePermissionsClick = useCallback((role: RoleListItem) => {
     setSelectedRole(role);
     setPermissionsDialogOpen(true);
   }, []);
 
-  const handleSavePermissions = useCallback((permissions: string[]) => {
-    if (!selectedRole) return;
-    replacePermissionsMutation.mutate(
-      { roleId: selectedRole.id, data: { permissions } },
-      {
-        onSuccess: () => {
-          setPermissionsDialogOpen(false);
-          setSelectedRole(null);
-        },
-      }
-    );
-  }, [selectedRole, replacePermissionsMutation]);
+  const handleSavePermissions = useCallback(
+    (permissions: Permission[]) => {
+      if (!selectedRole) return;
+      replacePermissionsMutation.mutate(
+        { roleId: selectedRole.id, data: { permissions } },
+        {
+          onSuccess: () => {
+            setPermissionsDialogOpen(false);
+            setSelectedRole(null);
+          },
+        }
+      );
+    },
+    [selectedRole, replacePermissionsMutation]
+  );
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--bg-surface)" }}>
-      {/* Page Header */}
-      <div
-        className="p-6 border-b"
-        style={{
-          backgroundColor: "var(--bg-base)",
-          borderColor: "var(--border-default)",
-        }}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
-              Roles
-            </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-              Manage roles and their permissions
-            </p>
-          </div>
-          {canManageRoles && (
-            <Button
-              onClick={() => setCreateDialogOpen(true)}
-              className="gap-2"
-              style={{
-                backgroundColor: "var(--brand-primary)",
-                color: "#ffffff",
-              }}
-            >
-              <Plus className="w-4 h-4" />
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-surface)' }}>
+      <PageHeader
+        title="Roles"
+        description="Manage roles and their permissions"
+        actions={
+          canManageRoles ? (
+            <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" aria-hidden="true" />
               Create Role
             </Button>
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       {/* Filters */}
       <RoleFilters
         searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
+        setSearchQuery={(value) => {
+          setSearchQuery(value);
+          setPage(1);
+        }}
         statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
+        setStatusFilter={(value) => {
+          setStatusFilter(value);
+          setPage(1);
+        }}
         onClearAll={handleClearFilters}
       />
 
       {/* Table */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div
           className="rounded-lg border overflow-hidden"
           style={{
-            backgroundColor: "var(--bg-base)",
-            borderColor: "var(--border-default)",
+            backgroundColor: 'var(--bg-base)',
+            borderColor: 'var(--border-default)',
           }}
         >
           {isLoading ? (
             <TableSkeleton columns={7} rows={5} />
           ) : isError ? (
             <div className="p-8 text-center">
-              <p className="text-red-500">Failed to load roles. Please try again.</p>
+              <p className="text-[var(--status-error)]">Failed to load roles. Please try again.</p>
+              <Button className="mt-4" variant="outline" onClick={() => refetch()}>
+                Retry
+              </Button>
             </div>
           ) : roles.length === 0 ? (
             <div className="p-8 text-center">
-              <p className="text-lg font-medium mb-2" style={{ color: "var(--text-primary)" }}>
+              <p className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                 No roles found
               </p>
-              <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>
-                {debouncedSearch || statusFilter !== "all"
-                  ? "Try adjusting your filters"
-                  : "Get started by creating your first role"}
+              <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+                {debouncedSearch || statusFilter !== 'all'
+                  ? 'Try adjusting your filters'
+                  : 'Get started by creating your first role'}
               </p>
-              {(debouncedSearch || statusFilter !== "all") && (
+              {(debouncedSearch || statusFilter !== 'all') && (
                 <Button onClick={handleClearFilters} variant="outline">
                   Clear Filters
                 </Button>
@@ -209,9 +219,10 @@ export function RolesView() {
 
         {/* Pagination */}
         {!isLoading && roles.length > 0 && data?.pagination && (
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data.pagination.total)} of {data.pagination.total} roles
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data.pagination.total)} of{' '}
+              {data.pagination.total} roles
             </p>
             <div className="flex gap-2">
               <Button
@@ -236,36 +247,58 @@ export function RolesView() {
       </div>
 
       {/* Dialogs */}
-      <CreateRoleDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSubmit={handleCreateRole}
-        isLoading={createMutation.isPending}
-        allPermissions={allPermissions || []}
-        permissionsLoading={permissionsLoading}
-      />
+      {createDialogOpen && (
+        <CreateRoleDialog
+          open
+          onOpenChange={setCreateDialogOpen}
+          onSubmit={handleCreateRole}
+          isLoading={createMutation.isPending}
+          allPermissions={allPermissions || []}
+          permissionsLoading={permissionsLoading}
+          permissionsError={permissionsError}
+          onRetryPermissions={() => refetchAllPermissions()}
+        />
+      )}
 
-      <EditRoleDialog
-        open={editDialogOpen}
-        onOpenChange={(open) => {
-          setEditDialogOpen(open);
-          if (!open) setSelectedRole(null);
-        }}
-        onSubmit={handleEditRole}
-        isLoading={updateMutation.isPending}
-        role={selectedRole}
-      />
+      {editDialogOpen && selectedRole && (
+        <EditRoleDialog
+          key={selectedRole.id}
+          open
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            if (!open) setSelectedRole(null);
+          }}
+          onSubmit={handleEditRole}
+          isLoading={updateMutation.isPending}
+          role={selectedRole}
+        />
+      )}
 
-      <ManagePermissionsDialog
-        open={permissionsDialogOpen}
-        onOpenChange={setPermissionsDialogOpen}
-        onSubmit={handleSavePermissions}
-        isLoading={replacePermissionsMutation.isPending}
-        role={selectedRole}
-        currentPermissions={rolePermissions || []}
-        allPermissions={allPermissions || []}
-        permissionsLoading={permissionsLoading}
-      />
+      {permissionsDialogOpen &&
+        selectedRole &&
+        !permissionsLoading &&
+        !rolePermissionsLoading &&
+        !rolePermissionsFetching && (
+          <ManagePermissionsDialog
+            key={selectedRole.id}
+            open
+            onOpenChange={(open) => {
+              setPermissionsDialogOpen(open);
+              if (!open) setSelectedRole(null);
+            }}
+            onSubmit={handleSavePermissions}
+            isLoading={replacePermissionsMutation.isPending}
+            role={selectedRole}
+            currentPermissions={rolePermissions || []}
+            allPermissions={allPermissions || []}
+            permissionsLoading={false}
+            permissionsError={permissionsError || rolePermissionsError}
+            onRetryPermissions={() => {
+              void refetchAllPermissions();
+              void refetchRolePermissions();
+            }}
+          />
+        )}
     </div>
   );
 }

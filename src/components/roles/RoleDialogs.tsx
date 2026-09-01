@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useMemo } from "react";
-import { KeyRound, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { useState, useMemo } from 'react';
+import { AlertCircle, KeyRound, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -14,11 +14,36 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { RoleListItem, CreateRoleRequest, UpdateRoleRequest } from "@/types";
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import type { RoleListItem, CreateRoleRequest, UpdateRoleRequest } from '@/types';
+import { PERMISSION_GROUPS, PERMISSION_LABELS, type Permission } from '@/lib/constants/permissions';
+
+function groupPermissions(
+  permissions: readonly Permission[],
+  search: string
+): Record<string, Permission[]> {
+  const query = search.trim().toLowerCase();
+  const available = new Set(permissions);
+
+  return PERMISSION_GROUPS.reduce<Record<string, Permission[]>>((groups, group) => {
+    const matchingPermissions = group.permissions.filter(
+      (permission) =>
+        available.has(permission) &&
+        (!query ||
+          permission.toLowerCase().includes(query) ||
+          PERMISSION_LABELS[permission].toLowerCase().includes(query))
+    );
+
+    if (matchingPermissions.length > 0) {
+      groups[group.label] = matchingPermissions;
+    }
+
+    return groups;
+  }, {});
+}
 
 // ============================================
 // Create Role Dialog
@@ -29,8 +54,10 @@ interface CreateRoleDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: CreateRoleRequest) => void;
   isLoading: boolean;
-  allPermissions: string[];
+  allPermissions: Permission[];
   permissionsLoading: boolean;
+  permissionsError: boolean;
+  onRetryPermissions: () => void;
 }
 
 export function CreateRoleDialog({
@@ -40,54 +67,37 @@ export function CreateRoleDialog({
   isLoading,
   allPermissions,
   permissionsLoading,
+  permissionsError,
+  onRetryPermissions,
 }: CreateRoleDialogProps) {
-  const [name, setName] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [description, setDescription] = useState("");
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [permissionSearch, setPermissionSearch] = useState("");
-
-  // Reset form when dialog closes
-  useEffect(() => {
-    if (!open) {
-      setName("");
-      setDisplayName("");
-      setDescription("");
-      setSelectedPermissions([]);
-      setPermissionSearch("");
-    }
-  }, [open]);
+  const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>([]);
+  const [permissionSearch, setPermissionSearch] = useState('');
 
   // Filter permissions by search
   const filteredPermissions = useMemo(() => {
     if (!permissionSearch) return allPermissions;
-    return allPermissions.filter((p) =>
-      p.toLowerCase().includes(permissionSearch.toLowerCase())
+    return allPermissions.filter(
+      (permission) =>
+        permission.toLowerCase().includes(permissionSearch.toLowerCase()) ||
+        PERMISSION_LABELS[permission].toLowerCase().includes(permissionSearch.toLowerCase())
     );
   }, [allPermissions, permissionSearch]);
 
   // Group permissions by category
   const groupedPermissions = useMemo(() => {
-    const groups: Record<string, string[]> = {};
-    filteredPermissions.forEach((permission) => {
-      const [category] = permission.split(":");
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-      groups[category].push(permission);
-    });
-    return groups;
+    return groupPermissions(filteredPermissions, '');
   }, [filteredPermissions]);
 
-  const handlePermissionToggle = (permission: string) => {
+  const handlePermissionToggle = (permission: Permission) => {
     setSelectedPermissions((prev) =>
-      prev.includes(permission)
-        ? prev.filter((p) => p !== permission)
-        : [...prev, permission]
+      prev.includes(permission) ? prev.filter((p) => p !== permission) : [...prev, permission]
     );
   };
 
-  const handleCategoryToggle = (category: string, permissions: string[]) => {
+  const handleCategoryToggle = (permissions: Permission[]) => {
     const allSelected = permissions.every((p) => selectedPermissions.includes(p));
     if (allSelected) {
       setSelectedPermissions((prev) => prev.filter((p) => !permissions.includes(p)));
@@ -97,16 +107,34 @@ export function CreateRoleDialog({
   };
 
   const handleSubmit = () => {
-    if (!name || !displayName) return;
+    const normalizedName = name.trim().toUpperCase().replace(/\s+/g, '_');
+    const normalizedDisplayName = displayName.trim();
+    if (
+      normalizedName.length < 3 ||
+      normalizedName.length > 50 ||
+      !/^[A-Z][A-Z0-9_]*$/.test(normalizedName) ||
+      !normalizedDisplayName ||
+      normalizedDisplayName.length > 100 ||
+      description.trim().length > 1000 ||
+      selectedPermissions.length === 0
+    )
+      return;
     onSubmit({
-      name: name.toUpperCase().replace(/\s+/g, "_"),
-      displayName,
-      description: description || undefined,
+      name: normalizedName,
+      displayName: normalizedDisplayName,
+      description: description.trim() || undefined,
       permissions: selectedPermissions,
     });
   };
 
-  const isValid = name && displayName;
+  const isValid =
+    name.trim().length >= 3 &&
+    name.trim().length <= 50 &&
+    /^[A-Z][A-Z0-9_]*$/.test(name.trim()) &&
+    displayName.trim().length > 0 &&
+    displayName.trim().length <= 100 &&
+    description.trim().length <= 1000 &&
+    selectedPermissions.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,29 +144,35 @@ export function CreateRoleDialog({
             <KeyRound className="w-5 h-5" />
             Create Role
           </DialogTitle>
-          <DialogDescription>
-            Create a new role with specific permissions.
-          </DialogDescription>
+          <DialogDescription>Create a new role with specific permissions.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Name */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Role Name (System)</Label>
               <Input
                 id="name"
                 placeholder="ROLE_NAME"
                 value={name}
-                onChange={(e) => setName(e.target.value.toUpperCase().replace(/\s+/g, "_"))}
+                onChange={(e) =>
+                  setName(
+                    e.target.value
+                      .toUpperCase()
+                      .replace(/\s+/g, '_')
+                      .replace(/[^A-Z0-9_]/g, '')
+                  )
+                }
+                maxLength={50}
                 style={{
-                  backgroundColor: "var(--bg-surface)",
-                  borderColor: "var(--border-default)",
-                  color: "var(--text-primary)",
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-default)',
+                  color: 'var(--text-primary)',
                 }}
               />
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                Uppercase, underscores only
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                3–50 characters; uppercase convention with underscores
               </p>
             </div>
 
@@ -149,10 +183,11 @@ export function CreateRoleDialog({
                 placeholder="Role Name"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
+                maxLength={100}
                 style={{
-                  backgroundColor: "var(--bg-surface)",
-                  borderColor: "var(--border-default)",
-                  color: "var(--text-primary)",
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-default)',
+                  color: 'var(--text-primary)',
                 }}
               />
             </div>
@@ -167,52 +202,92 @@ export function CreateRoleDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
+              maxLength={1000}
               style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
               }}
             />
           </div>
 
           {/* Permissions */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Permissions ({selectedPermissions.length} selected)</Label>
-              <div className="relative w-48">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm font-medium" id="permission-selection-label">
+                Permissions ({selectedPermissions.length} selected)
+              </span>
+              <div className="relative w-full sm:w-48">
+                <Search
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4"
+                  style={{ color: 'var(--text-muted)' }}
+                />
                 <Input
+                  aria-label="Search permissions"
                   placeholder="Search..."
                   value={permissionSearch}
                   onChange={(e) => setPermissionSearch(e.target.value)}
                   className="pl-8 h-8 text-sm"
                   style={{
-                    backgroundColor: "var(--bg-surface)",
-                    borderColor: "var(--border-default)",
-                    color: "var(--text-primary)",
+                    backgroundColor: 'var(--bg-surface)',
+                    borderColor: 'var(--border-default)',
+                    color: 'var(--text-primary)',
                   }}
                 />
               </div>
             </div>
-            
+
             {permissionsLoading ? (
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 Loading permissions...
               </p>
+            ) : permissionsError ? (
+              <div className="rounded-md border border-[var(--status-error-border)] bg-[var(--status-error-bg)] p-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle
+                    className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-error)]"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-[var(--status-error)]">
+                      Could not load permissions
+                    </p>
+                    <Button
+                      className="mt-3"
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={onRetryPermissions}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ) : (
-              <ScrollArea className="h-[200px] border rounded-md p-3" style={{ borderColor: "var(--border-default)" }}>
+              <ScrollArea
+                role="group"
+                aria-labelledby="permission-selection-label"
+                className="h-[200px] border rounded-md p-3"
+                style={{ borderColor: 'var(--border-default)' }}
+              >
                 {Object.entries(groupedPermissions).map(([category, permissions]) => (
                   <div key={category} className="mb-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Checkbox
+                        aria-label={`Toggle all ${category} permissions`}
                         checked={permissions.every((p) => selectedPermissions.includes(p))}
-                        onCheckedChange={() => handleCategoryToggle(category, permissions)}
+                        onCheckedChange={() => handleCategoryToggle(permissions)}
                       />
-                      <span className="font-medium text-sm capitalize" style={{ color: "var(--text-primary)" }}>
+                      <span
+                        className="font-medium text-sm capitalize"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
                         {category}
                       </span>
                       <Badge variant="secondary" className="text-xs">
-                        {permissions.filter((p) => selectedPermissions.includes(p)).length}/{permissions.length}
+                        {permissions.filter((p) => selectedPermissions.includes(p)).length}/
+                        {permissions.length}
                       </Badge>
                     </div>
                     <div className="ml-6 space-y-1">
@@ -226,9 +301,9 @@ export function CreateRoleDialog({
                           <label
                             htmlFor={permission}
                             className="text-sm cursor-pointer"
-                            style={{ color: "var(--text-muted)" }}
+                            style={{ color: 'var(--text-muted)' }}
                           >
-                            {permission}
+                            {PERMISSION_LABELS[permission]}
                           </label>
                         </div>
                       ))}
@@ -237,6 +312,9 @@ export function CreateRoleDialog({
                 ))}
               </ScrollArea>
             )}
+            {!permissionsLoading && !permissionsError && selectedPermissions.length === 0 ? (
+              <p className="text-xs text-[var(--status-error)]">Select at least one permission.</p>
+            ) : null}
           </div>
         </div>
 
@@ -246,13 +324,13 @@ export function CreateRoleDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!isValid || isLoading}
+            disabled={!isValid || isLoading || permissionsLoading || permissionsError}
             style={{
-              backgroundColor: "var(--brand-primary)",
-              color: "#ffffff",
+              backgroundColor: 'var(--brand-primary)',
+              color: 'var(--brand-on-primary)',
             }}
           >
-            {isLoading ? "Creating..." : "Create Role"}
+            {isLoading ? 'Creating...' : 'Create Role'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -279,30 +357,22 @@ export function EditRoleDialog({
   isLoading,
   role,
 }: EditRoleDialogProps) {
-  const [displayName, setDisplayName] = useState("");
-  const [description, setDescription] = useState("");
-  const [isActive, setIsActive] = useState(true);
-
-  // Reset form when dialog opens or role changes
-  // Load role data when dialog opens for editing
-   
-  useEffect(() => {
-    if (open && role) {
-      setDisplayName(role.displayName);
-      setDescription(role.description || "");
-      setIsActive(role.isActive);
-    } else if (!open) {
-      setDisplayName("");
-      setDescription("");
-      setIsActive(true);
-    }
-  }, [open, role]);
+  const [displayName, setDisplayName] = useState(() => role?.displayName ?? '');
+  const [description, setDescription] = useState(() => role?.description ?? '');
+  const [isActive, setIsActive] = useState(() => role?.isActive ?? true);
 
   const handleSubmit = () => {
-    if (!displayName) return;
+    const normalizedDisplayName = displayName.trim();
+    const normalizedDescription = description.trim();
+    if (
+      !normalizedDisplayName ||
+      normalizedDisplayName.length > 100 ||
+      normalizedDescription.length > 1000
+    )
+      return;
     onSubmit({
-      displayName,
-      description: description || null,
+      displayName: normalizedDisplayName,
+      description: normalizedDescription || null,
       isActive,
     });
   };
@@ -318,7 +388,8 @@ export function EditRoleDialog({
             Edit Role
           </DialogTitle>
           <DialogDescription>
-            Update role details for <code className="px-1 py-0.5 rounded bg-muted">{role.name}</code>
+            Update role details for{' '}
+            <code className="px-1 py-0.5 rounded bg-muted">{role.name}</code>
           </DialogDescription>
         </DialogHeader>
 
@@ -330,10 +401,11 @@ export function EditRoleDialog({
               id="editDisplayName"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
+              maxLength={100}
               style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
               }}
             />
           </div>
@@ -346,10 +418,11 @@ export function EditRoleDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
+              maxLength={1000}
               style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
               }}
             />
           </div>
@@ -357,12 +430,12 @@ export function EditRoleDialog({
           {/* Active Status */}
           <div className="flex items-center justify-between">
             <div>
-              <Label>Active Status</Label>
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              <Label htmlFor="edit-role-active">Active Status</Label>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 Inactive roles cannot be assigned to admins
               </p>
             </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
+            <Switch id="edit-role-active" checked={isActive} onCheckedChange={setIsActive} />
           </div>
         </div>
 
@@ -372,13 +445,13 @@ export function EditRoleDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!displayName || isLoading}
+            disabled={!displayName.trim() || isLoading}
             style={{
-              backgroundColor: "var(--brand-primary)",
-              color: "#ffffff",
+              backgroundColor: 'var(--brand-primary)',
+              color: 'var(--brand-on-primary)',
             }}
           >
-            {isLoading ? "Saving..." : "Save Changes"}
+            {isLoading ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -393,12 +466,14 @@ export function EditRoleDialog({
 interface ManagePermissionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (permissions: string[]) => void;
+  onSubmit: (permissions: Permission[]) => void;
   isLoading: boolean;
   role: RoleListItem | null;
-  currentPermissions: string[];
-  allPermissions: string[];
+  currentPermissions: Permission[];
+  allPermissions: Permission[];
   permissionsLoading: boolean;
+  permissionsError: boolean;
+  onRetryPermissions: () => void;
 }
 
 export function ManagePermissionsDialog({
@@ -410,58 +485,36 @@ export function ManagePermissionsDialog({
   currentPermissions,
   allPermissions,
   permissionsLoading,
+  permissionsError,
+  onRetryPermissions,
 }: ManagePermissionsDialogProps) {
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [permissionSearch, setPermissionSearch] = useState("");
-
-  // Populate permissions when dialog opens
-  // Load current permissions when dialog opens
-   
-  useEffect(() => {
-    if (open && currentPermissions) {
-      setSelectedPermissions(currentPermissions);
-    }
-  }, [open, currentPermissions]);
-
-  // Reset search when dialog closes
-  // Reset permission search when dialog closes
-   
-  useEffect(() => {
-    if (!open) {
-      setPermissionSearch("");
-    }
-  }, [open]);
+  const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>(
+    () => currentPermissions
+  );
+  const [permissionSearch, setPermissionSearch] = useState('');
 
   // Filter permissions by search
   const filteredPermissions = useMemo(() => {
     if (!permissionSearch) return allPermissions;
-    return allPermissions.filter((p) =>
-      p.toLowerCase().includes(permissionSearch.toLowerCase())
+    return allPermissions.filter(
+      (permission) =>
+        permission.toLowerCase().includes(permissionSearch.toLowerCase()) ||
+        PERMISSION_LABELS[permission].toLowerCase().includes(permissionSearch.toLowerCase())
     );
   }, [allPermissions, permissionSearch]);
 
   // Group permissions by category
   const groupedPermissions = useMemo(() => {
-    const groups: Record<string, string[]> = {};
-    filteredPermissions.forEach((permission) => {
-      const [category] = permission.split(":");
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-      groups[category].push(permission);
-    });
-    return groups;
+    return groupPermissions(filteredPermissions, '');
   }, [filteredPermissions]);
 
-  const handlePermissionToggle = (permission: string) => {
+  const handlePermissionToggle = (permission: Permission) => {
     setSelectedPermissions((prev) =>
-      prev.includes(permission)
-        ? prev.filter((p) => p !== permission)
-        : [...prev, permission]
+      prev.includes(permission) ? prev.filter((p) => p !== permission) : [...prev, permission]
     );
   };
 
-  const handleCategoryToggle = (category: string, permissions: string[]) => {
+  const handleCategoryToggle = (permissions: Permission[]) => {
     const allSelected = permissions.every((p) => selectedPermissions.includes(p));
     if (allSelected) {
       setSelectedPermissions((prev) => prev.filter((p) => !permissions.includes(p)));
@@ -503,15 +556,27 @@ export function ManagePermissionsDialog({
                 <span
                   key={perm}
                   className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-primary border border-border shadow-sm transition-colors"
-                  style={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  style={{
+                    maxWidth: 220,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
                 >
                   {perm}
                   <button
                     type="button"
-                    aria-label="Remove permission"
+                    aria-label={`Remove permission ${PERMISSION_LABELS[perm]}`}
                     onClick={() => handlePermissionToggle(perm)}
-                    className="ml-2 text-muted-foreground hover:text-destructive focus:outline-none"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', lineHeight: 1 }}
+                    className="ml-2 rounded-sm text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '1rem',
+                      lineHeight: 1,
+                    }}
                   >
                     ×
                   </button>
@@ -522,23 +587,27 @@ export function ManagePermissionsDialog({
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+              style={{ color: 'var(--text-muted)' }}
+            />
             <Input
+              aria-label="Search permissions"
               placeholder="Search permissions..."
               value={permissionSearch}
               onChange={(e) => setPermissionSearch(e.target.value)}
               className="pl-9"
               style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
               }}
             />
           </div>
 
           {/* Permissions count */}
           <div className="flex items-center justify-between">
-            <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
               {selectedPermissions.length} of {allPermissions.length} permissions selected
             </span>
             <div className="flex gap-2">
@@ -546,6 +615,7 @@ export function ManagePermissionsDialog({
                 variant="outline"
                 size="sm"
                 onClick={() => setSelectedPermissions(allPermissions)}
+                disabled={permissionsLoading}
               >
                 Select All
               </Button>
@@ -553,6 +623,7 @@ export function ManagePermissionsDialog({
                 variant="outline"
                 size="sm"
                 onClick={() => setSelectedPermissions([])}
+                disabled={permissionsLoading}
               >
                 Clear All
               </Button>
@@ -561,23 +632,45 @@ export function ManagePermissionsDialog({
 
           {/* Permissions List */}
           {permissionsLoading ? (
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               Loading permissions...
             </p>
+          ) : permissionsError ? (
+            <div className="rounded-md border border-[var(--status-error-border)] bg-[var(--status-error-bg)] p-4">
+              <p className="text-sm font-medium text-[var(--status-error)]">
+                Could not load this role&apos;s permissions
+              </p>
+              <Button
+                className="mt-3"
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onRetryPermissions}
+              >
+                Retry
+              </Button>
+            </div>
           ) : (
-            <ScrollArea className="h-[300px] border rounded-md p-3" style={{ borderColor: "var(--border-default)" }}>
+            <ScrollArea
+              className="h-[300px] border rounded-md p-3"
+              style={{ borderColor: 'var(--border-default)' }}
+            >
               {Object.entries(groupedPermissions).map(([category, permissions]) => (
                 <div key={category} className="mb-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Checkbox
                       checked={permissions.every((p) => selectedPermissions.includes(p))}
-                      onCheckedChange={() => handleCategoryToggle(category, permissions)}
+                      onCheckedChange={() => handleCategoryToggle(permissions)}
                     />
-                    <span className="font-medium text-sm capitalize" style={{ color: "var(--text-primary)" }}>
+                    <span
+                      className="font-medium text-sm capitalize"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
                       {category}
                     </span>
                     <Badge variant="secondary" className="text-xs">
-                      {permissions.filter((p) => selectedPermissions.includes(p)).length}/{permissions.length}
+                      {permissions.filter((p) => selectedPermissions.includes(p)).length}/
+                      {permissions.length}
                     </Badge>
                   </div>
                   <div className="ml-6 space-y-1">
@@ -591,9 +684,9 @@ export function ManagePermissionsDialog({
                         <label
                           htmlFor={`manage-${permission}`}
                           className="text-sm cursor-pointer"
-                          style={{ color: "var(--text-muted)" }}
+                          style={{ color: 'var(--text-muted)' }}
                         >
-                          {permission}
+                          {PERMISSION_LABELS[permission]}
                         </label>
                       </div>
                     ))}
@@ -610,13 +703,18 @@ export function ManagePermissionsDialog({
           </Button>
           <Button
             onClick={() => onSubmit(selectedPermissions)}
-            disabled={isLoading}
+            disabled={
+              isLoading ||
+              permissionsLoading ||
+              permissionsError ||
+              selectedPermissions.length === 0
+            }
             style={{
-              backgroundColor: "var(--brand-primary)",
-              color: "#ffffff",
+              backgroundColor: 'var(--brand-primary)',
+              color: 'var(--brand-on-primary)',
             }}
           >
-            {isLoading ? "Saving..." : "Save Permissions"}
+            {isLoading ? 'Saving...' : 'Save Permissions'}
           </Button>
         </DialogFooter>
       </DialogContent>

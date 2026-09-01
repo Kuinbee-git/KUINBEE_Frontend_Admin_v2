@@ -1,294 +1,461 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useCallback, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { AlertCircle, MessageSquare, Search, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  answerDatasetQuestion,
-  deleteDatasetQuestion,
-  getDatasetsWithQuestions,
-  getDatasetQuestions,
-} from "@/services/datasets.service";
-import type { DatasetQuestion, DatasetQuestionDataset } from "@/types/dataset.types";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  useAnswerDatasetQuestion,
+  useDatasetQuestions,
+  useDeleteDatasetQuestion,
+  useQuestionDatasets,
+} from '@/hooks';
+import { useDebounce } from '@/hooks/useDebounce';
+import type { DatasetQuestion } from '@/types';
+import { cn } from '@/lib/utils';
+
+const positivePage = (value: string | null) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+};
 
 export default function AdminQuestionsPage() {
-  const [loading, setLoading] = useState(true);
-  const [datasetsWithQuestions, setDatasetsWithQuestions] = useState<DatasetQuestionDataset[]>([]);
-  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
-  const [questionsByDatasetId, setQuestionsByDatasetId] = useState<Record<string, DatasetQuestion[]>>({});
-  const [loadingQuestionsForDatasetId, setLoadingQuestionsForDatasetId] = useState<string | null>(null);
-  const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
-  const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
-  const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalDatasets, setTotalDatasets] = useState<number>(0);
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('q') ?? '';
+  const debouncedSearch = useDebounce(searchQuery, 350);
+  const page = positivePage(searchParams.get('page'));
+  const questionPage = positivePage(searchParams.get('questionPage'));
+  const selectedFromUrl = searchParams.get('dataset');
   const pageSize = 10;
+  const questionPageSize = 20;
 
-  const fetchDatasetList = async (page: number = 1, search: string = "", preferredDatasetId?: string | null) => {
-    const listResponse = await getDatasetsWithQuestions({ page, pageSize, q: search || undefined });
-    const items = listResponse.items || [];
-    setDatasetsWithQuestions(items);
-    setTotalDatasets(listResponse.pagination?.total || 0);
-    setCurrentPage(page);
+  const listQuery = useQuestionDatasets({
+    page,
+    pageSize,
+    q: debouncedSearch || undefined,
+  });
+  const datasets = useMemo(() => listQuery.data?.items ?? [], [listQuery.data?.items]);
+  const selectedDataset =
+    datasets.find((item) => item.datasetId === selectedFromUrl) ?? datasets[0] ?? null;
+  const selectedDatasetId = selectedDataset?.datasetId ?? '';
+  const questionsQuery = useDatasetQuestions(selectedDatasetId, {
+    page: questionPage,
+    pageSize: questionPageSize,
+  });
+  const questions = questionsQuery.data?.items ?? [];
 
-    if (items.length === 0) {
-      setSelectedDatasetId(null);
-      return null;
-    }
+  const answerMutation = useAnswerDatasetQuestion(selectedDatasetId);
+  const deleteMutation = useDeleteDatasetQuestion(selectedDatasetId);
+  const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
+  const [deleteTarget, setDeleteTarget] = useState<DatasetQuestion | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
 
-    const preferredExists = preferredDatasetId
-      ? items.some((item) => item.datasetId === preferredDatasetId)
-      : false;
-    const nextSelectedId = preferredExists && preferredDatasetId
-      ? preferredDatasetId
-      : items[0].datasetId;
-    setSelectedDatasetId(nextSelectedId);
-    return nextSelectedId;
-  };
+  const updateUrl = useCallback(
+    (updates: Record<string, string | null>) => {
+      const next = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([key, value]) => {
+        if (!value) next.delete(key);
+        else next.set(key, value);
+      });
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
 
-  const fetchQuestionsForDataset = async (datasetId: string) => {
-    setLoadingQuestionsForDatasetId(datasetId);
+  const totalDatasetPages = Math.max(
+    1,
+    Math.ceil((listQuery.data?.pagination.total ?? 0) / pageSize)
+  );
+  const totalQuestionPages = Math.max(
+    1,
+    Math.ceil((questionsQuery.data?.total ?? 0) / questionPageSize)
+  );
+
+  const submitAnswer = async (questionId: string) => {
+    const answer = (answerDrafts[questionId] ?? '').trim();
+    if (!answer || answer.length > 5000) return;
     try {
-      const questionResponse = await getDatasetQuestions(datasetId);
-      setQuestionsByDatasetId((prev) => ({
-        ...prev,
-        [datasetId]: questionResponse.items || [],
-      }));
-    } finally {
-      setLoadingQuestionsForDatasetId((current) => (current === datasetId ? null : current));
+      await answerMutation.mutateAsync({ questionId, answer });
+      setAnswerDrafts((current) => ({ ...current, [questionId]: '' }));
+    } catch {
+      // The mutation hook presents the error and preserves the draft.
     }
   };
 
-  const fetchInitialData = async () => {
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleteReason.trim().length < 3) return;
     try {
-      setLoading(true);
-      const nextSelectedId = await fetchDatasetList(1, "", selectedDatasetId);
-      if (nextSelectedId) {
-        await fetchQuestionsForDataset(nextSelectedId);
-      }
-    } catch (error) {
-       console.error("Error fetching questions data", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    setCurrentPage(1);
-    await fetchDatasetList(1, query, selectedDatasetId);
-  };
-
-  const handlePageChange = async (newPage: number) => {
-    await fetchDatasetList(newPage, searchQuery, selectedDatasetId);
-  };
-
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  const selected = useMemo(() => {
-    if (!selectedDatasetId) return null;
-    return datasetsWithQuestions.find((item) => item.datasetId === selectedDatasetId) || null;
-  }, [datasetsWithQuestions, selectedDatasetId]);
-
-  const selectedQuestions = selectedDatasetId ? questionsByDatasetId[selectedDatasetId] || [] : [];
-
-  const handleSelectDataset = async (datasetId: string) => {
-    setSelectedDatasetId(datasetId);
-    if (!questionsByDatasetId[datasetId]) {
-      await fetchQuestionsForDataset(datasetId);
-    }
-  };
-
-  const refreshAfterMutation = async () => {
-    const nextSelectedId = await fetchDatasetList(currentPage, searchQuery, selectedDatasetId);
-    if (!nextSelectedId) {
-      setQuestionsByDatasetId({});
-      return;
-    }
-    await fetchQuestionsForDataset(nextSelectedId);
-  };
-
-  const handleAnswer = async (questionId: string) => {
-    const answer = (answerDrafts[questionId] || "").trim();
-    if (!answer) return;
-
-    try {
-      setAnsweringQuestionId(questionId);
-      await answerDatasetQuestion(questionId, { answer });
-      setAnswerDrafts((prev) => ({ ...prev, [questionId]: "" }));
-      await refreshAfterMutation();
-    } finally {
-      setAnsweringQuestionId(null);
-    }
-  };
-
-  const handleDelete = async (questionId: string) => {
-    try {
-      setDeletingQuestionId(questionId);
-      await deleteDatasetQuestion(questionId);
-      await refreshAfterMutation();
-    } finally {
-      setDeletingQuestionId(null);
+      await deleteMutation.mutateAsync({
+        questionId: deleteTarget.id,
+        data: { reason: deleteReason.trim() },
+      });
+      setDeleteTarget(null);
+      setDeleteReason('');
+    } catch {
+      // The mutation hook presents the error and keeps the confirmation open.
     }
   };
 
   return (
-    <div className="p-6">
-      <h1 style={{ color: "var(--text-primary)" }} className="mb-2 text-2xl font-bold">
-        Questions
-      </h1>
-      <p style={{ color: "var(--text-muted)" }} className="mb-6">
-        Dataset-grouped question inbox. Answer questions or delete inappropriate content.
-      </p>
+    <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6">
+      <div className="mb-6">
+        <h1>Questions</h1>
+        <p className="mt-1" style={{ color: 'var(--text-muted)' }}>
+          Answer marketplace questions and remove inappropriate content with a recorded reason.
+        </p>
+      </div>
 
-      {loading ? (
-        <Card style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-          <CardContent className="p-6">
-            <p style={{ color: "var(--text-muted)" }}>Loading questions...</p>
-          </CardContent>
-        </Card>
-      ) : datasetsWithQuestions.length === 0 ? (
-        <Card style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-          <CardContent className="p-6">
-            <p style={{ color: "var(--text-muted)" }}>No marketplace datasets with questions right now.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-            <CardHeader>
-              <CardTitle>Datasets with Questions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <input
-                type="text"
-                placeholder="Search datasets..."
-                value={searchQuery}
-                onChange={(e) => {
-                  void handleSearch(e.target.value);
-                }}
-                className="w-full h-10 px-3 rounded-md border text-sm"
-                style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <Card style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}>
+          <CardHeader>
+            <CardTitle>Datasets with questions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                style={{ color: 'var(--text-muted)' }}
+                aria-hidden="true"
               />
+              <Input
+                type="search"
+                aria-label="Search datasets with questions"
+                placeholder="Search datasets"
+                value={searchQuery}
+                onChange={(event) =>
+                  updateUrl({
+                    q: event.target.value.trimStart() || null,
+                    page: null,
+                    dataset: null,
+                    questionPage: null,
+                  })
+                }
+                className="pl-9"
+              />
+            </div>
+
+            {listQuery.isLoading ? (
+              <div className="space-y-2" aria-label="Loading datasets">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="h-16 animate-pulse rounded-lg bg-[var(--bg-hover)]" />
+                ))}
+              </div>
+            ) : listQuery.isError ? (
+              <div className="py-8 text-center">
+                <AlertCircle className="mx-auto h-7 w-7 text-destructive" aria-hidden="true" />
+                <p className="mt-2 font-medium">Could not load datasets</p>
+                <Button
+                  className="mt-3"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => listQuery.refetch()}
+                >
+                  Try again
+                </Button>
+              </div>
+            ) : datasets.length === 0 ? (
+              <div className="py-8 text-center">
+                <MessageSquare
+                  className="mx-auto h-7 w-7"
+                  style={{ color: 'var(--text-muted)' }}
+                  aria-hidden="true"
+                />
+                <p className="mt-2 font-medium">No datasets found</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+                  {debouncedSearch
+                    ? 'Try a different search.'
+                    : 'No marketplace questions need review.'}
+                </p>
+              </div>
+            ) : (
               <div className="space-y-2">
-              {datasetsWithQuestions.map((datasetItem) => {
-                const isActive = datasetItem.datasetId === selectedDatasetId;
-                return (
-                  <button
-                    key={datasetItem.datasetId}
-                    onClick={() => {
-                      void handleSelectDataset(datasetItem.datasetId);
-                    }}
-                    className="w-full text-left rounded-lg p-3 border"
-                    style={{
-                      backgroundColor: isActive ? "var(--bg-hover)" : "var(--bg-surface)",
-                      borderColor: "var(--border-default)",
-                    }}
+                {datasets.map((item) => {
+                  const isActive = item.datasetId === selectedDatasetId;
+                  return (
+                    <button
+                      key={item.datasetId}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => updateUrl({ dataset: item.datasetId, questionPage: null })}
+                      className={cn(
+                        'w-full rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]',
+                        isActive ? 'bg-[var(--nav-active-bg)]' : 'hover:bg-[var(--bg-hover)]'
+                      )}
+                      style={{
+                        borderColor: isActive ? 'var(--nav-active)' : 'var(--border-default)',
+                      }}
+                    >
+                      <p className="truncate text-sm font-medium">{item.datasetTitle}</p>
+                      <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {item.questionCount} question{item.questionCount === 1 ? '' : 's'}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {!listQuery.isLoading && totalDatasetPages > 1 ? (
+              <div
+                className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between"
+                style={{ borderColor: 'var(--border-default)' }}
+              >
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Page {page} of {totalDatasetPages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1 || listQuery.isFetching}
+                    onClick={() =>
+                      updateUrl({
+                        page: page - 1 > 1 ? String(page - 1) : null,
+                        dataset: null,
+                        questionPage: null,
+                      })
+                    }
                   >
-                    <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
-                      {datasetItem.datasetTitle}
-                    </p>
-                    <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                      {datasetItem.questionCount} question{datasetItem.questionCount === 1 ? "" : "s"}
-                    </p>
-                  </button>
-                );
-              })}
-              </div>
-              <div className="border-t pt-4" style={{ borderColor: "var(--border-default)" }}>
-                <div className="flex items-center justify-between text-sm">
-                  <p style={{ color: "var(--text-muted)" }}>
-                    Showing {datasetsWithQuestions.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{" "}
-                    {Math.min(currentPage * pageSize, totalDatasets)} of {totalDatasets} datasets
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        void handlePageChange(currentPage - 1);
-                      }}
-                      disabled={currentPage === 1}
-                      className="px-3 py-2 rounded border text-sm disabled:opacity-50"
-                      style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
-                    >
-                      Previous
-                    </button>
-                    <span style={{ color: "var(--text-muted)" }}>Page {currentPage}</span>
-                    <button
-                      onClick={() => {
-                        void handlePageChange(currentPage + 1);
-                      }}
-                      disabled={currentPage * pageSize >= totalDatasets}
-                      className="px-3 py-2 rounded border text-sm disabled:opacity-50"
-                      style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
-                    >
-                      Next
-                    </button>
-                  </div>
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalDatasetPages || listQuery.isFetching}
+                    onClick={() =>
+                      updateUrl({ page: String(page + 1), dataset: null, questionPage: null })
+                    }
+                  >
+                    Next
+                  </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            ) : null}
+          </CardContent>
+        </Card>
 
-          <Card className="lg:col-span-2" style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-default)" }}>
-            <CardHeader>
-              <CardTitle>{selected?.datasetTitle || "Questions"}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {selectedDatasetId && loadingQuestionsForDatasetId === selectedDatasetId ? (
-                <p style={{ color: "var(--text-muted)" }}>Loading dataset questions...</p>
-              ) : selectedQuestions.length === 0 ? (
-                <p style={{ color: "var(--text-muted)" }}>No questions in this dataset.</p>
-              ) : selectedQuestions.map((question) => (
-                <div key={question.id} className="rounded-lg border p-4" style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-surface)" }}>
-                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{question.question}</p>
-                  <p className="text-xs mt-1 mb-3" style={{ color: "var(--text-muted)" }}>
-                    {new Date(question.createdAt).toLocaleString()}
-                  </p>
-
-                  {question.answers.length > 0 && (
-                    <div className="space-y-2 mb-3">
-                      {question.answers.map((answer) => (
-                        <div key={answer.id} className="rounded-md p-3 border" style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-base)" }}>
-                          <p className="text-sm" style={{ color: "var(--text-primary)" }}>{answer.answer}</p>
-                          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                            {new Date(answer.createdAt).toLocaleString()}
-                          </p>
+        <Card style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}>
+          <CardHeader>
+            <CardTitle>{selectedDataset?.datasetTitle ?? 'Question inbox'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!selectedDataset ? (
+              <div className="py-12 text-center">
+                <MessageSquare
+                  className="mx-auto h-8 w-8"
+                  style={{ color: 'var(--text-muted)' }}
+                  aria-hidden="true"
+                />
+                <p className="mt-3" style={{ color: 'var(--text-muted)' }}>
+                  Select a dataset to review its questions.
+                </p>
+              </div>
+            ) : questionsQuery.isLoading ? (
+              <div className="space-y-3" aria-label="Loading questions">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="h-36 animate-pulse rounded-lg bg-[var(--bg-hover)]" />
+                ))}
+              </div>
+            ) : questionsQuery.isError ? (
+              <div className="py-12 text-center">
+                <AlertCircle className="mx-auto h-8 w-8 text-destructive" aria-hidden="true" />
+                <p className="mt-3 font-medium">Could not load questions</p>
+                <Button className="mt-4" variant="outline" onClick={() => questionsQuery.refetch()}>
+                  Try again
+                </Button>
+              </div>
+            ) : questions.length === 0 ? (
+              <p className="py-12 text-center" style={{ color: 'var(--text-muted)' }}>
+                No questions remain for this dataset.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {questions.map((question) => {
+                  const draft = answerDrafts[question.id] ?? '';
+                  return (
+                    <article
+                      key={question.id}
+                      className="rounded-lg border p-4"
+                      style={{
+                        borderColor: 'var(--border-default)',
+                        backgroundColor: 'var(--bg-surface)',
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{question.question}</p>
+                          <time
+                            className="mt-1 block text-xs"
+                            style={{ color: 'var(--text-muted)' }}
+                            dateTime={question.createdAt}
+                          >
+                            {new Date(question.createdAt).toLocaleString()}
+                          </time>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(question)}
+                          aria-label="Delete question"
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </div>
 
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      className="flex-1 h-10 px-3 rounded-md border text-sm"
-                      style={{ borderColor: "var(--border-default)", backgroundColor: "var(--bg-base)", color: "var(--text-primary)" }}
-                      placeholder="Write an answer..."
-                      value={answerDrafts[question.id] || ""}
-                      onChange={(e) => setAnswerDrafts((prev) => ({ ...prev, [question.id]: e.target.value }))}
-                    />
-                    <Button
-                      onClick={() => handleAnswer(question.id)}
-                      disabled={answeringQuestionId === question.id || !(answerDrafts[question.id] || "").trim()}
-                    >
-                      {answeringQuestionId === question.id ? "Sending..." : "Answer"}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => handleDelete(question.id)}
-                      disabled={deletingQuestionId === question.id}
-                    >
-                      {deletingQuestionId === question.id ? "Deleting..." : "Delete"}
-                    </Button>
+                      {question.answers.length ? (
+                        <div className="mt-4 space-y-2">
+                          {question.answers.map((answer) => (
+                            <div
+                              key={answer.id}
+                              className="rounded-md border p-3"
+                              style={{
+                                borderColor: 'var(--border-default)',
+                                backgroundColor: 'var(--bg-base)',
+                              }}
+                            >
+                              <p className="text-sm">{answer.answer}</p>
+                              <time
+                                className="mt-1 block text-xs"
+                                style={{ color: 'var(--text-muted)' }}
+                                dateTime={answer.createdAt}
+                              >
+                                {new Date(answer.createdAt).toLocaleString()}
+                              </time>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          value={draft}
+                          maxLength={5000}
+                          aria-label={`Answer question: ${question.question}`}
+                          placeholder="Write an answer"
+                          onChange={(event) =>
+                            setAnswerDrafts((current) => ({
+                              ...current,
+                              [question.id]: event.target.value,
+                            }))
+                          }
+                        />
+                        <Button
+                          className="shrink-0"
+                          disabled={!draft.trim() || answerMutation.isPending}
+                          onClick={() => submitAnswer(question.id)}
+                        >
+                          {answerMutation.isPending &&
+                          answerMutation.variables?.questionId === question.id
+                            ? 'Sending…'
+                            : 'Answer'}
+                        </Button>
+                      </div>
+                    </article>
+                  );
+                })}
+
+                {totalQuestionPages > 1 ? (
+                  <div
+                    className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between"
+                    style={{ borderColor: 'var(--border-default)' }}
+                  >
+                    <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                      Page {questionPage} of {totalQuestionPages}
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={questionPage <= 1 || questionsQuery.isFetching}
+                        onClick={() =>
+                          updateUrl({
+                            questionPage: questionPage - 1 > 1 ? String(questionPage - 1) : null,
+                          })
+                        }
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={questionPage >= totalQuestionPages || questionsQuery.isFetching}
+                        onClick={() => updateUrl({ questionPage: String(questionPage + 1) })}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+                ) : null}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+            setDeleteReason('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete question</DialogTitle>
+            <DialogDescription>
+              This removes the question and all of its answers. The moderation action will be
+              audited.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="question-delete-reason">Reason</Label>
+            <Textarea
+              id="question-delete-reason"
+              value={deleteReason}
+              maxLength={1000}
+              placeholder="Explain why this question is being removed."
+              onChange={(event) => setDeleteReason(event.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteTarget(null);
+                setDeleteReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteReason.trim().length < 3 || deleteMutation.isPending}
+              onClick={confirmDelete}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete question'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

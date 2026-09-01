@@ -10,7 +10,6 @@ import type {
   Dataset,
   DatasetStatus,
   DatasetVisibility,
-  OwnerType,
   DatasetListItem,
   DatasetDetailResponse,
   DatasetProposalListItem,
@@ -19,6 +18,7 @@ import type {
   CreateDatasetRequest,
   UpdateDatasetRequest,
   UpdateDatasetMetadataRequest,
+  DatasetMetadataUpdateResponse,
   StartUploadRequest,
   StartUploadResponse,
   CompleteUploadRequest,
@@ -36,6 +36,8 @@ import type {
   AssignmentStatus,
   UploadScope,
   UploadStatus,
+  DatasetActionReasonRequest,
+  DatasetAuditEvent,
   PaginatedResponse,
   ApiSuccessResponse,
 } from '@/types';
@@ -50,7 +52,7 @@ export interface DatasetListParams {
   q?: string;
   status?: DatasetStatus | 'ALL';
   visibility?: DatasetVisibility | 'ALL';
-  ownerType?: OwnerType | 'ALL';
+  ownerType?: 'PLATFORM';
   primaryCategoryId?: string;
   sourceId?: string;
   isPaid?: boolean;
@@ -108,17 +110,17 @@ export async function getDatasets(
   params: DatasetListParams = {}
 ): Promise<PaginatedResponse<DatasetListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{
-    items: DatasetListItem[];
-    page: number;
-    pageSize: number;
-    total: number;
-  }>>(
-    `${API_ROUTES.ADMIN.DATASETS.LIST}${query}`
-  );
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: DatasetListItem[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.DATASETS.LIST}${query}`);
+
   const apiData = response.data.data;
-  
+
   return {
     items: apiData.items || [],
     pagination: {
@@ -171,20 +173,25 @@ export async function updateDataset(
 export async function updateDatasetMetadata(
   datasetId: string,
   data: UpdateDatasetMetadataRequest
-): Promise<DatasetDetailResponse> {
-  const response = await apiClient.patch<any>(
+): Promise<DatasetMetadataUpdateResponse> {
+  const response = await apiClient.patch<ApiSuccessResponse<DatasetMetadataUpdateResponse>>(
     API_ROUTES.ADMIN.DATASETS.METADATA(datasetId),
     data
   );
-  // API returns: { success: true, data: { dataset, primaryCategory, ... } }
-  return response.data?.data || response.data;
+  return response.data.data;
 }
 
 /**
  * Delete a dataset
  */
-export async function deleteDataset(datasetId: string): Promise<void> {
-  await apiClient.delete(API_ROUTES.ADMIN.DATASETS.DELETE(datasetId));
+export async function deleteDataset(
+  datasetId: string,
+  data: DatasetActionReasonRequest
+): Promise<void> {
+  await apiClient.request(API_ROUTES.ADMIN.DATASETS.DELETE(datasetId), {
+    method: 'DELETE',
+    body: data,
+  });
 }
 
 /**
@@ -204,13 +211,40 @@ export async function publishDataset(
 /**
  * Unpublish a dataset
  */
-export async function unpublishDataset(datasetId: string): Promise<Dataset> {
-  const response = await apiClient.post<any>(
-    API_ROUTES.ADMIN.DATASETS.UNPUBLISH(datasetId)
+export async function unpublishDataset(
+  datasetId: string,
+  data: DatasetActionReasonRequest
+): Promise<Dataset> {
+  const response = await apiClient.post<ApiSuccessResponse<{ dataset: Dataset }>>(
+    API_ROUTES.ADMIN.DATASETS.UNPUBLISH(datasetId),
+    data
   );
-  // API returns: { success: true, data: { dataset } }
-  const apiData = response.data?.data || response.data;
-  return apiData.dataset;
+  return response.data.data.dataset;
+}
+
+export async function getDatasetAudit(
+  datasetId: string,
+  params: { page?: number; pageSize?: number } = {}
+): Promise<PaginatedResponse<DatasetAuditEvent>> {
+  const query = buildQueryString(params);
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: DatasetAuditEvent[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.DATASETS.AUDIT(datasetId)}${query}`);
+  const data = response.data.data;
+  return {
+    items: data.items,
+    pagination: {
+      page: data.page,
+      pageSize: data.pageSize,
+      total: data.total,
+      totalPages: Math.ceil(data.total / data.pageSize),
+    },
+  };
 }
 
 // ============================================
@@ -225,13 +259,16 @@ export async function getDatasetUploads(
   params: UploadListParams = {}
 ): Promise<PaginatedResponse<DatasetUpload>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<any>(
-    `${API_ROUTES.ADMIN.DATASETS.UPLOADS.LIST(datasetId)}${query}`
-  );
-  
-  // API returns: { success: true, data: { items, page, pageSize, total } }
-  const apiData = response.data?.data || response.data;
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: DatasetUpload[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.DATASETS.UPLOADS.LIST(datasetId)}${query}`);
+  const apiData = response.data.data;
+
   return {
     items: apiData.items || [],
     pagination: {
@@ -246,33 +283,30 @@ export async function getDatasetUploads(
 /**
  * Start a new upload - returns presigned URL
  */
-export async function startUpload(
+async function startUpload(
   datasetId: string,
   data: StartUploadRequest = {}
 ): Promise<StartUploadResponse> {
-  const response = await apiClient.post<any>(
+  const response = await apiClient.post<ApiSuccessResponse<StartUploadResponse>>(
     API_ROUTES.ADMIN.DATASETS.UPLOADS.START(datasetId),
     data
   );
-  // API returns: { success: true, data: { upload, presignedUrl } }
-  return response.data?.data || response.data;
+  return response.data.data;
 }
 
 /**
  * Complete an upload after file is uploaded to S3
  */
-export async function completeUpload(
+async function completeUpload(
   datasetId: string,
   uploadId: string,
   data: CompleteUploadRequest = {}
 ): Promise<DatasetUpload> {
-  const response = await apiClient.post<any>(
+  const response = await apiClient.post<ApiSuccessResponse<{ upload: DatasetUpload }>>(
     API_ROUTES.ADMIN.DATASETS.UPLOADS.COMPLETE(datasetId, uploadId),
     data
   );
-  // API returns: { success: true, data: { upload } }
-  const apiData = response.data?.data || response.data;
-  return apiData.upload;
+  return response.data.data.upload;
 }
 
 /**
@@ -282,11 +316,10 @@ export async function getUploadDownloadUrl(
   datasetId: string,
   uploadId: string
 ): Promise<DownloadUrlResponse> {
-  const response = await apiClient.get<any>(
+  const response = await apiClient.get<ApiSuccessResponse<DownloadUrlResponse>>(
     API_ROUTES.ADMIN.DATASETS.UPLOADS.DOWNLOAD_URL(datasetId, uploadId)
   );
-  // API returns: { success: true, data: { url, expiresAt, upload } }
-  return response.data?.data || response.data;
+  return response.data.data;
 }
 
 // ============================================
@@ -300,13 +333,16 @@ export async function getDatasetProposals(
   params: DatasetProposalParams = {}
 ): Promise<PaginatedResponse<DatasetProposalListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<any>(
-    `${API_ROUTES.ADMIN.DATASET_PROPOSALS.LIST}${query}`
-  );
-  
-  // API returns: { success: true, data: { items, page, pageSize, total } }
-  const apiData = response.data?.data || response.data;
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: DatasetProposalListItem[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.DATASET_PROPOSALS.LIST}${query}`);
+  const apiData = response.data.data;
+
   return {
     items: apiData.items || [],
     pagination: {
@@ -323,7 +359,7 @@ export async function getDatasetProposals(
  * Includes dataset, verification, assignment, metadata, features, categories, and source
  */
 export async function getProposalForReview(datasetId: string): Promise<ProposalReviewResponse> {
-  const response = await apiClient.get<{ data: ProposalReviewResponse }>(
+  const response = await apiClient.get<ApiSuccessResponse<ProposalReviewResponse>>(
     API_ROUTES.ADMIN.DATASET_PROPOSALS.REVIEW(datasetId)
   );
   return response.data.data;
@@ -340,7 +376,7 @@ export async function pickProposal(datasetId: string): Promise<void> {
  * Get download URL for a proposal's current upload
  */
 export async function getProposalDownloadUrl(datasetId: string): Promise<DownloadUrlResponse> {
-  const response = await apiClient.get<{ data: DownloadUrlResponse }>(
+  const response = await apiClient.get<ApiSuccessResponse<DownloadUrlResponse>>(
     API_ROUTES.ADMIN.DATASET_PROPOSALS.DOWNLOAD_URL(datasetId)
   );
   return response.data.data;
@@ -349,8 +385,10 @@ export async function getProposalDownloadUrl(datasetId: string): Promise<Downloa
 /**
  * Get download URL for a proposal's sample upload
  */
-export async function getProposalSampleDownloadUrl(datasetId: string): Promise<DownloadUrlResponse> {
-  const response = await apiClient.get<{ data: DownloadUrlResponse }>(
+export async function getProposalSampleDownloadUrl(
+  datasetId: string
+): Promise<DownloadUrlResponse> {
+  const response = await apiClient.get<ApiSuccessResponse<DownloadUrlResponse>>(
     API_ROUTES.ADMIN.DATASET_PROPOSALS.SAMPLE_DOWNLOAD_URL(datasetId)
   );
   return response.data.data;
@@ -383,17 +421,20 @@ export async function requestChanges(
   datasetId: string,
   data: RequestChangesRequest
 ): Promise<void> {
+  const notes = (data.notes ?? data.changeRationale ?? '').trim();
   await apiClient.post(API_ROUTES.ADMIN.DATASET_PROPOSALS.REQUEST_CHANGES(datasetId), {
-    notes: data.notes || '',
-    changeRationale: data.notes || data.changeRationale,
-    datasetNeedsChanges: data.datasetNeedsChanges,
-    pricingNeedsChanges: data.pricingNeedsChanges,
+    notes,
+    changeRationale: data.changeRationale?.trim() || notes,
   });
 }
 
-export async function getDatasetQuestions(datasetId: string): Promise<DatasetQuestionsResponse> {
+export async function getDatasetQuestions(
+  datasetId: string,
+  params: { page?: number; pageSize?: number } = {}
+): Promise<DatasetQuestionsResponse> {
+  const query = buildQueryString(params);
   const response = await apiClient.get<ApiSuccessResponse<DatasetQuestionsResponse>>(
-    API_ROUTES.MARKETPLACE.QUESTIONS(datasetId)
+    `${API_ROUTES.MARKETPLACE.QUESTIONS(datasetId)}${query}`
   );
   return response.data.data;
 }
@@ -402,12 +443,14 @@ export async function getDatasetsWithQuestions(
   params: DatasetQuestionDatasetsListParams = {}
 ): Promise<PaginatedResponse<DatasetQuestionDataset>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{
-    items: DatasetQuestionDataset[];
-    page: number;
-    pageSize: number;
-    total: number;
-  }>>(`${API_ROUTES.MARKETPLACE.QUESTION_DATASETS}${query}`);
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: DatasetQuestionDataset[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.MARKETPLACE.QUESTION_DATASETS}${query}`);
 
   const apiData = response.data.data;
 
@@ -422,12 +465,21 @@ export async function getDatasetsWithQuestions(
   };
 }
 
-export async function answerDatasetQuestion(questionId: string, data: AnswerQuestionRequest): Promise<void> {
+export async function answerDatasetQuestion(
+  questionId: string,
+  data: AnswerQuestionRequest
+): Promise<void> {
   await apiClient.post(API_ROUTES.MARKETPLACE.ANSWER_QUESTION(questionId), data);
 }
 
-export async function deleteDatasetQuestion(questionId: string): Promise<void> {
-  await apiClient.delete(API_ROUTES.MARKETPLACE.DELETE_QUESTION(questionId));
+export async function deleteDatasetQuestion(
+  questionId: string,
+  data: DatasetActionReasonRequest
+): Promise<void> {
+  await apiClient.request(API_ROUTES.MARKETPLACE.DELETE_QUESTION(questionId), {
+    method: 'DELETE',
+    body: data,
+  });
 }
 
 // ============================================
@@ -441,11 +493,15 @@ export async function getDatasetUpdateRequests(
   params: DatasetUpdateRequestParams = {}
 ): Promise<PaginatedResponse<DatasetProposalListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<any>(
-    `${API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.LIST}${query}`
-  );
-
-  const apiData = response.data?.data || response.data;
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: DatasetProposalListItem[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.LIST}${query}`);
+  const apiData = response.data.data;
 
   return {
     items: apiData.items || [],
@@ -480,11 +536,10 @@ export async function requestUpdateRequestChanges(
   datasetId: string,
   data: RequestChangesRequest
 ): Promise<void> {
+  const notes = (data.notes ?? data.changeRationale ?? '').trim();
   await apiClient.post(API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.REQUEST_CHANGES(datasetId), {
-    notes: data.notes || '',
-    changeRationale: data.notes || data.changeRationale,
-    datasetNeedsChanges: data.datasetNeedsChanges,
-    pricingNeedsChanges: data.pricingNeedsChanges,
+    notes,
+    changeRationale: data.changeRationale?.trim() || notes,
   });
 }
 
@@ -493,27 +548,17 @@ export async function requestUpdateRequestChanges(
 // ============================================
 
 /**
- * Get pricing for a dataset proposal
- */
-export async function getProposalPricing(datasetId: string): Promise<{ pricing: DatasetPricingDto | null }> {
-  const response = await apiClient.get<{ pricing: DatasetPricingDto | null }>(
-    API_ROUTES.ADMIN.DATASET_PROPOSALS.PRICING.GET(datasetId)
-  );
-  return response.data;
-}
-
-/**
  * Approve proposal pricing
  */
 export async function approvePricing(
   datasetId: string,
   data?: { notes?: string }
 ): Promise<{ pricing: DatasetPricingDto }> {
-  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+  const response = await apiClient.post<ApiSuccessResponse<{ pricing: DatasetPricingDto }>>(
     API_ROUTES.ADMIN.DATASET_PROPOSALS.PRICING.APPROVE(datasetId),
     data || {}
   );
-  return response.data;
+  return response.data.data;
 }
 
 /**
@@ -523,11 +568,11 @@ export async function rejectPricing(
   datasetId: string,
   data: { rejectionReason: string; notes?: string }
 ): Promise<{ pricing: DatasetPricingDto }> {
-  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+  const response = await apiClient.post<ApiSuccessResponse<{ pricing: DatasetPricingDto }>>(
     API_ROUTES.ADMIN.DATASET_PROPOSALS.PRICING.REJECT(datasetId),
     data
   );
-  return response.data;
+  return response.data.data;
 }
 
 /**
@@ -537,61 +582,50 @@ export async function requestPricingChanges(
   datasetId: string,
   data: { notes: string; datasetNeedsChanges: boolean; pricingNeedsChanges: boolean }
 ): Promise<{ pricing: DatasetPricingDto }> {
-  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+  const response = await apiClient.post<ApiSuccessResponse<{ pricing: DatasetPricingDto }>>(
     API_ROUTES.ADMIN.DATASET_PROPOSALS.PRICING.REQUEST_CHANGES(datasetId),
     {
       notes: data.notes || '',
       changeRationale: data.notes,
-      datasetNeedsChanges: data.datasetNeedsChanges,
-      pricingNeedsChanges: data.pricingNeedsChanges,
     }
   );
-  return response.data;
-}
-
-export async function getUpdateRequestPricing(datasetId: string): Promise<{ pricing: DatasetPricingDto | null }> {
-  const response = await apiClient.get<{ pricing: DatasetPricingDto | null }>(
-    API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.PRICING.GET(datasetId)
-  );
-  return response.data;
+  return response.data.data;
 }
 
 export async function approveUpdateRequestPricing(
   datasetId: string,
   data?: { notes?: string }
 ): Promise<{ pricing: DatasetPricingDto }> {
-  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+  const response = await apiClient.post<ApiSuccessResponse<{ pricing: DatasetPricingDto }>>(
     API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.PRICING.APPROVE(datasetId),
     data || {}
   );
-  return response.data;
+  return response.data.data;
 }
 
 export async function rejectUpdateRequestPricing(
   datasetId: string,
   data: { rejectionReason: string; notes?: string }
 ): Promise<{ pricing: DatasetPricingDto }> {
-  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+  const response = await apiClient.post<ApiSuccessResponse<{ pricing: DatasetPricingDto }>>(
     API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.PRICING.REJECT(datasetId),
     data
   );
-  return response.data;
+  return response.data.data;
 }
 
 export async function requestUpdateRequestPricingChanges(
   datasetId: string,
   data: { notes: string; datasetNeedsChanges: boolean; pricingNeedsChanges: boolean }
 ): Promise<{ pricing: DatasetPricingDto }> {
-  const response = await apiClient.post<{ pricing: DatasetPricingDto }>(
+  const response = await apiClient.post<ApiSuccessResponse<{ pricing: DatasetPricingDto }>>(
     API_ROUTES.ADMIN.DATASET_UPDATE_REQUESTS.PRICING.REQUEST_CHANGES(datasetId),
     {
       notes: data.notes || '',
       changeRationale: data.notes,
-      datasetNeedsChanges: data.datasetNeedsChanges,
-      pricingNeedsChanges: data.pricingNeedsChanges,
     }
   );
-  return response.data;
+  return response.data.data;
 }
 
 // ============================================
@@ -605,13 +639,16 @@ export async function getAssignedDatasets(
   params: AssignedDatasetParams = {}
 ): Promise<PaginatedResponse<AssignedDatasetListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<any>(
-    `${API_ROUTES.ADMIN.ASSIGNED_DATASETS}${query}`
-  );
-  
-  // API returns: { success: true, data: { items, page, pageSize, total } }
-  const apiData = response.data?.data || response.data;
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: AssignedDatasetListItem[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.ASSIGNED_DATASETS}${query}`);
+  const apiData = response.data.data;
+
   return {
     items: apiData.items || [],
     pagination: {
@@ -647,11 +684,7 @@ export async function uploadDatasetFile(
   });
 
   // 2. Upload file to S3 using presigned URL
-  await apiClient.uploadToPresignedUrl(
-    presignedUpload.url,
-    file,
-    file.type
-  );
+  await apiClient.uploadToPresignedUrl(presignedUpload.url, file, presignedUpload.headers);
 
   // 3. Complete the upload
   const completedUpload = await completeUpload(datasetId, upload.id, {
@@ -659,57 +692,4 @@ export async function uploadDatasetFile(
   });
 
   return completedUpload;
-}
-
-// ============================================
-// Status Helpers
-// ============================================
-
-export function getDatasetStatusDisplay(status: DatasetStatus): {
-  label: string;
-  variant: 'success' | 'warning' | 'error' | 'default' | 'info';
-} {
-  const statusMap: Record<
-    DatasetStatus,
-    { label: string; variant: 'success' | 'warning' | 'error' | 'default' | 'info' }
-  > = {
-    SUBMITTED: { label: 'Submitted', variant: 'default' },
-    UNDER_REVIEW: { label: 'Under Review', variant: 'info' },
-    REJECTED: { label: 'Rejected', variant: 'error' },
-    VERIFIED: { label: 'Verified', variant: 'success' },
-    PUBLISHED: { label: 'Published', variant: 'success' },
-    DELISTED: { label: 'Delisted', variant: 'warning' },
-    ARCHIVED: { label: 'Archived', variant: 'warning' },
-  };
-  return statusMap[status];
-}
-
-export function getVerificationStatusDisplay(status: VerificationStatus): {
-  label: string;
-  variant: 'success' | 'warning' | 'error' | 'default' | 'info';
-} {
-  const statusMap: Record<
-    VerificationStatus,
-    { label: string; variant: 'success' | 'warning' | 'error' | 'default' | 'info' }
-  > = {
-    PENDING: { label: 'Pending', variant: 'default' },
-    SUBMITTED: { label: 'Submitted', variant: 'default' },
-    CHANGES_REQUESTED: { label: 'Changes Requested', variant: 'warning' },
-    RESUBMITTED: { label: 'Resubmitted', variant: 'info' },
-    UNDER_REVIEW: { label: 'Under Review', variant: 'info' },
-    VERIFIED: { label: 'Verified', variant: 'success' },
-    REJECTED: { label: 'Rejected', variant: 'error' },
-  };
-  return statusMap[status];
-}
-
-export function canPublishDataset(dataset: Dataset): boolean {
-  return (
-    dataset.status === 'VERIFIED' &&
-    dataset.publishedUploadId !== null
-  );
-}
-
-export function canUnpublishDataset(dataset: Dataset): boolean {
-  return dataset.status === 'PUBLISHED';
 }

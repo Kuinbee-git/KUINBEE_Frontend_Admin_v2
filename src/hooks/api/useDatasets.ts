@@ -22,8 +22,9 @@ import type {
   RejectProposalRequest,
   RequestChangesRequest,
   UploadScope,
+  DatasetActionReasonRequest,
 } from '@/types';
-import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
+import { getFriendlyErrorMessage, isSessionExpiredError } from '@/lib/utils/error.utils';
 
 // ============================================
 // Query Keys
@@ -36,13 +37,17 @@ export const datasetsKeys = {
   details: () => [...datasetsKeys.all, 'detail'] as const,
   detail: (id: string) => [...datasetsKeys.details(), id] as const,
   uploads: (datasetId: string) => [...datasetsKeys.all, 'uploads', datasetId] as const,
+  audit: (datasetId: string) => [...datasetsKeys.detail(datasetId), 'audit'] as const,
   proposals: () => [...datasetsKeys.all, 'proposals'] as const,
   proposalList: (params: DatasetProposalParams) => [...datasetsKeys.proposals(), params] as const,
   updateRequests: () => [...datasetsKeys.all, 'update-requests'] as const,
-  updateRequestList: (params: DatasetUpdateRequestParams) => [...datasetsKeys.updateRequests(), params] as const,
+  updateRequestList: (params: DatasetUpdateRequestParams) =>
+    [...datasetsKeys.updateRequests(), params] as const,
   assigned: () => [...datasetsKeys.all, 'assigned'] as const,
   assignedList: (params: AssignedDatasetParams) => [...datasetsKeys.assigned(), params] as const,
   questions: (datasetId: string) => [...datasetsKeys.detail(datasetId), 'questions'] as const,
+  questionDatasets: (params: datasetsService.DatasetQuestionDatasetsListParams) =>
+    [...datasetsKeys.all, 'question-datasets', params] as const,
 };
 
 // ============================================
@@ -73,11 +78,25 @@ export function useProposalReview(datasetId: string) {
   });
 }
 
-export function useDatasetQuestions(datasetId: string) {
+export function useDatasetQuestions(
+  datasetId: string,
+  params: { page?: number; pageSize?: number } = {},
+  options: { enabled?: boolean } = {}
+) {
   return useQuery({
-    queryKey: datasetsKeys.questions(datasetId),
-    queryFn: () => datasetsService.getDatasetQuestions(datasetId),
-    enabled: !!datasetId,
+    queryKey: [...datasetsKeys.questions(datasetId), params],
+    queryFn: () => datasetsService.getDatasetQuestions(datasetId, params),
+    enabled: Boolean(datasetId) && (options.enabled ?? true),
+  });
+}
+
+export function useQuestionDatasets(
+  params: datasetsService.DatasetQuestionDatasetsListParams = {}
+) {
+  return useQuery({
+    queryKey: datasetsKeys.questionDatasets(params),
+    queryFn: () => datasetsService.getDatasetsWithQuestions(params),
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -86,6 +105,15 @@ export function useDatasetUploads(datasetId: string, params: UploadListParams = 
     queryKey: [...datasetsKeys.uploads(datasetId), params],
     queryFn: () => datasetsService.getDatasetUploads(datasetId, params),
     enabled: !!datasetId,
+  });
+}
+
+export function useDatasetAudit(datasetId: string, page: number, pageSize = 20) {
+  return useQuery({
+    queryKey: [...datasetsKeys.audit(datasetId), { page, pageSize }],
+    queryFn: () => datasetsService.getDatasetAudit(datasetId, { page, pageSize }),
+    enabled: Boolean(datasetId),
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -116,14 +144,6 @@ export function useDatasetUpdateRequests(params: DatasetUpdateRequestParams = {}
   });
 }
 
-export function useProposalDownloadUrl(datasetId: string, enabled: boolean = false) {
-  return useQuery({
-    queryKey: [...datasetsKeys.detail(datasetId), 'download'],
-    queryFn: () => datasetsService.getProposalDownloadUrl(datasetId),
-    enabled: !!datasetId && enabled,
-  });
-}
-
 // ============================================
 // Dataset Mutations
 // ============================================
@@ -138,8 +158,7 @@ export function useCreateDataset() {
       toast.success('Dataset created successfully');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to create dataset');
     },
   });
@@ -154,11 +173,11 @@ export function useUpdateDataset() {
     onSuccess: (_, { datasetId }) => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
       queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.audit(datasetId) });
       toast.success('Dataset updated successfully');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to update dataset');
     },
   });
@@ -172,11 +191,11 @@ export function useUpdateDatasetMetadata() {
       datasetsService.updateDatasetMetadata(datasetId, data),
     onSuccess: (_, { datasetId }) => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.audit(datasetId) });
       toast.success('Metadata updated successfully');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to update metadata');
     },
   });
@@ -186,14 +205,14 @@ export function useDeleteDataset() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (datasetId: string) => datasetsService.deleteDataset(datasetId),
+    mutationFn: ({ datasetId, data }: { datasetId: string; data: DatasetActionReasonRequest }) =>
+      datasetsService.deleteDataset(datasetId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
-      toast.success('Dataset deleted successfully');
+      toast.success('Dataset archived successfully');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to delete dataset');
     },
   });
@@ -208,11 +227,11 @@ export function usePublishDataset() {
     onSuccess: (_, { datasetId }) => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
       queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.audit(datasetId) });
       toast.success('Dataset published successfully');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to publish dataset');
     },
   });
@@ -222,15 +241,16 @@ export function useUnpublishDataset() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (datasetId: string) => datasetsService.unpublishDataset(datasetId),
-    onSuccess: (_, datasetId) => {
+    mutationFn: ({ datasetId, data }: { datasetId: string; data: DatasetActionReasonRequest }) =>
+      datasetsService.unpublishDataset(datasetId, data),
+    onSuccess: (_, { datasetId }) => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
       queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
+      queryClient.invalidateQueries({ queryKey: datasetsKeys.audit(datasetId) });
       toast.success('Dataset unpublished');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to unpublish dataset');
     },
   });
@@ -244,16 +264,22 @@ export function useUploadDatasetFile() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ datasetId, file, scope }: { datasetId: string; file: File; scope?: UploadScope }) =>
-      datasetsService.uploadDatasetFile(datasetId, file, { scope }),
+    mutationFn: ({
+      datasetId,
+      file,
+      scope,
+    }: {
+      datasetId: string;
+      file: File;
+      scope?: UploadScope;
+    }) => datasetsService.uploadDatasetFile(datasetId, file, { scope }),
     onSuccess: (_, { datasetId }) => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.uploads(datasetId) });
       queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
       toast.success('File uploaded successfully');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to upload file');
     },
   });
@@ -264,8 +290,7 @@ export function useDownloadUploadUrl() {
     mutationFn: ({ datasetId, uploadId }: { datasetId: string; uploadId: string }) =>
       datasetsService.getUploadDownloadUrl(datasetId, uploadId),
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to get download URL');
     },
   });
@@ -286,8 +311,7 @@ export function usePickProposal() {
       toast.success('Proposal assigned to you');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to pick proposal');
     },
   });
@@ -304,8 +328,7 @@ export function useAnswerDatasetQuestion(datasetId: string) {
       toast.success('Answer submitted');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to submit answer');
     },
   });
@@ -315,14 +338,15 @@ export function useDeleteDatasetQuestion(datasetId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (questionId: string) => datasetsService.deleteDatasetQuestion(questionId),
+    mutationFn: ({ questionId, data }: { questionId: string; data: DatasetActionReasonRequest }) =>
+      datasetsService.deleteDatasetQuestion(questionId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.questions(datasetId) });
+      queryClient.invalidateQueries({ queryKey: [...datasetsKeys.all, 'question-datasets'] });
       toast.success('Question deleted');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to delete question');
     },
   });
@@ -339,8 +363,7 @@ export function usePickUpdateRequest() {
       toast.success('Update request assigned to you');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to pick update request');
     },
   });
@@ -358,8 +381,7 @@ export function useApproveProposal() {
       toast.success('Proposal approved');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to approve proposal');
     },
   });
@@ -377,8 +399,7 @@ export function useApproveUpdateRequest() {
       toast.success('Update request approved');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to approve update request');
     },
   });
@@ -397,8 +418,7 @@ export function useRejectProposal() {
     },
     onError: (error) => {
       // Skip toast for auth errors - global handler will redirect
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to reject proposal');
     },
   });
@@ -416,8 +436,7 @@ export function useRejectUpdateRequest() {
       toast.success('Update request rejected');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to reject update request');
     },
   });
@@ -432,12 +451,11 @@ export function useRequestChanges() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.proposals() });
       queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
-      toast.success('Changes requested');
+      toast.success('Dataset changes requested');
     },
     onError: (error) => {
       // Skip toast for auth errors - global handler will redirect
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to request changes');
     },
   });
@@ -452,11 +470,10 @@ export function useRequestUpdateRequestChanges() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.updateRequests() });
       queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
-      toast.success('Changes requested');
+      toast.success('Dataset changes requested');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to request changes');
     },
   });
@@ -466,8 +483,7 @@ export function useDownloadProposalUrl() {
   return useMutation({
     mutationFn: (datasetId: string) => datasetsService.getProposalDownloadUrl(datasetId),
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to get download URL');
     },
   });
@@ -477,8 +493,7 @@ export function useDownloadProposalSampleUrl() {
   return useMutation({
     mutationFn: (datasetId: string) => datasetsService.getProposalSampleDownloadUrl(datasetId),
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to get sample download URL');
     },
   });
@@ -487,22 +502,6 @@ export function useDownloadProposalSampleUrl() {
 // ============================================
 // Proposal Pricing Mutations
 // ============================================
-
-export function useProposalPricing(datasetId: string) {
-  return useQuery({
-    queryKey: [...datasetsKeys.detail(datasetId), 'pricing'],
-    queryFn: () => datasetsService.getProposalPricing(datasetId),
-    enabled: !!datasetId,
-  });
-}
-
-export function useUpdateRequestPricing(datasetId: string) {
-  return useQuery({
-    queryKey: [...datasetsKeys.detail(datasetId), 'update-pricing'],
-    queryFn: () => datasetsService.getUpdateRequestPricing(datasetId),
-    enabled: !!datasetId,
-  });
-}
 
 export function useApprovePricing() {
   const queryClient = useQueryClient();
@@ -516,8 +515,7 @@ export function useApprovePricing() {
       toast.success('Pricing approved');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to approve pricing');
     },
   });
@@ -535,8 +533,7 @@ export function useApproveUpdateRequestPricing() {
       toast.success('Pricing approved');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to approve pricing');
     },
   });
@@ -546,16 +543,20 @@ export function useRejectPricing() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ datasetId, data }: { datasetId: string; data: { rejectionReason: string; notes?: string } }) =>
-      datasetsService.rejectPricing(datasetId, data),
+    mutationFn: ({
+      datasetId,
+      data,
+    }: {
+      datasetId: string;
+      data: { rejectionReason: string; notes?: string };
+    }) => datasetsService.rejectPricing(datasetId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.proposals() });
       queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
       toast.success('Pricing rejected');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to reject pricing');
     },
   });
@@ -565,16 +566,20 @@ export function useRejectUpdateRequestPricing() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ datasetId, data }: { datasetId: string; data: { rejectionReason: string; notes?: string } }) =>
-      datasetsService.rejectUpdateRequestPricing(datasetId, data),
+    mutationFn: ({
+      datasetId,
+      data,
+    }: {
+      datasetId: string;
+      data: { rejectionReason: string; notes?: string };
+    }) => datasetsService.rejectUpdateRequestPricing(datasetId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.updateRequests() });
       queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
       toast.success('Pricing rejected');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to reject pricing');
     },
   });
@@ -584,16 +589,20 @@ export function useRequestPricingChanges() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ datasetId, data }: { datasetId: string; data: { notes: string; datasetNeedsChanges: boolean; pricingNeedsChanges: boolean } }) =>
-      datasetsService.requestPricingChanges(datasetId, data),
+    mutationFn: ({
+      datasetId,
+      data,
+    }: {
+      datasetId: string;
+      data: { notes: string; datasetNeedsChanges: boolean; pricingNeedsChanges: boolean };
+    }) => datasetsService.requestPricingChanges(datasetId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.proposals() });
       queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
-      toast.success('Changes requested');
+      toast.success('Pricing changes requested');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to request pricing changes');
     },
   });
@@ -603,33 +612,21 @@ export function useRequestUpdateRequestPricingChanges() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ datasetId, data }: { datasetId: string; data: { notes: string; datasetNeedsChanges: boolean; pricingNeedsChanges: boolean } }) =>
-      datasetsService.requestUpdateRequestPricingChanges(datasetId, data),
+    mutationFn: ({
+      datasetId,
+      data,
+    }: {
+      datasetId: string;
+      data: { notes: string; datasetNeedsChanges: boolean; pricingNeedsChanges: boolean };
+    }) => datasetsService.requestUpdateRequestPricingChanges(datasetId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: datasetsKeys.updateRequests() });
       queryClient.invalidateQueries({ queryKey: datasetsKeys.assigned() });
-      toast.success('Changes requested');
+      toast.success('Pricing changes requested');
     },
     onError: (error) => {
-      const err = error as any;
-      if (err?.statusCode === 401 || err?.statusCode === 403) return;
+      if (isSessionExpiredError(error)) return;
       toast.error(getFriendlyErrorMessage(error) || 'Failed to request pricing changes');
     },
   });
-}
-
-// ============================================
-// Prefetch
-// ============================================
-
-export function usePrefetchDataset() {
-  const queryClient = useQueryClient();
-
-  return (datasetId: string) => {
-    queryClient.prefetchQuery({
-      queryKey: datasetsKeys.detail(datasetId),
-      queryFn: () => datasetsService.getDatasetById(datasetId),
-      staleTime: 5 * 60 * 1000,
-    });
-  };
 }

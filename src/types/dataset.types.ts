@@ -27,7 +27,7 @@ export type VerificationStatus =
 
 export type DatasetVisibility = 'PUBLIC' | 'PRIVATE' | 'UNLISTED';
 
-export type OwnerType = 'PLATFORM' | 'SUPPLIER';
+type OwnerType = 'PLATFORM' | 'SUPPLIER';
 
 export type Currency = 'INR' | 'USD' | 'EUR' | 'GBP';
 
@@ -107,9 +107,6 @@ export interface Dataset {
   superType: DatasetSuperType;
   primaryCategoryId: string;
   sourceId: string;
-  isPaid: boolean;
-  price: string | null;
-  currency: Currency;
   license: string;
   downloadCount: number;
   viewCount: number;
@@ -131,14 +128,14 @@ export interface Dataset {
   publishedAt: string | null;
   archivedAt: string | null;
   publishedUploadId: string | null;
-  pricing?: DatasetPricingDto;
+  pricing?: DatasetPricingDto | null;
 }
 
 // ============================================
 // Dataset Metadata
 // ============================================
 
-export interface AboutDatasetInfo {
+interface AboutDatasetInfo {
   overview: string;
   description: string;
   dataQuality: string;
@@ -147,7 +144,7 @@ export interface AboutDatasetInfo {
   methodology: string | null;
 }
 
-export interface LocationInfo {
+interface LocationInfo {
   country: string;
   state: string | null;
   city: string | null;
@@ -156,7 +153,7 @@ export interface LocationInfo {
   coverage: string | null;
 }
 
-export interface DataFormatInfo {
+interface DataFormatInfo {
   fileFormat: FileFormat;
   rows: number;
   cols: number;
@@ -165,7 +162,7 @@ export interface DataFormatInfo {
   encoding: EncodingType;
 }
 
-export interface DatasetFeature {
+interface DatasetFeature {
   id: string;
   name: string;
   dataType: string;
@@ -173,7 +170,7 @@ export interface DatasetFeature {
   isNullable: boolean;
 }
 
-export interface DatasetTag {
+interface DatasetTag {
   id: string;
   name: string;
   slug: string;
@@ -183,7 +180,7 @@ export interface DatasetTag {
 // Dataset Verification
 // ============================================
 
-export interface DatasetVerification {
+interface DatasetVerification {
   id: string;
   datasetId: string;
   status: VerificationStatus;
@@ -203,7 +200,7 @@ export interface DatasetVerification {
 // Dataset Assignment
 // ============================================
 
-export interface DatasetAssignment {
+interface DatasetAssignment {
   id: string;
   datasetId: string;
   adminId: string;
@@ -220,17 +217,19 @@ export interface DatasetAssignment {
 
 export interface DatasetUpload {
   id: string;
-  datasetId: string;
+  datasetId?: string;
   scope: UploadScope;
   status: UploadStatus;
   s3Key: string;
-  originalFileName: string | null;
-  contentType: string | null;
+  originalFileName?: string | null;
+  contentType?: string | null;
   sizeBytes: string | null;
-  uploadedAt: string | null;
-  uploadedBy: string;
-  createdAt: string;
-  updatedAt: string;
+  etag?: string | null;
+  checksumSha256?: string | null;
+  uploadedAt?: string | null;
+  uploadedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // ============================================
@@ -243,9 +242,11 @@ export interface CreateDatasetRequest {
   superType: DatasetSuperType;
   primaryCategoryId: string;
   sourceId: string;
-  isPaid?: boolean;
-  price?: string | null;
-  currency?: Currency;
+  pricing?: {
+    isPaid: boolean;
+    price?: string | null;
+    currency?: Currency;
+  };
   license: string;
   aboutDatasetInfo?: {
     overview: string;
@@ -271,9 +272,11 @@ export interface UpdateDatasetRequest {
   superType?: string;
   primaryCategoryId?: string;
   sourceId?: string;
-  isPaid?: boolean;
-  price?: string | null;
-  currency?: Currency;
+  pricing?: {
+    isPaid: boolean;
+    price?: string | null;
+    currency?: Currency;
+  };
   license?: string;
 }
 
@@ -299,12 +302,39 @@ export interface StartUploadRequest {
 
 export interface CompleteUploadRequest {
   etag?: string;
-  checksumSha256?: string;
   sizeBytes?: string;
+}
+
+export interface DatasetMetadataUpdateResponse {
+  dataset: {
+    id: string;
+    updatedAt: string;
+  };
+  aboutDatasetInfo?: AboutDatasetInfo & { updatedAt: string };
+  dataFormatInfo?: DataFormatInfo & { updatedAt: string };
+  locationInfo?: LocationInfo & { updatedAt: string };
 }
 
 export interface PublishDatasetRequest {
   uploadId: string;
+}
+
+export interface DatasetActionReasonRequest {
+  reason: string;
+}
+
+export interface DatasetAuditEvent {
+  id: string;
+  action: string;
+  actor: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
+  previousStatus: DatasetStatus | null;
+  newStatus: DatasetStatus | null;
+  summary: string | null;
+  createdAt: string;
 }
 
 export interface RejectProposalRequest {
@@ -322,14 +352,20 @@ export interface DatasetPricingDto {
   isPaid: boolean;
   price: string | null;
   currency: 'USD' | 'INR' | 'EUR' | 'GBP';
-  status: 'SUBMITTED' | 'CHANGES_REQUESTED' | 'ACTIVE' | 'REJECTED' | 'VERIFIED';
-  submittedAt: string;
-  approvedAt?: string | null;
-  rejectionReason?: string | null;
-  changeRationale?: string | null;
-  datasetNeedsChanges?: boolean;
-  pricingNeedsChanges?: boolean;
-  createdAt: string;
+  status:
+    | 'DRAFT'
+    | 'SUBMITTED'
+    | 'CHANGES_REQUESTED'
+    | 'RESUBMITTED'
+    | 'UNDER_REVIEW'
+    | 'ACTIVE'
+    | 'REJECTED'
+    | 'INACTIVE';
+  notes: string | null;
+  submittedAt: string | null;
+  approvedAt: string | null;
+  rejectionReason: string | null;
+  changeRationale: string | null;
   updatedAt: string;
 }
 
@@ -520,7 +556,7 @@ export interface ProposalReviewResponse {
   sampleUpload?: DatasetUpload | null;
 }
 
-export interface DatasetQuestionAnswer {
+interface DatasetQuestionAnswer {
   id: string;
   answer: string;
   createdAt: string;
@@ -548,36 +584,4 @@ export interface DatasetQuestionsResponse {
 
 export interface AnswerQuestionRequest {
   answer: string;
-}
-
-// ============================================
-// Legacy Types (for UI compatibility)
-// ============================================
-
-/** @deprecated Use DatasetStatus instead */
-export type LegacyDatasetStatus =
-  | 'pending_review'
-  | 'approved'
-  | 'rejected'
-  | 'under_review'
-  | 'revision_required';
-
-/** @deprecated */
-export interface DatasetReview {
-  id: string;
-  datasetId: string;
-  reviewerId: string;
-  reviewerName: string;
-  action: 'approve' | 'reject';
-  comments: string;
-  timestamp: string;
-}
-
-/** @deprecated */
-export interface DatasetQuality {
-  completeness: number;
-  accuracy: number;
-  consistency: number;
-  timeliness: number;
-  overall: number;
 }

@@ -75,25 +75,34 @@ export function CustomCollectionLeadDetail({ leadId }: { leadId: string }) {
   const updateStatus = async () => {
     if (!targetStatus || !lead) return;
     if (noteRequired && !note.trim()) return;
-    await updateMutation.mutateAsync({
-      leadId: lead.id,
-      status: targetStatus,
-      note: note.trim() || undefined,
-    });
-    setTargetStatus(null);
-    setNote('');
+    try {
+      await updateMutation.mutateAsync({
+        leadId: lead.id,
+        status: targetStatus,
+        note: note.trim() || undefined,
+      });
+      setTargetStatus(null);
+      setNote('');
+    } catch {
+      // The mutation hook presents the error and keeps the status note intact.
+    }
   };
 
   if (query.isLoading) {
-    return <main className="p-6">Loading lead…</main>;
+    return <main className="p-4 sm:p-6">Loading lead…</main>;
   }
 
   if (query.isError || !lead) {
     return (
-      <main className="p-6">
+      <main className="p-4 sm:p-6">
         <Alert variant="destructive">
           <AlertTitle>Failed to load lead</AlertTitle>
-          <AlertDescription>Refresh the page or return to the lead queue.</AlertDescription>
+          <AlertDescription className="mt-2 space-y-3">
+            <p>The lead details could not be loaded.</p>
+            <Button variant="outline" onClick={() => query.refetch()}>
+              Retry
+            </Button>
+          </AlertDescription>
         </Alert>
       </main>
     );
@@ -294,13 +303,17 @@ export function CustomCollectionLeadDetail({ leadId }: { leadId: string }) {
                 <DialogDescription>{statusCopy.description}</DialogDescription>
               </DialogHeader>
               <Textarea
+                aria-label={noteRequired ? 'Required status note' : 'Optional status note'}
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 placeholder={noteRequired ? 'Required note' : 'Optional note'}
                 rows={5}
+                maxLength={3000}
               />
               {noteRequired && !note.trim() ? (
-                <p className="text-xs text-red-500">A note is required for terminal statuses.</p>
+                <p className="text-xs text-[var(--status-error)]">
+                  A note is required for terminal statuses.
+                </p>
               ) : null}
               <DialogFooter>
                 <Button

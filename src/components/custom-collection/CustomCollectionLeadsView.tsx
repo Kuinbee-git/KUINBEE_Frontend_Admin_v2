@@ -23,9 +23,9 @@ import {
 } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { useMyPermissions } from '@/hooks/api/useAuth';
 import { useCustomCollectionLeads } from '@/hooks/api/useCustomCollection';
-import { useAuthStore } from '@/store/auth.store';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/lib/constants/permissions';
 import type { CustomCollectionLead, CustomCollectionLeadStatus } from '@/types';
 import {
   formatCustomCollectionStatus,
@@ -60,7 +60,10 @@ function LeadMobileCard({ lead }: { lead: CustomCollectionLead }) {
               semanticType={leadStatusSemantic(lead.status)}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <div
+            className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2"
+            style={{ color: 'var(--text-muted)' }}
+          >
             <span>{lead.submissionType === 'SIGNED_IN_ONE_TAP' ? 'One-tap' : 'Guest form'}</span>
             <span className="text-right">{formatDateTime(lead.createdAt)}</span>
           </div>
@@ -71,11 +74,10 @@ function LeadMobileCard({ lead }: { lead: CustomCollectionLead }) {
 }
 
 export function CustomCollectionLeadsView() {
-  const user = useAuthStore((state) => state.user);
-  const permissionsQuery = useMyPermissions();
-  const canReviewServices =
-    user?.userType === 'SUPERADMIN' ||
-    (permissionsQuery.data ?? []).includes('REVIEW_CUSTOM_COLLECTION_SERVICE');
+  const { can } = useAuthorization();
+  const canReviewServices = can({
+    anyOf: [PERMISSIONS.CUSTOM_COLLECTION.REVIEW_SERVICES],
+  });
   const searchParams = useSearchParams();
   const serviceId = searchParams.get('serviceId') || undefined;
   const [page, setPage] = useState(1);
@@ -109,9 +111,12 @@ export function CustomCollectionLeadsView() {
               Manage buyer requests generated from custom collection service listings.
             </p>
             {serviceId ? (
-              <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                Filtered to service {serviceId}
-              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <span style={{ color: 'var(--text-muted)' }}>Filtered to one custom service</span>
+                <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                  <Link href="/dashboard/custom-collection-leads">Clear filter</Link>
+                </Button>
+              </div>
             ) : null}
           </div>
           {canReviewServices ? (
@@ -134,7 +139,10 @@ export function CustomCollectionLeadsView() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="sm:w-[220px]">
+            <SelectTrigger
+              aria-label="Filter custom collection leads by status"
+              className="sm:w-[220px]"
+            >
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -166,7 +174,7 @@ export function CustomCollectionLeadsView() {
             <TableSkeleton columns={7} rows={6} />
           ) : query.isError ? (
             <div className="p-8 text-center">
-              <p className="text-red-500">Failed to load custom service leads.</p>
+              <p className="text-[var(--status-error)]">Failed to load custom service leads.</p>
               <Button className="mt-4" variant="outline" onClick={() => query.refetch()}>
                 Retry
               </Button>

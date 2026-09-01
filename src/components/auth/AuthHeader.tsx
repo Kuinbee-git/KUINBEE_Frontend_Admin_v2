@@ -1,7 +1,6 @@
-"use client";
+'use client';
 
-import { motion } from "motion/react";
-import { useThemeStore } from "@/store/theme.store";
+import { motion } from 'motion/react';
 
 interface AuthHeaderProps {
   title: string;
@@ -10,39 +9,30 @@ interface AuthHeaderProps {
   logoText?: string;
 }
 
-export function AuthHeader({ 
-  title, 
-  description, 
+export function AuthHeader({
+  title,
+  description,
   showLogo = true,
-  logoText = "KUINBEE" 
+  logoText = 'KUINBEE',
 }: AuthHeaderProps) {
-  const { theme } = useThemeStore();
-  const isDark = theme === "dark";
-
   return (
-    <div className="text-center mb-12">
+    <div className="mb-8 text-center sm:mb-10">
       {showLogo && (
         <div className="inline-flex items-center gap-3 mb-6">
           <motion.div
-            className={`h-12 px-6 border rounded-xl flex items-center justify-center shadow-lg ${
-              isDark ? "glass-badge-dark" : "glass-badge-light"
-            }`}
+            className="glass-badge-light flex h-12 items-center justify-center rounded-xl border px-6"
             animate={{
               transition: { duration: 0.4 },
             }}
           >
-            <span
-              className={`text-base font-semibold tracking-[0.12em] ${
-                isDark ? "text-white" : "glass-badge-text"
-              }`}
-            >
+            <span className="glass-badge-text text-base font-semibold tracking-[0.12em]">
               {logoText}
             </span>
           </motion.div>
         </div>
       )}
       <motion.h1
-        className={`text-3xl font-semibold mb-3 ${isDark ? "text-white" : "text-[#1a2240]"}`}
+        className="mb-3 text-3xl font-semibold text-[var(--text-primary)]"
         animate={{
           transition: { duration: 0.4 },
         }}
@@ -50,7 +40,7 @@ export function AuthHeader({
         {title}
       </motion.h1>
       <motion.p
-        className={`text-sm ${isDark ? "text-white/60" : "text-[#525d6f]"}`}
+        className="text-sm text-[var(--text-muted)]"
         animate={{
           transition: { duration: 0.4 },
         }}

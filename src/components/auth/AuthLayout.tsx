@@ -1,42 +1,28 @@
-"use client";
+'use client';
 
-import { ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
-import { ArrowRight } from "lucide-react";
-import { useThemeStore } from "@/store/theme.store";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
-import { BackgroundGlow } from "./BackgroundGlow";
-
+import { ReactNode } from 'react';
+import { motion } from 'motion/react';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { BackgroundGlow } from './BackgroundGlow';
 
 interface AuthLayoutProps {
   children: ReactNode;
 }
 
 export function AuthLayout({ children }: AuthLayoutProps) {
-  const router = useRouter();
-  const { theme } = useThemeStore();
-  const isDark = theme === "dark";
-
   return (
     <motion.div
-      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
+      className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-gradient-to-br from-[var(--bg-base)] via-[var(--bg-surface)] to-[var(--bg-hover)] p-4 sm:p-6"
       style={{
-        background: isDark
-          ? "linear-gradient(135deg, #1a2240 0%, #2a3250 50%, #1f2847 100%)"
-          : "linear-gradient(135deg, #ffffff 0%, #f9fafb 50%, #f5f7fb 100%)",
+        color: 'var(--text-primary)',
       }}
       animate={{
-        transition: { duration: 0.8, ease: "easeInOut" },
+        transition: { duration: 0.8, ease: 'easeInOut' },
       }}
     >
       {/* Theme Toggle Button */}
-      <ThemeToggle className="absolute top-6 right-6 z-20" />
-
-
-
-      {/* Background Glow Effects */}
-      <BackgroundGlow isDark={isDark} />
+      <ThemeToggle className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6" />
+      <BackgroundGlow />
 
       {/* Content */}
       <motion.div

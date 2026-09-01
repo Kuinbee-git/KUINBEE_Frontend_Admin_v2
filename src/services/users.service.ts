@@ -11,6 +11,9 @@ import type {
   UserDetailResponse,
   SuspendUserRequest,
   SuspendUserResponse,
+  UnsuspendUserRequest,
+  UnsuspendUserResponse,
+  DeleteUserRequest,
   DeleteUserResponse,
   UserStatus,
   PaginatedResponse,
@@ -42,14 +45,14 @@ export async function getUsers(
   params: UserListParams = {}
 ): Promise<PaginatedResponse<UserListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{
-    items: UserListItem[];
-    page: number;
-    pageSize: number;
-    total: number;
-  }>>(
-    `${API_ROUTES.ADMIN.USERS.LIST}${query}`
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: UserListItem[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.USERS.LIST}${query}`);
 
   // Backend wraps paginated data in { success, data } structure
   const result = response.data.data;
@@ -87,11 +90,22 @@ export async function getUserById(userId: string): Promise<UserDetailResponse> {
  */
 export async function suspendUser(
   userId: string,
-  data?: SuspendUserRequest
+  data: SuspendUserRequest
 ): Promise<SuspendUserResponse['user']> {
   const response = await apiClient.post<ApiSuccessResponse<SuspendUserResponse>>(
     API_ROUTES.ADMIN.USERS.SUSPEND(userId),
-    data || {}
+    data
+  );
+  return response.data.data.user;
+}
+
+export async function unsuspendUser(
+  userId: string,
+  data: UnsuspendUserRequest
+): Promise<UnsuspendUserResponse['user']> {
+  const response = await apiClient.post<ApiSuccessResponse<UnsuspendUserResponse>>(
+    API_ROUTES.ADMIN.USERS.UNSUSPEND(userId),
+    data
   );
   return response.data.data.user;
 }
@@ -100,60 +114,13 @@ export async function suspendUser(
  * Delete a user account (soft delete)
  * Sets user status to DELETED
  */
-export async function deleteUser(userId: string): Promise<DeleteUserResponse['user']> {
-  const response = await apiClient.delete<ApiSuccessResponse<DeleteUserResponse>>(
-    API_ROUTES.ADMIN.USERS.DELETE(userId)
+export async function deleteUser(
+  userId: string,
+  data: DeleteUserRequest
+): Promise<DeleteUserResponse['user']> {
+  const response = await apiClient.request<ApiSuccessResponse<DeleteUserResponse>>(
+    API_ROUTES.ADMIN.USERS.DELETE(userId),
+    { method: 'DELETE', body: data }
   );
   return response.data.data.user;
-}
-
-// ============================================
-// Helpers
-// ============================================
-
-/**
- * Check if a user can be suspended
- * Cannot suspend already suspended or deleted users
- */
-export function canSuspendUser(status: UserStatus): boolean {
-  return status === 'ACTIVE' || status === 'PENDING_VERIFICATION';
-}
-
-/**
- * Check if a user can be deleted
- * Cannot delete already deleted users
- */
-export function canDeleteUser(status: UserStatus): boolean {
-  return status !== 'DELETED';
-}
-
-/**
- * Get user full name from detail response
- */
-export function getUserFullName(detail: UserDetailResponse): string {
-  if (detail.personalInfo) {
-    const { firstName, lastName } = detail.personalInfo;
-    return `${firstName} ${lastName}`.trim();
-  }
-  return detail.user.email;
-}
-
-/**
- * Get user display status with styling info
- */
-export function getUserStatusDisplay(status: UserStatus): {
-  label: string;
-  variant: 'success' | 'warning' | 'error' | 'default';
-} {
-  const statusMap: Record<
-    UserStatus,
-    { label: string; variant: 'success' | 'warning' | 'error' | 'default' }
-  > = {
-    ACTIVE: { label: 'Active', variant: 'success' },
-    INACTIVE: { label: 'Inactive', variant: 'default' },
-    SUSPENDED: { label: 'Suspended', variant: 'warning' },
-    PENDING_VERIFICATION: { label: 'Pending', variant: 'default' },
-    DELETED: { label: 'Deleted', variant: 'error' },
-  };
-  return statusMap[status];
 }

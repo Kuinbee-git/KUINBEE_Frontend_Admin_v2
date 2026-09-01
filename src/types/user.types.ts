@@ -10,13 +10,7 @@ import type { AddressType, Gender } from './admin.types';
 // Re-export for convenience
 // ============================================
 
-export type { UserType, UserStatus };
-
-// ============================================
-// Access Type
-// ============================================
-
-export type AccessType = 'PURCHASED' | 'FREE' | 'TRIAL' | 'GIFTED';
+export type { UserStatus };
 
 // ============================================
 // User List Item (from /admin/users)
@@ -45,7 +39,7 @@ export interface UserListItem {
 // User Detail Types
 // ============================================
 
-export interface UserPersonalInfo {
+interface UserPersonalInfo {
   firstName: string;
   lastName: string;
   fullName: string | null;
@@ -54,7 +48,7 @@ export interface UserPersonalInfo {
   profileImage: string | null;
 }
 
-export interface UserAddress {
+interface UserAddress {
   id: string;
   addressType: AddressType;
   addressLine1: string;
@@ -70,7 +64,7 @@ export interface UserAddress {
   updatedAt: string;
 }
 
-export interface SupplierProfile {
+interface SupplierProfile {
   companyName: string;
   businessType: string | null;
   taxId: string | null;
@@ -82,7 +76,7 @@ export interface SupplierProfile {
   updatedAt: string;
 }
 
-export interface UserProfile {
+interface UserProfile {
   bio: string | null;
   occupation: string | null;
   organization: string | null;
@@ -114,70 +108,16 @@ export interface UserDetailResponse {
 }
 
 // ============================================
-// Full User (for mock data and detail views)
-// ============================================
-
-export interface DatasetAccess {
-  id: string;
-  datasetId: string;
-  datasetName: string;
-  accessType: AccessType;
-  grantedAt: string;
-  expiresAt: string | null;
-  orderReference: string | null;
-}
-
-export interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  totalAmount: number;
-  currency: string;
-  paymentMethod: string;
-  createdAt: string;
-  completedAt: string | null;
-}
-
-export interface Download {
-  id: string;
-  datasetId: string;
-  datasetName: string;
-  downloadedAt: string;
-  ipAddress: string | null;
-  userAgent: string | null;
-}
-
-export interface AuditLogEntry {
-  id: string;
-  action: string;
-  performedBy: string;
-  timestamp: string;
-  reason: string | null;
-}
-
-export interface MarketplaceUser {
-  id: string;
-  email: string;
-  phone: string | null;
-  userType: UserType;
-  status: UserStatus;
-  emailVerified: boolean;
-  createdAt: string;
-  lastLoginAt: string | null;
-  profile: UserProfile;
-  datasetAccess: DatasetAccess[];
-  orders: Order[];
-  downloads: Download[];
-  auditLog: AuditLogEntry[];
-}
-
-// ============================================
 // Request Types
 // ============================================
 
 export interface SuspendUserRequest {
-  reason?: string;
+  reason: string;
 }
+
+export type UnsuspendUserRequest = SuspendUserRequest;
+
+export type DeleteUserRequest = SuspendUserRequest;
 
 // ============================================
 // Response Types
@@ -187,6 +127,14 @@ export interface SuspendUserResponse {
   user: {
     id: string;
     status: 'SUSPENDED';
+    updatedAt: string;
+  };
+}
+
+export interface UnsuspendUserResponse {
+  user: {
+    id: string;
+    status: 'ACTIVE';
     updatedAt: string;
   };
 }

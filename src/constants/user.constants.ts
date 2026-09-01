@@ -3,8 +3,8 @@
  * All status values use UPPERCASE to match backend
  */
 
-import { UserStatus, AccessType } from '@/types/user.types';
-import { FilterOption } from '@/components/shared/FilterBar';
+import type { UserStatus } from '@/types/user.types';
+import type { FilterOption } from '@/components/shared/FilterBar';
 
 /**
  * User status options for filters
@@ -28,25 +28,6 @@ export const EMAIL_VERIFIED_OPTIONS: FilterOption[] = [
 ];
 
 /**
- * Dataset access filter options
- */
-export const DATASET_ACCESS_OPTIONS: FilterOption[] = [
-  { value: 'all', label: 'All' },
-  { value: 'yes', label: 'Yes' },
-  { value: 'no', label: 'No' },
-];
-
-/**
- * Access type display labels
- */
-export const ACCESS_TYPE_LABELS: Record<AccessType, string> = {
-  PURCHASED: 'Purchased',
-  FREE: 'Free',
-  TRIAL: 'Trial',
-  GIFTED: 'Gifted',
-};
-
-/**
  * User status display labels
  */
 export const USER_STATUS_LABELS: Record<UserStatus, string> = {
@@ -55,16 +36,4 @@ export const USER_STATUS_LABELS: Record<UserStatus, string> = {
   PENDING_VERIFICATION: 'Pending Verification',
   DELETED: 'Deleted',
   INACTIVE: 'Inactive',
-};
-
-/**
- * Default empty messages
- */
-export const EMPTY_MESSAGES = {
-  NO_USERS: 'No users in the system',
-  NO_SEARCH_RESULTS: 'No users match your search or filters',
-  NO_DATASET_ACCESS: 'No dataset access granted',
-  NO_ORDERS: 'No orders placed',
-  NO_DOWNLOADS: 'No downloads recorded',
-  NO_AUDIT_LOGS: 'No audit logs available',
 };

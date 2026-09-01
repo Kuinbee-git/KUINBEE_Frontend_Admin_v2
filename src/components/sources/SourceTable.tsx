@@ -1,17 +1,19 @@
-"use client";
+'use client';
 
-import { ExternalLink } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { DataTable, ColumnDef, ActionButton } from "@/components/shared/DataTable";
-import type { Source, SourceCreatedByType } from "@/types";
+import { ExternalLink } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { formatEnumLabel, StatusBadge } from '@/components/shared/StatusBadge';
+import { DataTable, ColumnDef, ActionButton } from '@/components/shared/DataTable';
+import type { Source } from '@/types';
+import { getSafeHttpUrl } from '@/lib/utils/url.utils';
 
 interface SourceTableProps {
   sources: Source[];
   onRowClick: (source: Source) => void;
   onVerifyClick: (source: Source, e: React.MouseEvent) => void;
   onDeleteClick: (source: Source, e: React.MouseEvent) => void;
-  canUpdate: boolean;
+  canVerify: boolean;
+  canDelete: boolean;
 }
 
 export function SourceTable({
@@ -19,121 +21,134 @@ export function SourceTable({
   onRowClick,
   onVerifyClick,
   onDeleteClick,
-  canUpdate,
+  canVerify,
+  canDelete,
 }: SourceTableProps) {
   const columns: ColumnDef<Source>[] = [
     {
-      header: "Source Name",
+      header: 'Source Name',
       accessor: (row) => ({ name: row.name, url: row.websiteUrl }),
-      render: (data: { name: string; url: string | null }) => (
-        <div className="flex items-center gap-2">
-          <span className="text-sm" style={{ color: "var(--text-primary)" }}>
-            {data.name}
-          </span>
-          {data.url && (
-            <a
-              href={data.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex"
-            >
-              <ExternalLink
-                className="w-3.5 h-3.5 opacity-50 hover:opacity-100 transition-opacity"
-                style={{ color: "var(--text-secondary)" }}
-              />
-            </a>
-          )}
-        </div>
-      ),
+      render: (source) => {
+        const safeUrl = getSafeHttpUrl(source.websiteUrl);
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+              {source.name}
+            </span>
+            {safeUrl && (
+              <a
+                href={safeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex"
+                aria-label={`Open ${source.name} website in a new tab`}
+              >
+                <ExternalLink
+                  aria-hidden="true"
+                  className="w-3.5 h-3.5 opacity-50 hover:opacity-100 transition-opacity"
+                  style={{ color: 'var(--text-secondary)' }}
+                />
+              </a>
+            )}
+          </div>
+        );
+      },
     },
     {
-      header: "Description",
-      accessor: "description",
-      render: (desc: string | null) =>
-        desc ? (
-          <p className="text-sm line-clamp-2" style={{ color: "var(--text-secondary)" }}>
-            {desc}
+      header: 'Description',
+      accessor: 'description',
+      render: (source) =>
+        source.description ? (
+          <p className="text-sm line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
+            {source.description}
           </p>
         ) : (
-          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
             —
           </span>
         ),
     },
     {
-      header: "Created By Type",
-      accessor: "createdByType",
-      render: (type: SourceCreatedByType) => (
+      header: 'Created By Type',
+      accessor: 'createdByType',
+      render: (source) => (
         <Badge
           style={
-            type === "PLATFORM"
+            source.createdByType === 'PLATFORM'
               ? {
-                  backgroundColor: "rgba(56, 189, 248, 0.1)",
-                  color: "#38bdf8",
-                  border: "1px solid rgba(56, 189, 248, 0.3)",
+                  backgroundColor: 'var(--status-info-bg)',
+                  color: 'var(--status-info)',
+                  border: '1px solid var(--status-info-border)',
                 }
               : {
-                  backgroundColor: "rgba(139, 92, 246, 0.1)",
-                  color: "#a78bfa",
-                  border: "1px solid rgba(139, 92, 246, 0.3)",
+                  backgroundColor: 'var(--status-in-progress-bg)',
+                  color: 'var(--status-in-progress)',
+                  border: '1px solid var(--status-in-progress-border)',
                 }
           }
         >
-          {type.charAt(0) + type.slice(1).toLowerCase()}
+          {formatEnumLabel(source.createdByType)}
         </Badge>
       ),
     },
     {
-      header: "Verification",
-      accessor: "isVerified",
-      render: (verified: boolean) => (
+      header: 'Verification',
+      accessor: 'isVerified',
+      render: (source) => (
         <StatusBadge
-          status={verified ? "Verified" : "Unverified"}
-          semanticType={verified ? "success" : "neutral"}
+          status={source.isVerified ? 'Verified' : 'Unverified'}
+          semanticType={source.isVerified ? 'success' : 'neutral'}
         />
       ),
     },
     {
-      header: "Datasets Count",
-      accessor: "datasetCount",
-      align: "center",
-      render: (_: unknown, row: Source) => (
-        <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+      header: 'Datasets Count',
+      accessor: 'datasetCount',
+      align: 'center',
+      render: (row) => (
+        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
           {row.datasetCount || 0}
         </span>
       ),
     },
     {
-      header: "Created At",
-      accessor: "createdAt",
-      render: (date: string) => (
+      header: 'Created At',
+      accessor: 'createdAt',
+      render: (source) => (
         <span className="text-sm">
-          {new Date(date).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
+          {new Date(source.createdAt).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
           })}
         </span>
       ),
     },
   ];
 
-  const actions: ActionButton<Source>[] = canUpdate
-    ? [
-        {
-          label: "Verify",
-          onClick: onVerifyClick,
-          variant: "success",
-          show: (source) => !source.isVerified,
-        },
-        {
-          label: "Delete",
-          onClick: onDeleteClick,
-          variant: "danger",
-        },
-      ]
-    : [];
+  const actions: ActionButton<Source>[] = [
+    ...(canVerify
+      ? [
+          {
+            label: 'Verify',
+            onClick: onVerifyClick,
+            variant: 'success',
+            show: (source) => source.createdByType === 'PLATFORM' && !source.isVerified,
+          } satisfies ActionButton<Source>,
+        ]
+      : []),
+    ...(canDelete
+      ? [
+          {
+            label: 'Delete',
+            onClick: onDeleteClick,
+            variant: 'danger',
+            show: (source) => source.createdByType === 'PLATFORM',
+          } satisfies ActionButton<Source>,
+        ]
+      : []),
+  ];
 
   return (
     <DataTable
@@ -143,6 +158,8 @@ export function SourceTable({
       actions={actions}
       getRowKey={(source) => source.id}
       emptyMessage="No sources found"
+      ariaLabel="Sources"
+      getRowLabel={(source) => `Edit source ${source.name}`}
     />
   );
 }

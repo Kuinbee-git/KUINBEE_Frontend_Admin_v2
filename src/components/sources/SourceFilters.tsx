@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { FilterBar, FilterConfig, ActiveFilter } from "@/components/shared/FilterBar";
+import { FilterBar, FilterConfig, ActiveFilter } from '@/components/shared/FilterBar';
 
 interface SourceFiltersProps {
   searchQuery: string;
@@ -25,47 +25,41 @@ export function SourceFilters({
 }: SourceFiltersProps) {
   const filters: FilterConfig<unknown>[] = [
     {
-      id: "search",
-      type: "search",
-      label: "Search",
-      placeholder: "Search by source name...",
+      id: 'search',
+      type: 'search',
+      label: 'Search',
+      placeholder: 'Search by source name...',
       value: searchQuery,
       onChange: (value) => setSearchQuery(value as string),
       showInPrimary: true,
     },
     {
-      id: "verification",
-      type: "select",
-      label: "Verification Status",
+      id: 'verification',
+      type: 'select',
+      label: 'Verification Status',
       value: verificationFilter,
       onChange: (value) => setVerificationFilter(value as string),
-      width: "w-[180px]",
+      width: 'w-[180px]',
       options: [
-        { value: "all", label: "All" },
-        { value: "verified", label: "Verified" },
-        { value: "unverified", label: "Unverified" },
+        { value: 'all', label: 'All' },
+        { value: 'verified', label: 'Verified' },
+        { value: 'unverified', label: 'Unverified' },
       ],
     },
     {
-      id: "createdByType",
-      type: "select",
-      label: "Created By Type",
+      id: 'createdByType',
+      type: 'select',
+      label: 'Created By Type',
       value: createdByTypeFilter,
       onChange: (value) => setCreatedByTypeFilter(value as string),
-      width: "w-[180px]",
+      width: 'w-[180px]',
       options: [
-        { value: "all", label: "All" },
-        { value: "platform", label: "Platform" },
-        { value: "supplier", label: "Supplier" },
+        { value: 'all', label: 'All' },
+        { value: 'platform', label: 'Platform' },
+        { value: 'supplier', label: 'Supplier' },
       ],
     },
   ];
 
-  return (
-    <FilterBar
-      filters={filters}
-      activeFilters={activeFilters}
-      onClearAll={clearAllFilters}
-    />
-  );
+  return <FilterBar filters={filters} activeFilters={activeFilters} onClearAll={clearAllFilters} />;
 }

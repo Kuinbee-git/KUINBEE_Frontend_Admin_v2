@@ -2,11 +2,10 @@
  * UserTable - Refactored table using generic DataTable component
  */
 
-"use client";
+'use client';
 
-import React from 'react';
 import { DataTable, ColumnDef } from '@/components/shared/DataTable';
-import { StatusBadge } from '@/components/shared/StatusBadge';
+import { formatEnumLabel, StatusBadge } from '@/components/shared/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { UserListItem } from '@/types/user.types';
 import { getUserStatusSemantic } from '@/utils/status.utils';
@@ -23,15 +22,18 @@ export function UserTable({ users, onUserClick }: UserTableProps) {
     {
       header: 'User',
       accessor: 'email',
-      render: (email: string, row: UserListItem) => (
+      render: (row) => (
         <div>
           <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            {row.personalInfo?.fullName?.trim()
-              || [row.personalInfo?.firstName, row.personalInfo?.lastName].filter(Boolean).join(' ').trim()
-              || email}
+            {row.personalInfo?.fullName?.trim() ||
+              [row.personalInfo?.firstName, row.personalInfo?.lastName]
+                .filter(Boolean)
+                .join(' ')
+                .trim() ||
+              row.email}
           </p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            {email}
+            {row.email}
           </p>
           {row.organization && (
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -44,27 +46,27 @@ export function UserTable({ users, onUserClick }: UserTableProps) {
     {
       header: 'User Type',
       accessor: 'userType',
-      render: (userType: string) => (
+      render: (row) => (
         <Badge
           variant="outline"
           className="text-xs"
           style={{
-            backgroundColor: 'rgba(139, 92, 246, 0.1)',
-            color: '#a78bfa',
-            borderColor: 'rgba(139, 92, 246, 0.3)',
+            backgroundColor: 'var(--status-in-progress-bg)',
+            color: 'var(--status-in-progress)',
+            borderColor: 'var(--status-in-progress-border)',
           }}
         >
-          {userType}
+          {formatEnumLabel(row.userType)}
         </Badge>
       ),
     },
     {
       header: 'Status',
       accessor: 'status',
-      render: (status: UserListItem['status']) => (
+      render: (row) => (
         <StatusBadge
-          status={USER_STATUS_LABELS[status]}
-          semanticType={getUserStatusSemantic(status)}
+          status={USER_STATUS_LABELS[row.status]}
+          semanticType={getUserStatusSemantic(row.status)}
         />
       ),
     },
@@ -72,32 +74,32 @@ export function UserTable({ users, onUserClick }: UserTableProps) {
       header: 'Email Verified',
       accessor: 'emailVerified',
       align: 'center',
-      render: (verified: boolean) =>
-        verified ? (
+      render: (row) =>
+        row.emailVerified ? (
           <span className="text-lg" style={{ color: 'var(--state-success)' }}>
-            ✓
+            <span className="sr-only">Verified</span>✓
           </span>
         ) : (
           <span className="text-lg" style={{ color: 'var(--text-disabled)' }}>
-            ✗
+            <span className="sr-only">Not verified</span>✗
           </span>
         ),
     },
     {
       header: 'Last Login',
       accessor: 'lastLoginAt',
-      render: (date: string | null) => (
+      render: (row) => (
         <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {formatDate(date)}
+          {formatDate(row.lastLoginAt)}
         </span>
       ),
     },
     {
       header: 'Joined On',
       accessor: 'createdAt',
-      render: (date: string) => (
+      render: (row) => (
         <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {formatDate(date)}
+          {formatDate(row.createdAt)}
         </span>
       ),
     },
@@ -109,6 +111,8 @@ export function UserTable({ users, onUserClick }: UserTableProps) {
       data={users}
       getRowKey={(user) => user.id}
       onRowClick={(user) => onUserClick?.(user.id)}
+      ariaLabel="Users"
+      getRowLabel={(user) => `Open user ${user.email}`}
       emptyMessage="No users found"
     />
   );

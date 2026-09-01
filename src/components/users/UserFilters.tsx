@@ -2,14 +2,10 @@
  * UserFilters - Refactored filters using generic FilterBar component
  */
 
-"use client";
+'use client';
 
-import React from 'react';
 import { FilterBar, FilterConfig, ActiveFilter } from '@/components/shared/FilterBar';
-import {
-  USER_STATUS_OPTIONS,
-  EMAIL_VERIFIED_OPTIONS,
-} from '@/constants/user.constants';
+import { USER_STATUS_OPTIONS, EMAIL_VERIFIED_OPTIONS } from '@/constants/user.constants';
 
 interface UserFiltersProps {
   searchQuery: string;
@@ -64,11 +60,5 @@ export function UserFilters({
     },
   ];
 
-  return (
-    <FilterBar
-      filters={filters}
-      activeFilters={activeFilters}
-      onClearAll={onClearAll}
-    />
-  );
+  return <FilterBar filters={filters} activeFilters={activeFilters} onClearAll={onClearAll} />;
 }

@@ -3,19 +3,33 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Kuinbee Brand Colors */
+  /* Brand */
   --brand-primary: #1a2240;
   --brand-secondary: #4e5a7e;
+  --brand-on-primary: #ffffff;
+  --action-primary: #1a2240;
+  --action-primary-hover: #11182f;
+  --action-success: #047857;
+  --action-warning: #92400e;
+  --action-destructive: #b91c1c;
+  --action-on-status: #ffffff;
+  --brand-primary-bg: #eef1fb;
+  --brand-primary-light: #eef1fb;
+  --nav-active: #1a2240;
+  --nav-active-bg: #eef1fb;
+  --focus-ring: #4e5a7e;
 
   /* Light Theme - Surface Colors */
   --bg-base: #ffffff;
   --bg-surface: #f7f8fa;
   --bg-hover: #f3f5fb;
   --bg-selected: #eef1fb;
+  --bg-muted: #f3f5fb;
 
   /* Light Theme - Border Colors */
   --border-default: #e3e6f3;
   --border-subtle: #edf0f7;
+  --border-primary: #e3e6f3;
 
   /* Light Theme - Text Colors */
   --text-primary: #111827;
@@ -23,11 +37,52 @@
   --text-muted: #6b7280;
   --text-disabled: #9ca3af;
 
-  /* Semantic State Colors (same in both themes) */
-  --state-success: #10b981;
-  --state-warning: #f59e0b;
-  --state-error: #ef4444;
-  --state-info: #38bdf8; /* Sky Blue for info state */
+  /* Semantic states: foreground values meet contrast on their paired backgrounds. */
+  --state-success: #047857;
+  --state-warning: #92400e;
+  --state-error: #b91c1c;
+  --state-info: #0369a1;
+  --status-success: var(--state-success);
+  --status-warning: var(--state-warning);
+  --status-error: var(--state-error);
+  --status-info: var(--state-info);
+  --status-in-progress: #6d28d9;
+  --status-neutral: #4b5563;
+  --status-success-bg: #ecfdf5;
+  --status-warning-bg: #fffbeb;
+  --status-error-bg: #fef2f2;
+  --status-info-bg: #f0f9ff;
+  --status-in-progress-bg: #f5f3ff;
+  --status-neutral-bg: #f3f4f6;
+  --status-success-border: #a7f3d0;
+  --status-warning-border: #fde68a;
+  --status-error-border: #fecaca;
+  --status-info-border: #bae6fd;
+  --status-in-progress-border: #ddd6fe;
+  --status-neutral-border: #d1d5db;
+  --bg-success: var(--status-success-bg);
+  --bg-warning: var(--status-warning-bg);
+  --bg-error: var(--status-error-bg);
+  --success-bg: var(--status-success-bg);
+  --success-text: var(--status-success);
+  --warning-bg: var(--status-warning-bg);
+  --warning-text: var(--status-warning);
+  --color-success: var(--status-success);
+  --color-error: var(--status-error);
+
+  /* Elevation and translucent auth surfaces */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 8%);
+  --shadow-overlay: 0 20px 50px rgb(15 23 42 / 18%);
+  --overlay-backdrop: rgb(10 15 30 / 72%);
+  --glass-bg: rgb(255 255 255 / 78%);
+  --glass-bg-input: rgb(255 255 255 / 70%);
+  --glass-border: rgb(26 34 64 / 10%);
+  --glass-border-input: #dde3f0;
+  --glass-glow-inset: inset 0 1px 0 rgb(255 255 255 / 85%);
+  --glass-shadow: 0 18px 48px rgb(26 34 64 / 10%);
+  --glass-shadow-hover: 0 22px 56px rgb(26 34 64 / 16%);
+  --auth-glow-one: #e8ecf6;
+  --auth-glow-two: #f0f4f8;
 
   /* Light theme - shadcn compatibility */
   --background: oklch(1 0 0);
@@ -36,8 +91,8 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: var(--action-primary);
+  --primary-foreground: var(--brand-on-primary);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -59,30 +114,78 @@
 
 [data-theme='dark'],
 .dark {
+  /* Brand/action tokens must change as a complete contrast pair. */
+  --brand-primary: #7dd3fc;
+  --brand-secondary: #bae6fd;
+  --brand-on-primary: #0a0f1e;
+
   /* Dark Theme - Surface Colors */
   --bg-base: #0a0f1e;
   --bg-surface: #1a1f2e;
   --bg-hover: #252a3a;
   --bg-selected: #2d3548;
-  --bg-nav-active: rgba(56, 189, 248, 0.25); /* Sky Blue with 25% opacity for stronger highlight */
+  --bg-muted: #252a3a;
+  --action-primary: #7dd3fc;
+  --action-primary-hover: #bae6fd;
+  --brand-primary-bg: rgb(56 189 248 / 16%);
+  --brand-primary-light: rgb(56 189 248 / 16%);
+  --nav-active: #7dd3fc;
+  --nav-active-bg: rgb(56 189 248 / 16%);
+  --focus-ring: #7dd3fc;
 
   /* Dark Theme - Border Colors */
   --border-default: #2d3548;
   --border-subtle: #252a3a;
-  --border-nav-active: #38bdf8; /* Sky Blue left border for active nav */
+  --border-primary: #2d3548;
 
   /* Dark Theme - Text Colors */
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
   --text-disabled: #64748b;
-  --text-nav-active: #38bdf8; /* Sky Blue text for active nav */
+  --state-success: #6ee7b7;
+  --state-warning: #fcd34d;
+  --state-error: #fca5a5;
+  --state-info: #7dd3fc;
+  --status-success: var(--state-success);
+  --status-warning: var(--state-warning);
+  --status-error: var(--state-error);
+  --status-info: var(--state-info);
+  --status-in-progress: #c4b5fd;
+  --status-neutral: #cbd5e1;
+  --status-success-bg: rgb(16 185 129 / 14%);
+  --status-warning-bg: rgb(245 158 11 / 14%);
+  --status-error-bg: rgb(239 68 68 / 14%);
+  --status-info-bg: rgb(56 189 248 / 14%);
+  --status-in-progress-bg: rgb(139 92 246 / 14%);
+  --status-neutral-bg: rgb(148 163 184 / 12%);
+  --status-success-border: rgb(110 231 183 / 35%);
+  --status-warning-border: rgb(252 211 77 / 35%);
+  --status-error-border: rgb(252 165 165 / 35%);
+  --status-info-border: rgb(125 211 252 / 35%);
+  --status-in-progress-border: rgb(196 181 253 / 35%);
+  --status-neutral-border: rgb(203 213 225 / 28%);
+  --bg-success: var(--status-success-bg);
+  --bg-warning: var(--status-warning-bg);
+  --bg-error: var(--status-error-bg);
+  --success-bg: var(--status-success-bg);
+  --success-text: var(--status-success);
+  --warning-bg: var(--status-warning-bg);
+  --warning-text: var(--status-warning);
+  --color-success: var(--status-success);
+  --color-error: var(--status-error);
 
-  /* Semantic State Colors (same as light) */
-  --state-success: #10b981;
-  --state-warning: #f59e0b;
-  --state-error: #ef4444;
-  --state-info: #38bdf8; /* Sky Blue for info state */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 24%);
+  --shadow-overlay: 0 24px 60px rgb(0 0 0 / 45%);
+  --glass-bg: rgb(10 15 30 / 78%);
+  --glass-bg-input: rgb(255 255 255 / 5%);
+  --glass-border: rgb(255 255 255 / 12%);
+  --glass-border-input: rgb(255 255 255 / 12%);
+  --glass-glow-inset: inset 0 1px 0 rgb(255 255 255 / 8%);
+  --glass-shadow: 0 18px 48px rgb(0 0 0 / 32%);
+  --glass-shadow-hover: 0 22px 56px rgb(0 0 0 / 42%);
+  --auth-glow-one: #2a3a50;
+  --auth-glow-two: #3a4a60;
 
   /* Dark theme - shadcn compatibility, mapped to the admin navy system */
   --background: var(--bg-base);
@@ -91,19 +194,19 @@
   --card-foreground: var(--text-primary);
   --popover: var(--bg-base);
   --popover-foreground: var(--text-primary);
-  --primary: var(--text-primary);
-  --primary-foreground: var(--brand-primary);
+  --primary: var(--action-primary);
+  --primary-foreground: var(--bg-base);
   --secondary: var(--bg-hover);
   --secondary-foreground: var(--text-primary);
   --muted: var(--bg-hover);
   --muted-foreground: var(--text-muted);
   --accent: var(--bg-selected);
   --accent-foreground: var(--text-primary);
-  --destructive: #b91c1c;
-  --destructive-foreground: #ffffff;
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--bg-base);
   --border: var(--border-default);
   --input: var(--border-default);
-  --ring: var(--text-muted);
+  --ring: var(--focus-ring);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -155,6 +258,11 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  :where(a, button, input, textarea, select, summary):focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
   }
 
   /* Typography defaults for enterprise admin interface */
@@ -217,7 +325,7 @@
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), transparent);
+    background: linear-gradient(135deg, rgb(255 255 255 / 18%), transparent);
     pointer-events: none;
     opacity: 0.5;
   }
@@ -230,7 +338,7 @@
   }
 
   .glass-input:hover {
-    border-color: rgba(26, 34, 64, 0.12);
+    border-color: var(--text-disabled);
   }
 
   .glass-shadow {
@@ -247,47 +355,37 @@
 
   /* Premium glass button styling with gradients and depth */
   .glass-button {
-    background: linear-gradient(135deg, rgba(26, 34, 64, 0.9), rgba(42, 50, 80, 0.85));
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--action-primary);
+    color: var(--primary-foreground);
+    border: 1px solid color-mix(in srgb, var(--action-primary) 84%, white);
     backdrop-filter: blur(12px);
-    box-shadow:
-      0 8px 32px rgba(26, 34, 64, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    box-shadow: var(--glass-shadow);
     transition: all 0.3s ease;
   }
 
   .glass-button:hover {
-    box-shadow:
-      0 12px 48px rgba(26, 34, 64, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--action-primary-hover);
+    box-shadow: var(--glass-shadow-hover);
   }
 
   /* Light theme glass badge for logo/branding */
   .glass-badge-light {
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(26, 34, 64, 0.08);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     backdrop-filter: blur(20px);
-    box-shadow:
-      0 8px 32px rgba(26, 34, 64, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    box-shadow: var(--glass-shadow);
   }
 
   .glass-badge-light .glass-badge-text {
-    background: linear-gradient(135deg, #1a2240, #2a3250);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--brand-primary);
   }
 
   /* Dark theme glass badge with refined styling */
   .glass-badge-dark {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     backdrop-filter: blur(20px);
-    box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: var(--glass-shadow);
   }
 
   /* Fix Select component text visibility - override shadcn defaults */
@@ -341,6 +439,17 @@
   box-shadow:
     0 18px 40px -32px rgb(0 0 0 / 80%),
     inset 0 1px 0 rgb(255 255 255 / 2%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 @keyframes progress {
   0% {

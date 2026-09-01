@@ -8,7 +8,7 @@ import type {
 } from '@/types';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 
-export const customCollectionKeys = {
+const customCollectionKeys = {
   all: ['custom-collection'] as const,
   serviceLists: () => [...customCollectionKeys.all, 'services'] as const,
   serviceList: (params: CustomCollectionListParams) =>

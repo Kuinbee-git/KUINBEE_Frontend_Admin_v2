@@ -24,19 +24,19 @@ export type CustomCollectionAdminView =
   | 'ARCHIVED'
   | 'ALL';
 
-export interface CustomCollectionCategory {
+interface CustomCollectionCategory {
   id: string;
   name: string;
 }
 
-export interface CustomCollectionImage {
+interface CustomCollectionImage {
   id: string;
   url: string;
   contentType: string;
   sizeBytes: string | null;
 }
 
-export interface CustomCollectionReviewer {
+interface CustomCollectionReviewer {
   id: string;
   email: string;
   displayName: string;
@@ -137,7 +137,7 @@ export interface CustomCollectionLead {
   updatedAt: string;
 }
 
-export interface CustomCollectionLeadEvent {
+interface CustomCollectionLeadEvent {
   id: string;
   leadId: string;
   fromStatus: CustomCollectionLeadStatus | null;

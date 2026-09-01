@@ -7,13 +7,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import * as adminsService from '@/services/admins.service';
 import type { AdminListParams } from '@/services/admins.service';
-import type { UpdateAdminRequest, UpdateAdminRolesRequest } from '@/types';
+import type { DeleteAdminRequest, UpdateAdminRequest, UpdateAdminRolesRequest } from '@/types';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 
 // ============================================
 // Query Keys
 // ============================================
 
-export const adminsKeys = {
+const adminsKeys = {
   all: ['admins'] as const,
   lists: () => [...adminsKeys.all, 'list'] as const,
   list: (params: AdminListParams) => [...adminsKeys.lists(), params] as const,
@@ -51,11 +52,11 @@ export function useAdmin(adminId: string) {
 /**
  * Get admin roles
  */
-export function useAdminRoles(adminId: string) {
+export function useAdminRoles(adminId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: adminsKeys.roles(adminId),
     queryFn: () => adminsService.getAdminRoles(adminId),
-    enabled: !!adminId,
+    enabled: !!adminId && (options?.enabled ?? true),
   });
 }
 
@@ -72,14 +73,14 @@ export function useUpdateAdmin() {
   return useMutation({
     mutationFn: ({ adminId, data }: { adminId: string; data: UpdateAdminRequest }) =>
       adminsService.updateAdmin(adminId, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       toast.success('Admin updated successfully');
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: adminsKeys.detail(variables.adminId) });
       queryClient.invalidateQueries({ queryKey: adminsKeys.lists() });
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to update admin: ${error.message}`);
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -91,15 +92,16 @@ export function useDeleteAdmin() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (adminId: string) => adminsService.deleteAdmin(adminId),
-    onSuccess: (data, adminId) => {
+    mutationFn: ({ adminId, data }: { adminId: string; data: DeleteAdminRequest }) =>
+      adminsService.deleteAdmin(adminId, data),
+    onSuccess: (_data, { adminId }) => {
       toast.success('Admin deleted successfully');
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: adminsKeys.detail(adminId) });
       queryClient.invalidateQueries({ queryKey: adminsKeys.lists() });
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete admin: ${error.message}`);
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -113,15 +115,15 @@ export function useUpdateAdminRoles() {
   return useMutation({
     mutationFn: ({ adminId, data }: { adminId: string; data: UpdateAdminRolesRequest }) =>
       adminsService.updateAdminRoles(adminId, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       toast.success('Admin roles updated successfully');
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: adminsKeys.roles(variables.adminId) });
       queryClient.invalidateQueries({ queryKey: adminsKeys.detail(variables.adminId) });
       queryClient.invalidateQueries({ queryKey: adminsKeys.lists() });
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to update admin roles: ${error.message}`);
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }

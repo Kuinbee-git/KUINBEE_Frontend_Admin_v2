@@ -4,17 +4,13 @@
  */
 
 import type { UserType, UserStatus } from './auth.types';
+import type { Permission } from '@/lib/constants/permissions';
 
 // ============================================
 // Address Types
 // ============================================
 
-export type AddressType =
-  | 'PERSONAL'
-  | 'BILLING'
-  | 'SHIPPING'
-  | 'REGISTERED_OFFICE'
-  | 'BUSINESS';
+export type AddressType = 'PERSONAL' | 'BILLING' | 'SHIPPING' | 'REGISTERED_OFFICE' | 'BUSINESS';
 
 export interface Address {
   id: string;
@@ -38,7 +34,7 @@ export interface Address {
 
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
 
-export interface PersonalInfo {
+interface PersonalInfo {
   firstName: string;
   lastName: string;
   fullName: string | null;
@@ -51,7 +47,7 @@ export interface PersonalInfo {
 // Admin Profile
 // ============================================
 
-export interface AdminProfileInfo {
+interface AdminProfileInfo {
   employeeId: string | null;
   department: string | null;
   joiningDate: string | null;
@@ -123,16 +119,8 @@ export interface ProfileResponse {
   profile: AdminProfile;
 }
 
-export interface AddressListResponse {
-  items: Address[];
-}
-
-export interface AddressResponse {
-  address: Address;
-}
-
 export interface MyPermissionsResponse {
-  permissions: string[];
+  permissions: Permission[];
 }
 
 // ============================================
@@ -155,21 +143,11 @@ export interface AdminListItem {
   roles: AdminRole[];
 }
 
-export interface AdminAuditLog {
-  id: string;
-  timestamp: string;
-  action: string;
-  targetType: 'DATASET' | 'SUPPLIER' | 'USER' | 'ADMIN' | 'CATEGORY' | 'SOURCE';
-  targetId: string;
-  targetName: string;
-  details?: string;
-}
-
 // ============================================
 // Admin Management API Types
 // ============================================
 
-export interface AdminRole {
+interface AdminRole {
   roleId: string;
   name: string;
   displayName: string;
@@ -213,10 +191,15 @@ export interface AdminDetailResponse {
 
 export interface UpdateAdminRequest {
   status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  reason?: string;
   adminProfile?: {
     employeeId?: string | null;
     department?: string | null;
   };
+}
+
+export interface DeleteAdminRequest {
+  reason: string;
 }
 
 export interface UpdateAdminResponse {

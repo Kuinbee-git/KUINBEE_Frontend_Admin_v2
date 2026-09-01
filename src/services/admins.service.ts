@@ -12,6 +12,7 @@ import type {
   UpdateAdminRequest,
   UpdateAdminResponse,
   DeleteAdminResponse,
+  DeleteAdminRequest,
   AdminRolesResponse,
   UpdateAdminRolesRequest,
   UserStatus,
@@ -28,7 +29,8 @@ export interface AdminListParams {
   pageSize?: number;
   q?: string;
   status?: UserStatus | 'ALL';
-  sort?: string;
+  userType?: 'ADMIN' | 'SUPERADMIN' | 'ALL';
+  sort?: 'createdAt:desc' | 'createdAt:asc' | 'lastLoginAt:desc' | 'lastLoginAt:asc';
   roleId?: string;
 }
 
@@ -43,15 +45,15 @@ export async function getAdmins(
   params: AdminListParams = {}
 ): Promise<PaginatedResponse<AdminListItemResponse>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{
-    items: AdminListItemResponse[];
-    page: number;
-    pageSize: number;
-    total: number;
-  }>>(
-    `${API_ROUTES.ADMIN.ADMINS.LIST}${query}`
-  );
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: AdminListItemResponse[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.ADMINS.LIST}${query}`);
+
   // Backend wraps paginated data in { success, data } structure
   const result = response.data.data;
   return {
@@ -103,9 +105,13 @@ export async function updateAdmin(
 /**
  * Delete an admin (soft delete)
  */
-export async function deleteAdmin(adminId: string): Promise<DeleteAdminResponse> {
-  const response = await apiClient.delete<ApiSuccessResponse<DeleteAdminResponse>>(
-    API_ROUTES.ADMIN.ADMINS.DELETE(adminId)
+export async function deleteAdmin(
+  adminId: string,
+  data: DeleteAdminRequest
+): Promise<DeleteAdminResponse> {
+  const response = await apiClient.request<ApiSuccessResponse<DeleteAdminResponse>>(
+    API_ROUTES.ADMIN.ADMINS.DELETE(adminId),
+    { method: 'DELETE', body: data }
   );
   return response.data.data;
 }
@@ -136,22 +142,4 @@ export async function updateAdminRoles(
     data
   );
   return response.data.data;
-}
-
-// ============================================
-// Helpers
-// ============================================
-
-/**
- * Check if an admin can be deleted
- */
-export function canDeleteAdmin(status: UserStatus): boolean {
-  return status !== 'DELETED';
-}
-
-/**
- * Check if an admin can be suspended
- */
-export function canSuspendAdmin(status: UserStatus): boolean {
-  return status === 'ACTIVE' || status === 'PENDING_VERIFICATION';
 }

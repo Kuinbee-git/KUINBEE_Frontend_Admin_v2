@@ -17,6 +17,9 @@ export const API_ROUTES = {
     LOGOUT: '/v1/auth/logout',
     ME: '/v1/auth/me',
     ACCEPT_INVITE: '/v1/auth/admin/accept-invite',
+    ADMIN_PASSWORD_RESET_REQUEST: '/v1/auth/admin/password/reset/request',
+    ADMIN_PASSWORD_RESET_CONFIRM: '/v1/auth/admin/password/reset/confirm',
+    ADMIN_PASSWORD_CHANGE: '/v1/auth/admin/password/change',
   },
 
   // ============================================
@@ -35,6 +38,10 @@ export const API_ROUTES = {
   },
 
   ADMIN: {
+    DASHBOARD: {
+      SUMMARY: '/v1/admin/dashboard/summary',
+      DATASET_RATINGS: '/v1/admin/dashboard/dataset-ratings',
+    },
     // Self
     MY_PERMISSIONS: '/v1/admin/my-permissions',
 
@@ -130,6 +137,7 @@ export const API_ROUTES = {
       PUBLISH: (datasetId: string) => `/v1/admin/datasets/${datasetId}/publish`,
       UNPUBLISH: (datasetId: string) => `/v1/admin/datasets/${datasetId}/unpublish`,
       METADATA: (datasetId: string) => `/v1/admin/datasets/${datasetId}/metadata`,
+      AUDIT: (datasetId: string) => `/v1/admin/datasets/${datasetId}/audit`,
 
       // Uploads
       UPLOADS: {
@@ -143,7 +151,7 @@ export const API_ROUTES = {
 
       // KDTS Scoring
       KDTS: {
-        GET: (datasetId: string) => `/v1/datasets/${datasetId}/kdts`,
+        GET: (datasetId: string) => `/v1/admin/kdts/${datasetId}`,
         CREATE_UPDATE: (datasetId: string) => `/v1/admin/kdts/${datasetId}`,
         UPDATE_HISTORY: (historyId: string) => `/v1/admin/kdts/${historyId}`,
       },
@@ -154,6 +162,7 @@ export const API_ROUTES = {
       LIST: '/v1/admin/users',
       DETAIL: (userId: string) => `/v1/admin/users/${userId}`,
       SUSPEND: (userId: string) => `/v1/admin/users/${userId}/suspend`,
+      UNSUSPEND: (userId: string) => `/v1/admin/users/${userId}/unsuspend`,
       DELETE: (userId: string) => `/v1/admin/users/${userId}`,
     },
 
@@ -196,6 +205,8 @@ export const API_ROUTES = {
       KYC_PICK: (supplierId: string) => `/v1/admin/suppliers/kyc/${supplierId}/pick`,
       KYC_VERIFY: (supplierId: string) => `/v1/admin/suppliers/kyc/${supplierId}/verify`,
       KYC_REJECT: (supplierId: string) => `/v1/admin/suppliers/kyc/${supplierId}/reject`,
+      MARK_OFFLINE_CONTRACT_DONE: (supplierId: string) =>
+        `/v1/admin/suppliers/${supplierId}/offline-contract/mark-done`,
     },
 
     // Roles (read-only)
@@ -214,15 +225,6 @@ export const API_ROUTES = {
   // SUPERADMIN ROUTES (/api/v1/superadmin)
   // ============================================
   SUPERADMIN: {
-    // Invites
-    INVITES: {
-      LIST: '/v1/superadmin/invites',
-      DETAIL: (inviteId: string) => `/v1/superadmin/invites/${inviteId}`,
-      CREATE: '/v1/superadmin/invites',
-      RESEND: (inviteId: string) => `/v1/superadmin/invites/${inviteId}/resend`,
-      CANCEL: (inviteId: string) => `/v1/superadmin/invites/${inviteId}/cancel`,
-    },
-
     // Roles
     ROLES: {
       LIST: '/v1/superadmin/roles',
@@ -240,12 +242,6 @@ export const API_ROUTES = {
       },
     },
 
-    // Admin Roles
-    ADMIN_ROLES: {
-      LIST: (adminId: string) => `/v1/superadmin/admins/${adminId}/roles`,
-      UPDATE: (adminId: string) => `/v1/superadmin/admins/${adminId}/roles`,
-    },
-
     // Audit Logs
     AUDIT: {
       INVITES: '/v1/superadmin/audit/invites',
@@ -254,140 +250,3 @@ export const API_ROUTES = {
     },
   },
 } as const;
-
-// ============================================
-// Query Parameter Types
-// ============================================
-
-export interface PaginationParams {
-  page?: number;
-  pageSize?: number;
-}
-
-export interface SortParams {
-  sort?: string;
-}
-
-// Invites Query
-export interface InvitesQueryParams extends PaginationParams, SortParams {
-  q?: string;
-  status?: 'ACTIVE' | 'USED' | 'CANCELLED' | 'EXPIRED' | 'ALL';
-}
-
-// Roles Query
-export interface RolesQueryParams extends PaginationParams, SortParams {
-  q?: string;
-  isActive?: boolean;
-}
-
-// Dataset Proposals Query
-export interface DatasetProposalsQueryParams extends PaginationParams, SortParams {
-  q?: string;
-  status?:
-    | 'SUBMITTED'
-    | 'UNDER_REVIEW'
-    | 'REJECTED'
-    | 'VERIFIED'
-    | 'PUBLISHED'
-    | 'DELISTED'
-    | 'ARCHIVED'
-    | 'ALL';
-  verificationStatus?:
-    | 'PENDING'
-    | 'SUBMITTED'
-    | 'CHANGES_REQUESTED'
-    | 'RESUBMITTED'
-    | 'UNDER_REVIEW'
-    | 'VERIFIED'
-    | 'REJECTED'
-    | 'ALL';
-  assignedTo?: 'ME' | 'ANY' | 'UNASSIGNED';
-}
-
-// Dataset Update Requests Query
-export interface DatasetUpdateRequestsQueryParams extends PaginationParams, SortParams {
-  q?: string;
-  status?: 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'DELISTED' | 'REJECTED' | 'ALL';
-  verificationStatus?:
-    | 'SUBMITTED'
-    | 'CHANGES_REQUESTED'
-    | 'RESUBMITTED'
-    | 'UNDER_REVIEW'
-    | 'VERIFIED'
-    | 'REJECTED'
-    | 'ALL';
-  assignedTo?: 'ME' | 'ANY' | 'UNASSIGNED';
-}
-
-// Assigned Datasets Query
-export interface AssignedDatasetsQueryParams extends PaginationParams, SortParams {
-  status?: 'ACTIVE' | 'REASSIGNED' | 'COMPLETED' | 'CANCELLED' | 'ALL';
-}
-
-// Categories Query
-export interface CategoriesQueryParams extends PaginationParams, SortParams {
-  q?: string;
-}
-
-// Sources Query
-export interface SourcesQueryParams extends PaginationParams, SortParams {
-  q?: string;
-  isVerified?: boolean;
-}
-
-// Datasets Query
-export interface DatasetsQueryParams extends PaginationParams, SortParams {
-  q?: string;
-  status?:
-    | 'SUBMITTED'
-    | 'UNDER_REVIEW'
-    | 'VERIFIED'
-    | 'PUBLISHED'
-    | 'REJECTED'
-    | 'DELISTED'
-    | 'ARCHIVED'
-    | 'ALL';
-  visibility?: 'PUBLIC' | 'PRIVATE' | 'UNLISTED' | 'ALL';
-  ownerType?: 'PLATFORM' | 'SUPPLIER' | 'ALL';
-  primaryCategoryId?: string;
-  sourceId?: string;
-  isPaid?: boolean;
-}
-
-// Dataset Uploads Query
-export interface DatasetUploadsQueryParams extends PaginationParams {
-  scope?: 'FINAL' | 'VERIFICATION' | 'ALL';
-  status?: 'UPLOADING' | 'UPLOADED' | 'FAILED' | 'PROMOTED' | 'ALL';
-}
-
-// Users Query
-export interface UsersQueryParams extends PaginationParams, SortParams {
-  q?: string;
-  userType?: 'USER' | 'SUPPLIER' | 'ADMIN' | 'SUPERADMIN' | 'ALL';
-  status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION' | 'DELETED' | 'ALL';
-  emailVerified?: boolean;
-}
-
-// Audit Query
-export interface AuditQueryParams extends PaginationParams, SortParams {
-  from?: string;
-  to?: string;
-  actorId?: string;
-}
-
-export interface InviteAuditQueryParams extends AuditQueryParams {
-  inviteId?: string;
-  eventType?: 'CREATED' | 'RESENT' | 'CANCELLED' | 'USED';
-}
-
-export interface AdminRolesAuditQueryParams extends AuditQueryParams {
-  adminId?: string;
-  roleId?: string;
-  eventType?: 'ASSIGNED' | 'REVOKED';
-}
-
-export interface RolePermissionsAuditQueryParams extends AuditQueryParams {
-  roleId?: string;
-  permission?: string;
-  eventType?: 'ADDED' | 'REMOVED' | 'REPLACED';
-}

@@ -8,12 +8,13 @@ import { toast } from 'sonner';
 import * as sourcesService from '@/services/sources.service';
 import type { SourceListParams } from '@/services/sources.service';
 import type { CreateSourceRequest, UpdateSourceRequest } from '@/types';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 
 // ============================================
 // Query Keys
 // ============================================
 
-export const sourcesKeys = {
+const sourcesKeys = {
   all: ['sources'] as const,
   lists: () => [...sourcesKeys.all, 'list'] as const,
   list: (params: SourceListParams) => [...sourcesKeys.lists(), params] as const,
@@ -44,8 +45,8 @@ export function useCreateSource() {
       queryClient.invalidateQueries({ queryKey: sourcesKeys.lists() });
       toast.success('Source created successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create source');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -60,8 +61,8 @@ export function useUpdateSource() {
       queryClient.invalidateQueries({ queryKey: sourcesKeys.lists() });
       toast.success('Source updated successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update source');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }
@@ -75,8 +76,8 @@ export function useDeleteSource() {
       queryClient.invalidateQueries({ queryKey: sourcesKeys.lists() });
       toast.success('Source deleted successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete source');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
 }

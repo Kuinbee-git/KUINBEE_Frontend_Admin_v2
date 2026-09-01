@@ -10,8 +10,9 @@ import type {
   Source,
   CreateSourceRequest,
   UpdateSourceRequest,
-  SourceResponse,
   PaginatedResponse,
+  ApiSuccessResponse,
+  SourceCreatedByType,
 } from '@/types';
 
 // ============================================
@@ -23,7 +24,14 @@ export interface SourceListParams {
   pageSize?: number;
   q?: string;
   isVerified?: boolean;
-  sort?: string;
+  createdByType?: SourceCreatedByType | 'ALL';
+  sort?:
+    | 'createdAt:desc'
+    | 'createdAt:asc'
+    | 'updatedAt:desc'
+    | 'updatedAt:asc'
+    | 'name:asc'
+    | 'name:desc';
 }
 
 // ============================================
@@ -37,13 +45,16 @@ export async function getSources(
   params: SourceListParams = {}
 ): Promise<PaginatedResponse<Source>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<any>(
-    `${API_ROUTES.ADMIN.SOURCES.LIST}${query}`
-  );
-  
-  // API returns: { success: true, data: { items, page, pageSize, total } }
-  const apiData = response.data?.data || response.data;
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: Source[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.SOURCES.LIST}${query}`);
+  const apiData = response.data.data;
+
   return {
     items: apiData.items || [],
     pagination: {
@@ -59,31 +70,22 @@ export async function getSources(
  * Create a new source
  */
 export async function createSource(data: CreateSourceRequest): Promise<Source> {
-  const response = await apiClient.post<any>(
+  const response = await apiClient.post<ApiSuccessResponse<{ source: Source }>>(
     API_ROUTES.ADMIN.SOURCES.CREATE,
     data
   );
-  
-  // API returns: { success: true, data: { source: {...} } }
-  const apiData = response.data?.data || response.data;
-  return apiData.source || apiData;
+  return response.data.data.source;
 }
 
 /**
  * Update a source
  */
-export async function updateSource(
-  sourceId: string,
-  data: UpdateSourceRequest
-): Promise<Source> {
-  const response = await apiClient.patch<any>(
+export async function updateSource(sourceId: string, data: UpdateSourceRequest): Promise<Source> {
+  const response = await apiClient.patch<ApiSuccessResponse<{ source: Source }>>(
     API_ROUTES.ADMIN.SOURCES.UPDATE(sourceId),
     data
   );
-  
-  // API returns: { success: true, data: { source: {...} } }
-  const apiData = response.data?.data || response.data;
-  return apiData.source || apiData;
+  return response.data.data.source;
 }
 
 /**

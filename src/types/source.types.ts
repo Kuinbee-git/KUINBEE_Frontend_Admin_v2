@@ -49,35 +49,3 @@ export interface UpdateSourceRequest {
   websiteUrl?: string | null;
   isVerified?: boolean;
 }
-
-// ============================================
-// Response Types
-// ============================================
-
-export interface SourceResponse {
-  source: Source;
-}
-
-// ============================================
-// Legacy Types (for UI compatibility)
-// ============================================
-
-/** @deprecated */
-export type SourceStatus = 'active' | 'archived';
-
-/** @deprecated */
-export type SourceType = 'api' | 'database' | 'file' | 'stream' | 'manual';
-
-/** @deprecated Use Source instead */
-export interface LegacySource {
-  id: string;
-  name: string;
-  description?: string;
-  type: SourceType;
-  status: SourceStatus;
-  datasetsCount: number;
-  createdAt: string;
-  updatedAt?: string;
-  url?: string;
-  credentialRequired?: boolean;
-}

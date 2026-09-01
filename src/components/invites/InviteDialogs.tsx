@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { AlertTriangle, Mail, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from 'react';
+import { AlertTriangle, Mail, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -12,17 +12,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import type { Invite, Role } from "@/types";
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import type { Invite, Role } from '@/types';
 
 // ============================================
 // Create Invite Dialog
@@ -31,7 +31,12 @@ import type { Invite, Role } from "@/types";
 interface CreateInviteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: { email: string; roleIds: string[]; expiresInHours: number; sendEmail: boolean }) => void;
+  onSubmit: (data: {
+    email: string;
+    roleIds: string[];
+    expiresInHours: number;
+    sendEmail: boolean;
+  }) => void;
   isLoading: boolean;
   roles: Role[];
   rolesLoading: boolean;
@@ -45,42 +50,29 @@ export function CreateInviteDialog({
   roles,
   rolesLoading,
 }: CreateInviteDialogProps) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
-  const [expiresInHours, setExpiresInHours] = useState("168"); // 7 days default
+  const [expiresInHours, setExpiresInHours] = useState('168'); // 7 days default
   const [sendEmail, setSendEmail] = useState(true);
-
-  // Reset form when dialog closes
-  // Reset form when dialog closes
-   
-  useEffect(() => {
-    if (!open) {
-      setEmail("");
-      setSelectedRoleIds([]);
-      setExpiresInHours("168");
-      setSendEmail(true);
-    }
-  }, [open]);
 
   const handleRoleToggle = (roleId: string) => {
     setSelectedRoleIds((prev) =>
-      prev.includes(roleId)
-        ? prev.filter((id) => id !== roleId)
-        : [...prev, roleId]
+      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
     );
   };
 
   const handleSubmit = () => {
-    if (!email || selectedRoleIds.length === 0) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || selectedRoleIds.length === 0) return;
     onSubmit({
-      email,
+      email: normalizedEmail,
       roleIds: selectedRoleIds,
       expiresInHours: parseInt(expiresInHours, 10),
       sendEmail,
     });
   };
 
-  const isValid = email && selectedRoleIds.length > 0;
+  const isValid = /^\S+@\S+\.\S+$/.test(email.trim()) && selectedRoleIds.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,7 +83,8 @@ export function CreateInviteDialog({
             Invite Admin
           </DialogTitle>
           <DialogDescription>
-            Send an invitation email to a new admin user. They will receive a link to create their account.
+            Send an invitation email to a new admin user. They will receive a link to create their
+            account.
           </DialogDescription>
         </DialogHeader>
 
@@ -106,30 +99,34 @@ export function CreateInviteDialog({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
               }}
             />
           </div>
 
           {/* Roles */}
           <div className="space-y-2">
-            <Label>Assign Roles</Label>
+            <span id="invite-roles-label" className="text-sm font-medium">
+              Assign Roles
+            </span>
             {rolesLoading ? (
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 Loading roles...
               </p>
             ) : roles.length === 0 ? (
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 No roles available
               </p>
             ) : (
               <div
+                role="group"
+                aria-labelledby="invite-roles-label"
                 className="border rounded-md p-3 space-y-2 max-h-[200px] overflow-y-auto"
                 style={{
-                  backgroundColor: "var(--bg-surface)",
-                  borderColor: "var(--border-default)",
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-default)',
                 }}
               >
                 {roles.map((role) => (
@@ -142,7 +139,7 @@ export function CreateInviteDialog({
                     <label
                       htmlFor={role.id}
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      style={{ color: "var(--text-primary)" }}
+                      style={{ color: 'var(--text-primary)' }}
                     >
                       {role.displayName || role.name}
                     </label>
@@ -155,16 +152,16 @@ export function CreateInviteDialog({
                 {selectedRoleIds.map((roleId) => {
                   const role = roles.find((r) => r.id === roleId);
                   return (
-                    <Badge
-                      key={roleId}
-                      variant="secondary"
-                      className="gap-1"
-                    >
+                    <Badge key={roleId} variant="secondary" className="gap-1">
                       {role?.displayName || role?.name}
-                      <X
-                        className="w-3 h-3 cursor-pointer"
+                      <button
+                        type="button"
+                        aria-label={`Remove role ${role?.displayName || role?.name || ''}`}
+                        className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                         onClick={() => handleRoleToggle(roleId)}
-                      />
+                      >
+                        <X className="h-3 w-3" aria-hidden="true" />
+                      </button>
                     </Badge>
                   );
                 })}
@@ -177,10 +174,11 @@ export function CreateInviteDialog({
             <Label htmlFor="expires">Invite Expires In</Label>
             <Select value={expiresInHours} onValueChange={setExpiresInHours}>
               <SelectTrigger
+                id="expires"
                 style={{
-                  backgroundColor: "var(--bg-surface)",
-                  borderColor: "var(--border-default)",
-                  color: "var(--text-primary)",
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-default)',
+                  color: 'var(--text-primary)',
                 }}
               >
                 <SelectValue />
@@ -195,21 +193,21 @@ export function CreateInviteDialog({
               </SelectContent>
             </Select>
 
-          {/* Send Email Toggle */}
-          <div className="flex items-center space-x-2 pt-2">
-            <Checkbox
-              id="sendEmail"
-              checked={sendEmail}
-              onCheckedChange={(checked) => setSendEmail(checked as boolean)}
-            />
-            <label
-              htmlFor="sendEmail"
-              className="text-sm font-medium leading-none cursor-pointer"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Send invitation email immediately
-            </label>
-          </div>
+            {/* Send Email Toggle */}
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox
+                id="sendEmail"
+                checked={sendEmail}
+                onCheckedChange={(checked) => setSendEmail(checked as boolean)}
+              />
+              <label
+                htmlFor="sendEmail"
+                className="text-sm font-medium leading-none cursor-pointer"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                Send invitation email immediately
+              </label>
+            </div>
           </div>
         </div>
 
@@ -221,11 +219,11 @@ export function CreateInviteDialog({
             onClick={handleSubmit}
             disabled={!isValid || isLoading}
             style={{
-              backgroundColor: "var(--brand-primary)",
-              color: "#ffffff",
+              backgroundColor: 'var(--brand-primary)',
+              color: 'var(--brand-on-primary)',
             }}
           >
-            {isLoading ? "Sending..." : "Send Invite"}
+            {isLoading ? 'Sending...' : 'Send Invite'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -262,16 +260,14 @@ export function ResendInviteDialog({
             <Mail className="w-5 h-5" />
             Resend Invite
           </DialogTitle>
-          <DialogDescription>
-            This will send a new invitation email to the user.
-          </DialogDescription>
+          <DialogDescription>This will send a new invitation email to the user.</DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
-          <p style={{ color: "var(--text-primary)" }}>
+          <p style={{ color: 'var(--text-primary)' }}>
             Resend invitation to <strong>{invite.email}</strong>?
           </p>
-          <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>
+          <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
             This invite has been sent {invite.resendCount} time(s) before.
           </p>
         </div>
@@ -284,11 +280,11 @@ export function ResendInviteDialog({
             onClick={onConfirm}
             disabled={isLoading}
             style={{
-              backgroundColor: "var(--brand-primary)",
-              color: "#ffffff",
+              backgroundColor: 'var(--brand-primary)',
+              color: 'var(--brand-on-primary)',
             }}
           >
-            {isLoading ? "Sending..." : "Resend"}
+            {isLoading ? 'Sending...' : 'Resend'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -321,7 +317,7 @@ export function CancelInviteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-red-600">
+          <DialogTitle className="flex items-center gap-2 text-[var(--status-error)]">
             <AlertTriangle className="w-5 h-5" />
             Cancel Invite
           </DialogTitle>
@@ -331,7 +327,7 @@ export function CancelInviteDialog({
         </DialogHeader>
 
         <div className="py-4">
-          <p style={{ color: "var(--text-primary)" }}>
+          <p style={{ color: 'var(--text-primary)' }}>
             Are you sure you want to cancel the invitation for <strong>{invite.email}</strong>?
           </p>
         </div>
@@ -340,12 +336,8 @@ export function CancelInviteDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Keep Invite
           </Button>
-          <Button
-            variant="destructive"
-            onClick={onConfirm}
-            disabled={isLoading}
-          >
-            {isLoading ? "Cancelling..." : "Cancel Invite"}
+          <Button variant="destructive" onClick={onConfirm} disabled={isLoading}>
+            {isLoading ? 'Cancelling...' : 'Cancel Invite'}
           </Button>
         </DialogFooter>
       </DialogContent>

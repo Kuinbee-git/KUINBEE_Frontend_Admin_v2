@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { MoreHorizontal, Mail, XCircle, Clock, CheckCircle, AlertCircle, Eye } from "lucide-react";
+import { MoreHorizontal, Mail, XCircle, Clock, CheckCircle, AlertCircle, Eye } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -8,16 +8,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import type { Invite, InviteStatus } from "@/types";
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import type { Invite, InviteStatus } from '@/types';
 
 interface InviteTableProps {
   invites: Invite[];
@@ -30,23 +30,27 @@ interface InviteTableProps {
 function getStatusBadge(status: InviteStatus) {
   const config: Record<InviteStatus, { label: string; className: string; icon: typeof Clock }> = {
     ACTIVE: {
-      label: "Active",
-      className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+      label: 'Active',
+      className:
+        'bg-[var(--status-success-bg)] text-[var(--status-success)] border-[var(--status-success-border)]',
       icon: Clock,
     },
     USED: {
-      label: "Used",
-      className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+      label: 'Used',
+      className:
+        'bg-[var(--status-info-bg)] text-[var(--status-info)] border-[var(--status-info-border)]',
       icon: CheckCircle,
     },
     CANCELLED: {
-      label: "Cancelled",
-      className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+      label: 'Cancelled',
+      className:
+        'bg-[var(--status-warning-bg)] text-[var(--status-warning)] border-[var(--status-warning-border)]',
       icon: XCircle,
     },
     EXPIRED: {
-      label: "Expired",
-      className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+      label: 'Expired',
+      className:
+        'bg-[var(--status-error-bg)] text-[var(--status-error)] border-[var(--status-error-border)]',
       icon: AlertCircle,
     },
   };
@@ -62,10 +66,10 @@ function getStatusBadge(status: InviteStatus) {
 }
 
 function getInviteStatus(invite: Invite): InviteStatus {
-  if (invite.usedAt) return "USED";
-  if (invite.cancelledAt) return "CANCELLED";
-  if (new Date(invite.expiresAt) < new Date()) return "EXPIRED";
-  return "ACTIVE";
+  if (invite.usedAt) return 'USED';
+  if (invite.cancelledAt) return 'CANCELLED';
+  if (new Date(invite.expiresAt) < new Date()) return 'EXPIRED';
+  return 'ACTIVE';
 }
 
 function canPerformAction(invite: Invite): boolean {
@@ -84,18 +88,18 @@ export function InviteTable({
       <TableHeader>
         <TableRow
           style={{
-            backgroundColor: "var(--bg-surface)",
-            borderColor: "var(--border-default)",
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-default)',
           }}
         >
-          <TableHead style={{ color: "var(--text-muted)" }}>Email</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Roles</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Status</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Expires</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Sent</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Resends</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Email</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Roles</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Status</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Expires</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Sent</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Resends</TableHead>
           {canManageInvites && (
-            <TableHead className="w-15" style={{ color: "var(--text-muted)" }}>
+            <TableHead className="w-15" style={{ color: 'var(--text-muted)' }}>
               Actions
             </TableHead>
           )}
@@ -107,17 +111,15 @@ export function InviteTable({
           const canAct = canPerformAction(invite);
 
           return (
-            <TableRow
-              key={invite.id}
-              style={{ borderColor: "var(--border-default)" }}
-            >
+            <TableRow key={invite.id} style={{ borderColor: 'var(--border-default)' }}>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                  <Mail className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                   <button
+                    type="button"
                     onClick={() => onViewDetails(invite)}
                     className="hover:underline cursor-pointer text-left"
-                    style={{ color: "var(--text-primary)" }}
+                    style={{ color: 'var(--text-primary)' }}
                   >
                     {invite.email}
                   </button>
@@ -126,28 +128,22 @@ export function InviteTable({
               <TableCell>
                 <div className="flex flex-wrap gap-1">
                   {invite.roles.map((role) => (
-                    <Badge
-                      key={role.roleId}
-                      variant="secondary"
-                      className="text-xs"
-                    >
+                    <Badge key={role.roleId} variant="secondary" className="text-xs">
                       {role.displayName || role.name}
                     </Badge>
                   ))}
                 </div>
               </TableCell>
               <TableCell>{getStatusBadge(status)}</TableCell>
-              <TableCell style={{ color: "var(--text-muted)" }}>
+              <TableCell style={{ color: 'var(--text-muted)' }}>
                 {new Date(invite.expiresAt).toLocaleDateString()}
               </TableCell>
-              <TableCell style={{ color: "var(--text-muted)" }}>
+              <TableCell style={{ color: 'var(--text-muted)' }}>
                 {invite.lastSentAt
                   ? new Date(invite.lastSentAt).toLocaleDateString()
                   : new Date(invite.createdAt).toLocaleDateString()}
               </TableCell>
-              <TableCell style={{ color: "var(--text-muted)" }}>
-                {invite.resendCount}
-              </TableCell>
+              <TableCell style={{ color: 'var(--text-muted)' }}>{invite.resendCount}</TableCell>
               {canManageInvites && (
                 <TableCell>
                   <DropdownMenu>
@@ -157,15 +153,13 @@ export function InviteTable({
                         size="sm"
                         className="h-8 w-8 p-0"
                         disabled={!canAct}
+                        aria-label={`Actions for invite ${invite.email}`}
                       >
-                        <MoreHorizontal className="h-4 w-4" />
+                        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => onViewDetails(invite)}
-                        disabled={!canAct}
-                      >
+                      <DropdownMenuItem onClick={() => onViewDetails(invite)} disabled={!canAct}>
                         <Eye className="mr-2 h-4 w-4" />
                         View Details
                       </DropdownMenuItem>
@@ -175,7 +169,7 @@ export function InviteTable({
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onCancel(invite)}
-                        className="text-red-600"
+                        className="text-[var(--status-error)]"
                       >
                         <XCircle className="mr-2 h-4 w-4" />
                         Cancel Invite

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { Mail, Calendar, Clock, User, Shield, RefreshCw, XCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Mail, Calendar, Clock, User, Shield, RefreshCw, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import type { Invite, InviteStatus } from "@/types";
+} from '@/components/ui/dialog';
+import type { Invite, InviteStatus } from '@/types';
 
 interface InviteDetailDialogProps {
   open: boolean;
@@ -25,20 +25,24 @@ interface InviteDetailDialogProps {
 function getStatusBadge(status: InviteStatus) {
   const config: Record<InviteStatus, { label: string; className: string }> = {
     ACTIVE: {
-      label: "Active",
-      className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+      label: 'Active',
+      className:
+        'bg-[var(--status-success-bg)] text-[var(--status-success)] border-[var(--status-success-border)]',
     },
     USED: {
-      label: "Used",
-      className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+      label: 'Used',
+      className:
+        'bg-[var(--status-info-bg)] text-[var(--status-info)] border-[var(--status-info-border)]',
     },
     CANCELLED: {
-      label: "Cancelled",
-      className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+      label: 'Cancelled',
+      className:
+        'bg-[var(--status-warning-bg)] text-[var(--status-warning)] border-[var(--status-warning-border)]',
     },
     EXPIRED: {
-      label: "Expired",
-      className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+      label: 'Expired',
+      className:
+        'bg-[var(--status-error-bg)] text-[var(--status-error)] border-[var(--status-error-border)]',
     },
   };
 
@@ -52,10 +56,10 @@ function getStatusBadge(status: InviteStatus) {
 }
 
 function getInviteStatus(invite: Invite): InviteStatus {
-  if (invite.usedAt) return "USED";
-  if (invite.cancelledAt) return "CANCELLED";
-  if (new Date(invite.expiresAt) < new Date()) return "EXPIRED";
-  return "ACTIVE";
+  if (invite.usedAt) return 'USED';
+  if (invite.cancelledAt) return 'CANCELLED';
+  if (new Date(invite.expiresAt) < new Date()) return 'EXPIRED';
+  return 'ACTIVE';
 }
 
 function canPerformAction(invite: Invite): boolean {
@@ -92,10 +96,10 @@ export function InviteDetailDialog({
           {/* Email & Status */}
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
                 Email Address
               </p>
-              <p className="text-lg font-semibold mt-1" style={{ color: "var(--text-primary)" }}>
+              <p className="text-lg font-semibold mt-1" style={{ color: 'var(--text-primary)' }}>
                 {invite.email}
               </p>
             </div>
@@ -104,23 +108,19 @@ export function InviteDetailDialog({
 
           {/* Assigned Roles */}
           <div>
-            <p className="text-sm font-medium mb-2" style={{ color: "var(--text-muted)" }}>
+            <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
               <Shield className="w-4 h-4 inline mr-1" />
               Assigned Roles
             </p>
             <div className="flex flex-wrap gap-2">
               {invite.roles.length > 0 ? (
                 invite.roles.map((role) => (
-                  <Badge
-                    key={role.roleId}
-                    variant="secondary"
-                    className="text-sm"
-                  >
+                  <Badge key={role.roleId} variant="secondary" className="text-sm">
                     {role.displayName || role.name}
                   </Badge>
                 ))
               ) : (
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   No roles assigned
                 </p>
               )}
@@ -129,60 +129,60 @@ export function InviteDetailDialog({
 
           {/* Timeline */}
           <div
-            className="grid grid-cols-2 gap-4 p-4 rounded-lg border"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 p-4 rounded-lg border"
             style={{
-              backgroundColor: "var(--bg-surface)",
-              borderColor: "var(--border-default)",
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-default)',
             }}
           >
             <div>
-              <p className="text-xs font-medium mb-1" style={{ color: "var(--text-muted)" }}>
+              <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
                 <Calendar className="w-3 h-3 inline mr-1" />
                 Created
               </p>
-              <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+              <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
                 {new Date(invite.createdAt).toLocaleString()}
               </p>
             </div>
 
             <div>
-              <p className="text-xs font-medium mb-1" style={{ color: "var(--text-muted)" }}>
+              <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
                 <Clock className="w-3 h-3 inline mr-1" />
                 Expires
               </p>
-              <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+              <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
                 {new Date(invite.expiresAt).toLocaleString()}
               </p>
             </div>
 
             {invite.lastSentAt && (
               <div>
-                <p className="text-xs font-medium mb-1" style={{ color: "var(--text-muted)" }}>
+                <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
                   <Mail className="w-3 h-3 inline mr-1" />
                   Last Sent
                 </p>
-                <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+                <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
                   {new Date(invite.lastSentAt).toLocaleString()}
                 </p>
               </div>
             )}
 
             <div>
-              <p className="text-xs font-medium mb-1" style={{ color: "var(--text-muted)" }}>
+              <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
                 <RefreshCw className="w-3 h-3 inline mr-1" />
                 Resend Count
               </p>
-              <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+              <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
                 {invite.resendCount} time(s)
               </p>
             </div>
 
             {invite.usedAt && (
               <div>
-                <p className="text-xs font-medium mb-1" style={{ color: "var(--text-muted)" }}>
+                <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
                   Used At
                 </p>
-                <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+                <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
                   {new Date(invite.usedAt).toLocaleString()}
                 </p>
               </div>
@@ -190,10 +190,10 @@ export function InviteDetailDialog({
 
             {invite.cancelledAt && (
               <div>
-                <p className="text-xs font-medium mb-1" style={{ color: "var(--text-muted)" }}>
+                <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
                   Cancelled At
                 </p>
-                <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+                <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
                   {new Date(invite.cancelledAt).toLocaleString()}
                 </p>
               </div>
@@ -202,21 +202,21 @@ export function InviteDetailDialog({
 
           {/* Creator Info */}
           <div>
-            <p className="text-sm font-medium mb-1" style={{ color: "var(--text-muted)" }}>
+            <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
               <User className="w-4 h-4 inline mr-1" />
               Created By
             </p>
-            <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
               {invite.createdByUser.name}
             </p>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {invite.createdByUser.email}
             </p>
           </div>
         </div>
 
         <DialogFooter className="gap-2">
-          {(!canManageInvites || !canAct) ? (
+          {!canManageInvites || !canAct ? (
             <div className="flex flex-row w-full justify-center items-center mt-2">
               <Button
                 variant="outline"

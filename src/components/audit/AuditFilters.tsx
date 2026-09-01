@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { Search, X, Calendar } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Search, X, Calendar } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 
 interface AuditFiltersProps<T extends string> {
   searchQuery: string;
@@ -27,24 +27,24 @@ interface AuditFiltersProps<T extends string> {
 export function AuditFilters<T extends string>({
   searchQuery,
   setSearchQuery,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = 'Search...',
   statusFilter,
   setStatusFilter,
   statusOptions,
-  statusLabel = "Status",
+  statusLabel = 'Status',
   dateRange,
   setDateRange,
   onClearAll,
 }: AuditFiltersProps<T>) {
   const hasActiveFilters =
-    searchQuery || statusFilter !== ("ALL" as T) || dateRange.from || dateRange.to;
+    searchQuery || statusFilter !== ('ALL' as T) || dateRange.from || dateRange.to;
 
   return (
     <div
       className="p-4 rounded-lg border space-y-4"
       style={{
-        backgroundColor: "var(--bg-base)",
-        borderColor: "var(--border-default)",
+        backgroundColor: 'var(--bg-base)',
+        borderColor: 'var(--border-default)',
       }}
     >
       <div className="flex flex-col lg:flex-row gap-4">
@@ -52,17 +52,18 @@ export function AuditFilters<T extends string>({
         <div className="flex-1 relative">
           <Search
             className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4"
-            style={{ color: "var(--text-muted)" }}
+            style={{ color: 'var(--text-muted)' }}
           />
           <Input
+            aria-label="Search audit events"
             placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
             style={{
-              backgroundColor: "var(--bg-surface)",
-              borderColor: "var(--border-default)",
-              color: "var(--text-primary)",
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-default)',
+              color: 'var(--text-primary)',
             }}
           />
         </div>
@@ -71,10 +72,11 @@ export function AuditFilters<T extends string>({
         <div className="w-full lg:w-48">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger
+              aria-label={statusLabel}
               style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
               }}
             >
               <SelectValue placeholder={statusLabel} />
@@ -94,36 +96,38 @@ export function AuditFilters<T extends string>({
           <div className="relative flex-1 lg:w-40">
             <Calendar
               className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: 'var(--text-muted)' }}
             />
             <Input
               type="date"
+              aria-label="From date"
               placeholder="From"
-              value={dateRange.from || ""}
+              value={dateRange.from || ''}
               onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
               className="pl-9"
               style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
               }}
             />
           </div>
           <div className="relative flex-1 lg:w-40">
             <Calendar
               className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: 'var(--text-muted)' }}
             />
             <Input
               type="date"
+              aria-label="To date"
               placeholder="To"
-              value={dateRange.to || ""}
+              value={dateRange.to || ''}
               onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
               className="pl-9"
               style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
               }}
             />
           </div>

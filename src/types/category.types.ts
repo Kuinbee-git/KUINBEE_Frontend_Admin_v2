@@ -32,32 +32,3 @@ export interface CreateCategoryRequest {
 export interface UpdateCategoryRequest {
   name?: string;
 }
-
-// ============================================
-// Response Types
-// ============================================
-
-export interface CategoryResponse {
-  category: Category;
-}
-
-// ============================================
-// Legacy Types (for UI compatibility)
-// ============================================
-
-/** @deprecated */
-export type CategoryStatus = 'active' | 'archived';
-
-/** @deprecated Use Category instead */
-export interface LegacyCategory {
-  id: string;
-  name: string;
-  description?: string;
-  slug: string;
-  parentId?: string;
-  status: CategoryStatus;
-  datasetsCount: number;
-  createdAt: string;
-  updatedAt?: string;
-  icon?: string;
-}

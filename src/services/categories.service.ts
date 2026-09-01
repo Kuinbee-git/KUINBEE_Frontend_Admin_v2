@@ -10,8 +10,8 @@ import type {
   Category,
   CreateCategoryRequest,
   UpdateCategoryRequest,
-  CategoryResponse,
   PaginatedResponse,
+  ApiSuccessResponse,
 } from '@/types';
 
 // ============================================
@@ -22,7 +22,8 @@ export interface CategoryListParams {
   page?: number;
   pageSize?: number;
   q?: string;
-  sort?: string;
+  usage?: 'USED' | 'UNUSED' | 'ALL';
+  sort?: 'createdAt:desc' | 'createdAt:asc' | 'name:asc' | 'name:desc';
 }
 
 // ============================================
@@ -36,13 +37,16 @@ export async function getCategories(
   params: CategoryListParams = {}
 ): Promise<PaginatedResponse<Category>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<any>(
-    `${API_ROUTES.ADMIN.CATEGORIES.LIST}${query}`
-  );
-  
-  // API returns: { success: true, data: { items, page, pageSize, total } }
-  const apiData = response.data?.data || response.data;
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: Category[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.CATEGORIES.LIST}${query}`);
+  const apiData = response.data.data;
+
   return {
     items: apiData.items || [],
     pagination: {
@@ -58,14 +62,11 @@ export async function getCategories(
  * Create a new category
  */
 export async function createCategory(data: CreateCategoryRequest): Promise<Category> {
-  const response = await apiClient.post<any>(
+  const response = await apiClient.post<ApiSuccessResponse<{ category: Category }>>(
     API_ROUTES.ADMIN.CATEGORIES.CREATE,
     data
   );
-  
-  // API returns: { success: true, data: { category: {...} } }
-  const apiData = response.data?.data || response.data;
-  return apiData.category || apiData;
+  return response.data.data.category;
 }
 
 /**
@@ -75,14 +76,11 @@ export async function updateCategory(
   categoryId: string,
   data: UpdateCategoryRequest
 ): Promise<Category> {
-  const response = await apiClient.patch<any>(
+  const response = await apiClient.patch<ApiSuccessResponse<{ category: Category }>>(
     API_ROUTES.ADMIN.CATEGORIES.UPDATE(categoryId),
     data
   );
-  
-  // API returns: { success: true, data: { category: {...} } }
-  const apiData = response.data?.data || response.data;
-  return apiData.category || apiData;
+  return response.data.data.category;
 }
 
 /**

@@ -14,7 +14,7 @@ import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 // Query Keys
 // ============================================
 
-export const categoriesKeys = {
+const categoriesKeys = {
   all: ['categories'] as const,
   lists: () => [...categoriesKeys.all, 'list'] as const,
   list: (params: CategoryListParams) => [...categoriesKeys.lists(), params] as const,

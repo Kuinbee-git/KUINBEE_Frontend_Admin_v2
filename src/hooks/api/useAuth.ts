@@ -8,18 +8,24 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import * as authService from '@/services/auth.service';
 import { useAuthStore } from '@/store/auth.store';
-import type { LoginRequest, UpdateProfileRequest, CreateAddressRequest, UpdateAddressRequest } from '@/types';
+import type {
+  AdminPasswordChangeRequest,
+  AdminPasswordResetConfirmRequest,
+  AdminPasswordResetRequest,
+  LoginRequest,
+  UpdateProfileRequest,
+} from '@/types';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 
 // ============================================
 // Query Keys
 // ============================================
 
-export const authKeys = {
+const authKeys = {
   all: ['auth'] as const,
   me: () => [...authKeys.all, 'me'] as const,
   profile: () => [...authKeys.all, 'profile'] as const,
   permissions: () => [...authKeys.all, 'permissions'] as const,
-  addresses: () => [...authKeys.all, 'addresses'] as const,
 };
 
 // ============================================
@@ -29,7 +35,11 @@ export const authKeys = {
 /**
  * Get current authenticated user
  */
-export function useCurrentUser(options?: { enabled?: boolean; retry?: boolean; refetchOnMount?: boolean | 'always' }) {
+export function useCurrentUser(options?: {
+  enabled?: boolean;
+  retry?: boolean;
+  refetchOnMount?: boolean | 'always';
+}) {
   const { setUser } = useAuthStore();
 
   return useQuery({
@@ -55,7 +65,7 @@ export function useCurrentUser(options?: { enabled?: boolean; retry?: boolean; r
  * Only runs when user is authenticated
  */
 export function useProfile(options?: { enabled?: boolean }) {
-  const user = useAuthStore(state => state.user);
+  const user = useAuthStore((state) => state.user);
 
   return useQuery({
     queryKey: authKeys.profile(),
@@ -71,8 +81,8 @@ export function useProfile(options?: { enabled?: boolean }) {
  * Only runs when user is authenticated
  */
 export function useMyPermissions(options?: { enabled?: boolean }) {
-  const setPermissions = useAuthStore(state => state.setPermissions);
-  const user = useAuthStore(state => state.user);
+  const setPermissions = useAuthStore((state) => state.setPermissions);
+  const user = useAuthStore((state) => state.user);
 
   return useQuery({
     queryKey: authKeys.permissions(),
@@ -82,22 +92,6 @@ export function useMyPermissions(options?: { enabled?: boolean }) {
       return permissions;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
-    enabled: options?.enabled ?? !!user,
-    retry: false,
-  });
-}
-
-/**
- * Get current admin's addresses
- * Only runs when user is authenticated
- */
-export function useAddresses(options?: { enabled?: boolean }) {
-  const user = useAuthStore(state => state.user);
-
-  return useQuery({
-    queryKey: authKeys.addresses(),
-    queryFn: authService.getAddresses,
-    staleTime: 5 * 60 * 1000,
     enabled: options?.enabled ?? !!user,
     retry: false,
   });
@@ -113,7 +107,7 @@ export function useAddresses(options?: { enabled?: boolean }) {
 export function useLogin() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const { login: storeLogin, setPermissions } = useAuthStore();
+  const { login: storeLogin, logout: storeLogout, setPermissions } = useAuthStore();
 
   return useMutation({
     mutationFn: (credentials: LoginRequest) => authService.login(credentials),
@@ -121,33 +115,43 @@ export function useLogin() {
       // Verify the user has admin privileges
       if (user.userType !== 'ADMIN' && user.userType !== 'SUPERADMIN') {
         // Wrong user type — log them out and show error
-        try { await authService.logout(); } catch { }
+        try {
+          await authService.logout();
+        } catch {}
         toast.error('Access denied. This portal is for administrators only.', { duration: 4000 });
         return;
       }
 
-      // Update store with user
-      storeLogin(user);
-
-      // Update query cache
-      queryClient.setQueryData(authKeys.me(), user);
-
-      // Fetch user data from /auth/me to verify session
+      // Never trust the response identity until the HTTP-only session cookie is verified.
+      let verifiedUser;
       try {
-        const verifiedUser = await authService.getCurrentUser();
-
-        if (verifiedUser) {
-          // Update store with verified user
-          storeLogin(verifiedUser);
-          queryClient.setQueryData(authKeys.me(), verifiedUser);
-        }
-      } catch (error) {
-        // Continue anyway, we have the user from login response
+        verifiedUser = await authService.getCurrentUser();
+      } catch {
+        verifiedUser = null;
       }
 
+      if (
+        !verifiedUser ||
+        (verifiedUser.userType !== 'ADMIN' && verifiedUser.userType !== 'SUPERADMIN')
+      ) {
+        storeLogout();
+        queryClient.removeQueries({ queryKey: authKeys.all });
+        authService.logout().catch(() => undefined);
+        toast.error('The session could not be verified. Please sign in again.', {
+          duration: 4000,
+        });
+        return;
+      }
+
+      // A new identity must never inherit cached data from a previous session.
+      queryClient.clear();
+      storeLogin(verifiedUser);
+      queryClient.setQueryData(authKeys.me(), verifiedUser);
+
       // Fetch and cache permissions (don't block navigation)
-      authService.getMyPermissions()
-        .then(permissions => {
+      authService
+        .getMyPermissions()
+        .then((permissions) => {
           setPermissions(permissions);
           queryClient.setQueryData(authKeys.permissions(), permissions);
         })
@@ -157,9 +161,6 @@ export function useLogin() {
 
       // Navigate to dashboard
       router.replace('/dashboard');
-    },
-    onError: (error: Error) => {
-      console.error('[Login] Error:', error);
     },
   });
 }
@@ -173,19 +174,17 @@ export function useLogout() {
   const { logout } = useAuthStore();
 
   return useMutation({
-    mutationFn: async () => {
-      // Clear local state immediately (optimistic)
+    mutationFn: authService.logout,
+    onSuccess: () => {
+      // Clear every identity and domain query only after the server has
+      // invalidated the HTTP-only session. Redirecting first races the login
+      // guard against logout and can bounce the same session back into the
+      // dashboard.
       logout();
-      queryClient.removeQueries({ queryKey: authKeys.all });
-
-      // Navigate immediately
+      queryClient.clear();
       router.replace('/login');
+      router.refresh();
       toast.success('Logged out successfully', { duration: 1200 });
-
-      // Call backend logout in background (don't wait for it)
-      authService.logout().catch(() => {
-        // Ignore errors - we're already logged out locally
-      });
     },
   });
 }
@@ -197,20 +196,40 @@ export function useLogout() {
 export function useAcceptInvite() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const { login: storeLogin, setPermissions } = useAuthStore();
+  const { login: storeLogin, logout: storeLogout, setPermissions } = useAuthStore();
 
   return useMutation({
     mutationFn: authService.acceptInvite,
-    onSuccess: async (user) => {
-      // Update store with user
-      storeLogin(user);
+    onSuccess: async () => {
+      let verifiedUser;
+      try {
+        verifiedUser = await authService.getCurrentUser();
+      } catch {
+        verifiedUser = null;
+      }
 
-      // Update query cache
-      queryClient.setQueryData(authKeys.me(), user);
+      if (
+        !verifiedUser ||
+        (verifiedUser.userType !== 'ADMIN' && verifiedUser.userType !== 'SUPERADMIN')
+      ) {
+        storeLogout();
+        queryClient.removeQueries({ queryKey: authKeys.all });
+        authService.logout().catch(() => undefined);
+        toast.error('Your account was activated, but the session could not be verified.', {
+          duration: 4000,
+        });
+        router.replace('/login');
+        return;
+      }
+
+      queryClient.clear();
+      storeLogin(verifiedUser);
+      queryClient.setQueryData(authKeys.me(), verifiedUser);
 
       // Fetch and cache permissions (don't block navigation)
-      authService.getMyPermissions()
-        .then(permissions => {
+      authService
+        .getMyPermissions()
+        .then((permissions) => {
           setPermissions(permissions);
           queryClient.setQueryData(authKeys.permissions(), permissions);
         })
@@ -221,9 +240,27 @@ export function useAcceptInvite() {
       // Navigate to dashboard
       router.replace('/dashboard');
     },
-    onError: (error: Error) => {
-      console.error('[Accept Invite] Error:', error);
-    },
+  });
+}
+
+export function useRequestAdminPasswordReset() {
+  return useMutation({
+    mutationFn: (data: AdminPasswordResetRequest) => authService.requestAdminPasswordReset(data),
+  });
+}
+
+export function useConfirmAdminPasswordReset() {
+  return useMutation({
+    mutationFn: (data: AdminPasswordResetConfirmRequest) =>
+      authService.confirmAdminPasswordReset(data),
+  });
+}
+
+export function useChangeAdminPassword() {
+  return useMutation({
+    mutationFn: (data: AdminPasswordChangeRequest) => authService.changeAdminPassword(data),
+    onSuccess: () => toast.success('Password changed successfully'),
+    onError: (error) => toast.error(getFriendlyErrorMessage(error)),
   });
 }
 
@@ -242,83 +279,8 @@ export function useUpdateProfile() {
       queryClient.invalidateQueries({ queryKey: authKeys.permissions() });
       toast.success('Profile updated successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update profile');
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error));
     },
   });
-}
-
-/**
- * Create address mutation
- */
-export function useCreateAddress() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CreateAddressRequest) => authService.createAddress(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.addresses() });
-      toast.success('Address added successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to add address');
-    },
-  });
-}
-
-/**
- * Update address mutation
- */
-export function useUpdateAddress() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ addressId, data }: { addressId: string; data: UpdateAddressRequest }) =>
-      authService.updateAddress(addressId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.addresses() });
-      toast.success('Address updated successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update address');
-    },
-  });
-}
-
-/**
- * Delete address mutation
- */
-export function useDeleteAddress() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (addressId: string) => authService.deleteAddress(addressId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.addresses() });
-      toast.success('Address deleted successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete address');
-    },
-  });
-}
-
-// ============================================
-// Auth Check Hook
-// ============================================
-
-/**
- * Check if user is authenticated
- * Use this in protected routes
- */
-export function useAuthCheck() {
-  const user = useAuthStore(state => state.user);
-  const { data, isLoading, isError } = useCurrentUser();
-
-  return {
-    isAuthenticated: !!user || !!data,
-    isLoading,
-    isError,
-    user: user || data,
-  };
 }

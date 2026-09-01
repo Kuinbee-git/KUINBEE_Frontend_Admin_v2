@@ -5,45 +5,35 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { AuthUser } from '@/types';
+import { normalizePermissions, type Permission } from '@/lib/constants/permissions';
 
 interface AuthState {
   user: AuthUser | null;
-  permissions: string[];
-  
+  permissions: Permission[];
+
   // Actions
   setUser: (user: AuthUser | null) => void;
-  setPermissions: (permissions: string[]) => void;
+  setPermissions: (permissions: Permission[]) => void;
   login: (user: AuthUser) => void;
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  permissions: [],
+
+  // Authentication is recovered only from the HTTP-only session cookie.
+  // Persisting identity claims creates a stale, misleading shell after expiry.
+  setUser: (user) => set(user ? { user } : { user: null, permissions: [] }),
+
+  setPermissions: (permissions) => set({ permissions: normalizePermissions(permissions) }),
+
+  login: (user) => set({ user }),
+
+  logout: () =>
+    set({
       user: null,
       permissions: [],
-
-      setUser: (user) => set({ user }),
-      
-      setPermissions: (permissions) => set({ permissions }),
-
-      login: (user) => set({ user }),
-
-      logout: () =>
-        set({
-          user: null,
-          permissions: [],
-        }),
     }),
-    {
-      name: 'kuinbee-auth-storage',
-      partialize: (state) => ({ 
-        user: state.user, 
-        permissions: state.permissions,
-      }),
-      skipHydration: false,
-    }
-  )
-);
+}));

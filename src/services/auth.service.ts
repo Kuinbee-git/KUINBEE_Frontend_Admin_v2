@@ -14,18 +14,19 @@ import type {
   AuthUser,
   AcceptInviteRequest,
   AcceptInviteResponse,
+  AdminPasswordChangeRequest,
+  AdminPasswordMutationResponse,
+  AdminPasswordResetConfirmRequest,
+  AdminPasswordResetRequest,
 } from '@/types/auth.types';
 import type {
   AdminProfile,
   ProfileResponse,
   UpdateProfileRequest,
-  Address,
-  AddressListResponse,
-  AddressResponse,
-  CreateAddressRequest,
-  UpdateAddressRequest,
   MyPermissionsResponse,
 } from '@/types/admin.types';
+import type { ApiSuccessResponse } from '@/types/api.types';
+import { normalizePermissions, type Permission } from '@/lib/constants/permissions';
 
 // ============================================
 // Authentication
@@ -36,16 +37,11 @@ import type {
  * On success, backend sets HTTP-only session cookie
  */
 export async function login(credentials: LoginRequest): Promise<AuthUser> {
-  const response = await apiClient.post<LoginResponse>(
+  const response = await apiClient.post<ApiSuccessResponse<LoginResponse>>(
     API_ROUTES.AUTH.LOGIN,
     credentials
   );
-  // Backend wraps response in { success, data: { user } }
-  const user = (response.data as { data?: { user?: AuthUser } }).data?.user ?? response.data.user;
-  if (!user) {
-    throw new Error('Invalid login response');
-  }
-  return user;
+  return response.data.data.user;
 }
 
 /**
@@ -53,7 +49,7 @@ export async function login(credentials: LoginRequest): Promise<AuthUser> {
  * Backend clears the session cookie
  */
 export async function logout(): Promise<void> {
-  await apiClient.post<LogoutResponse>(API_ROUTES.AUTH.LOGOUT);
+  await apiClient.post<ApiSuccessResponse<LogoutResponse>>(API_ROUTES.AUTH.LOGOUT);
 }
 
 /**
@@ -63,13 +59,10 @@ export async function logout(): Promise<void> {
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
-    const response = await apiClient.request<MeResponse>(API_ROUTES.AUTH.ME, {
+    const response = await apiClient.request<ApiSuccessResponse<MeResponse>>(API_ROUTES.AUTH.ME, {
       method: 'GET',
-      suppressErrorLog: true,
     });
-    // Backend wraps response in { success, data: { user } }
-    const user = (response.data as { data?: { user?: AuthUser } }).data?.user ?? response.data.user ?? null;
-    return user;
+    return response.data.data.user;
   } catch (error) {
     const statusCode =
       error && typeof error === 'object' && 'statusCode' in error
@@ -85,11 +78,34 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
  * Used when a new admin accepts their invitation email
  */
 export async function acceptInvite(data: AcceptInviteRequest): Promise<AuthUser> {
-  const response = await apiClient.post<AcceptInviteResponse>(
+  const response = await apiClient.post<ApiSuccessResponse<AcceptInviteResponse>>(
     API_ROUTES.AUTH.ACCEPT_INVITE,
     data
   );
-  return response.data.user;
+  return response.data.data.user;
+}
+
+export async function requestAdminPasswordReset(data: AdminPasswordResetRequest): Promise<void> {
+  await apiClient.post<ApiSuccessResponse<AdminPasswordMutationResponse>>(
+    API_ROUTES.AUTH.ADMIN_PASSWORD_RESET_REQUEST,
+    data
+  );
+}
+
+export async function confirmAdminPasswordReset(
+  data: AdminPasswordResetConfirmRequest
+): Promise<void> {
+  await apiClient.post<ApiSuccessResponse<AdminPasswordMutationResponse>>(
+    API_ROUTES.AUTH.ADMIN_PASSWORD_RESET_CONFIRM,
+    data
+  );
+}
+
+export async function changeAdminPassword(data: AdminPasswordChangeRequest): Promise<void> {
+  await apiClient.post<ApiSuccessResponse<AdminPasswordMutationResponse>>(
+    API_ROUTES.AUTH.ADMIN_PASSWORD_CHANGE,
+    data
+  );
 }
 
 // ============================================
@@ -102,26 +118,21 @@ export async function acceptInvite(data: AcceptInviteRequest): Promise<AuthUser>
  * Returns null if not found or error occurs
  */
 export async function getProfile(): Promise<AdminProfile | null> {
-  try {
-    const response = await apiClient.get<ProfileResponse>(API_ROUTES.ADMIN.PROFILE);
-    // Backend wraps response in { success, data: { profile } }
-    const profile = (response.data as { data?: { profile?: AdminProfile } }).data?.profile ?? response.data.profile ?? null;
-    return profile;
-  } catch (error) {
-    console.warn('[Auth Service] Failed to fetch profile:', error);
-    return null;
-  }
+  const response = await apiClient.get<ApiSuccessResponse<ProfileResponse>>(
+    API_ROUTES.ADMIN.PROFILE
+  );
+  return response.data.data.profile;
 }
 
 /**
  * Update current admin's profile
  */
 export async function updateProfile(data: UpdateProfileRequest): Promise<AdminProfile> {
-  const response = await apiClient.put<ProfileResponse>(
+  const response = await apiClient.put<ApiSuccessResponse<ProfileResponse>>(
     API_ROUTES.ADMIN.PROFILE,
     data
   );
-  return response.data.profile;
+  return response.data.data.profile;
 }
 
 // ============================================
@@ -130,104 +141,12 @@ export async function updateProfile(data: UpdateProfileRequest): Promise<AdminPr
 
 /**
  * Get current admin's permissions
- * Returns array of permission strings (e.g., ['CREATE_PLATFORM_DATASET', 'UPDATE_USER'])
- * Returns empty array if fetch fails (e.g., due to CORS/cookie issues)
+ * Returns validated canonical permission strings (for example,
+ * ['CREATE_PLATFORM_DATASET', 'MANAGE_USERS']).
  */
-export async function getMyPermissions(): Promise<string[]> {
-  try {
-    const response = await apiClient.get<MyPermissionsResponse>(
-      API_ROUTES.ADMIN.MY_PERMISSIONS
-    );
-    // Backend wraps response in { success, data: { permissions } }
-    const permissions = (response.data as { data?: { permissions?: string[] } }).data?.permissions ?? response.data.permissions ?? [];
-    return permissions;
-  } catch (error) {
-    console.warn('[Auth Service] Failed to fetch permissions:', error);
-    // Return empty array instead of throwing - allows app to continue
-    return [];
-  }
-}
-
-// ============================================
-// Addresses
-// ============================================
-
-/**
- * Get current admin's addresses
- * Returns empty array if error occurs
- */
-export async function getAddresses(): Promise<Address[]> {
-  try {
-    const response = await apiClient.get<AddressListResponse>(
-      API_ROUTES.ADMIN.ADDRESSES.LIST
-    );
-    return response.data.items ?? [];
-  } catch (error) {
-    console.warn('[Auth Service] Failed to fetch addresses:', error);
-    return [];
-  }
-}
-
-/**
- * Create a new address
- */
-export async function createAddress(data: CreateAddressRequest): Promise<Address> {
-  const response = await apiClient.post<AddressResponse>(
-    API_ROUTES.ADMIN.ADDRESSES.CREATE,
-    data
+export async function getMyPermissions(): Promise<Permission[]> {
+  const response = await apiClient.get<ApiSuccessResponse<MyPermissionsResponse>>(
+    API_ROUTES.ADMIN.MY_PERMISSIONS
   );
-  return response.data.address;
-}
-
-/**
- * Update an existing address
- */
-export async function updateAddress(
-  addressId: string,
-  data: UpdateAddressRequest
-): Promise<Address> {
-  const response = await apiClient.patch<AddressResponse>(
-    API_ROUTES.ADMIN.ADDRESSES.UPDATE(addressId),
-    data
-  );
-  return response.data.address;
-}
-
-/**
- * Delete an address
- */
-export async function deleteAddress(addressId: string): Promise<void> {
-  await apiClient.delete(API_ROUTES.ADMIN.ADDRESSES.DELETE(addressId));
-}
-
-// ============================================
-// Auth Helpers
-// ============================================
-
-/**
- * Check if user is authenticated
- * Makes a lightweight call to verify session is valid
- */
-export async function checkAuth(): Promise<boolean> {
-  try {
-    await getCurrentUser();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Get user with permissions in a single operation
- * Useful for initial app load
- */
-export async function getAuthState(): Promise<{
-  user: AuthUser | null;
-  permissions: string[];
-}> {
-  const [user, permissions] = await Promise.all([
-    getCurrentUser(),
-    getMyPermissions(),
-  ]);
-  return { user, permissions };
+  return normalizePermissions(response.data.data.permissions);
 }

@@ -9,12 +9,7 @@
 
 export type UserType = 'SUPERADMIN' | 'ADMIN' | 'SUPPLIER' | 'USER';
 
-export type UserStatus =
-  | 'ACTIVE'
-  | 'INACTIVE'
-  | 'SUSPENDED'
-  | 'PENDING_VERIFICATION'
-  | 'DELETED';
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION' | 'DELETED';
 
 // ============================================
 // Auth User (from /auth/me, /auth/login)
@@ -45,6 +40,21 @@ export interface AcceptInviteRequest {
   password: string;
 }
 
+export interface AdminPasswordResetRequest {
+  email: string;
+}
+
+export interface AdminPasswordResetConfirmRequest {
+  email: string;
+  token: string;
+  newPassword: string;
+}
+
+export interface AdminPasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 // ============================================
 // Response Types
 // ============================================
@@ -65,25 +75,6 @@ export interface AcceptInviteResponse {
   user: AuthUser;
 }
 
-// ============================================
-// Auth State (for store)
-// ============================================
-
-export interface AuthState {
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  permissions: string[];
+export interface AdminPasswordMutationResponse {
+  success: true;
 }
-
-// ============================================
-// Error Types
-// ============================================
-
-export type AcceptInviteErrorCode =
-  | 'VALIDATION_ERROR'
-  | 'INVALID_INVITE_TOKEN'
-  | 'INVITE_ALREADY_USED'
-  | 'INVITE_CANCELLED'
-  | 'INVITE_EXPIRED'
-  | 'EMAIL_ALREADY_IN_USE';

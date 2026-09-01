@@ -1,5 +1,5 @@
-import { SupplierAnalytics } from "@/components/suppliers/SupplierAnalytics";
-import { use } from "react";
+import { SupplierAnalytics } from '@/components/suppliers/SupplierAnalytics';
+import { use } from 'react';
 
 interface PageProps {
   params: Promise<{

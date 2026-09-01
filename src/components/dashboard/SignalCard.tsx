@@ -1,79 +1,96 @@
-"use client";
+'use client';
 
-import { memo, useMemo } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { LucideIcon } from "lucide-react";
+import { memo, useMemo } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { LucideIcon } from 'lucide-react';
 
-type SignalStatus = "warning" | "info" | "error" | "success";
+type SignalStatus = 'warning' | 'info' | 'error' | 'success';
 
 interface SignalCardProps {
   label: string;
-  count: number;
+  count: number | null;
   status: SignalStatus;
   icon: LucideIcon;
-  onClick: () => void;
+  onClick?: () => void;
+  isLoading?: boolean;
 }
 
 const getStatusStyles = (status: SignalStatus) => {
   switch (status) {
-    case "warning":
+    case 'warning':
       return {
-        color: "var(--state-warning)",
-        bgColor: "rgba(245, 158, 11, 0.08)",
-        borderColor: "rgba(245, 158, 11, 0.2)",
+        color: 'var(--status-warning)',
+        bgColor: 'var(--status-warning-bg)',
+        borderColor: 'var(--status-warning-border)',
       };
-    case "info":
+    case 'info':
       return {
-        color: "var(--state-info)",
-        bgColor: "rgba(56, 189, 248, 0.08)",
-        borderColor: "rgba(56, 189, 248, 0.2)",
+        color: 'var(--status-info)',
+        bgColor: 'var(--status-info-bg)',
+        borderColor: 'var(--status-info-border)',
       };
-    case "error":
+    case 'error':
       return {
-        color: "var(--state-error)",
-        bgColor: "rgba(239, 68, 68, 0.08)",
-        borderColor: "rgba(239, 68, 68, 0.2)",
+        color: 'var(--status-error)',
+        bgColor: 'var(--status-error-bg)',
+        borderColor: 'var(--status-error-border)',
       };
-    case "success":
+    case 'success':
       return {
-        color: "var(--state-success)",
-        bgColor: "rgba(16, 185, 129, 0.08)",
-        borderColor: "rgba(16, 185, 129, 0.2)",
+        color: 'var(--status-success)',
+        bgColor: 'var(--status-success-bg)',
+        borderColor: 'var(--status-success-border)',
       };
   }
 };
 
-function SignalCardComponent({ label, count, status, icon: Icon, onClick }: SignalCardProps) {
+function SignalCardComponent({
+  label,
+  count,
+  status,
+  icon: Icon,
+  onClick,
+  isLoading = false,
+}: SignalCardProps) {
   const styles = useMemo(() => getStatusStyles(status), [status]);
 
   return (
-    <Card
-      className="cursor-pointer transition-all hover:shadow-lg"
-      style={{
-        backgroundColor: styles.bgColor,
-        borderColor: styles.borderColor,
-      }}
+    <button
+      type="button"
       onClick={onClick}
+      disabled={isLoading || count === null || !onClick}
+      className="group w-full rounded-xl text-left outline-none transition-transform enabled:hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 disabled:cursor-default"
+      aria-label={count === null ? `${label}: unavailable` : `${label}: ${count}`}
     >
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between mb-3">
-          <div
-            className="p-2 rounded-lg"
-            style={{
-              backgroundColor: styles.bgColor,
-            }}
-          >
-            <Icon className="h-4 w-4" style={{ color: styles.color }} />
+      <Card
+        className="h-full transition-shadow group-hover:shadow-lg group-disabled:shadow-none"
+        style={{
+          backgroundColor: styles.bgColor,
+          borderColor: styles.borderColor,
+        }}
+      >
+        <CardContent className="p-5">
+          <div className="mb-4 flex items-start justify-between">
+            <div className="rounded-lg p-2" style={{ backgroundColor: styles.bgColor }}>
+              <Icon className="h-4 w-4" style={{ color: styles.color }} aria-hidden="true" />
+            </div>
           </div>
-        </div>
-        <div className="text-3xl font-semibold mb-1" style={{ color: styles.color }}>
-          {count}
-        </div>
-        <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          {label}
-        </div>
-      </CardContent>
-    </Card>
+          <div
+            className="mb-1 min-h-9 text-3xl font-semibold tabular-nums"
+            style={{ color: styles.color }}
+          >
+            {isLoading ? (
+              <span className="inline-block h-8 w-12 animate-pulse rounded bg-current opacity-15" />
+            ) : (
+              (count ?? '—')
+            )}
+          </div>
+          <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+            {label}
+          </div>
+        </CardContent>
+      </Card>
+    </button>
   );
 }
 

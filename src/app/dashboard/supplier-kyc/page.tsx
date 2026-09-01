@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { SupplierKycQueueView } from "@/components/suppliers/SupplierKycQueueView";
+import { SupplierKycQueueView } from '@/components/suppliers/SupplierKycQueueView';
 
 export default function SupplierKycQueuePage() {
   return <SupplierKycQueueView />;

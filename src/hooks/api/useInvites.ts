@@ -14,7 +14,7 @@ import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 // Query Keys
 // ============================================
 
-export const invitesKeys = {
+const invitesKeys = {
   all: ['invites'] as const,
   lists: () => [...invitesKeys.all, 'list'] as const,
   list: (params: InviteListParams) => [...invitesKeys.lists(), params] as const,
@@ -33,14 +33,6 @@ export function useInvites(params: InviteListParams = {}) {
     queryKey: invitesKeys.list(params),
     queryFn: () => invitesService.getInvites(params),
     placeholderData: (previousData) => previousData,
-  });
-}
-
-export function useInvite(inviteId: string) {
-  return useQuery({
-    queryKey: invitesKeys.detail(inviteId),
-    queryFn: () => invitesService.getInviteById(inviteId),
-    enabled: !!inviteId,
   });
 }
 

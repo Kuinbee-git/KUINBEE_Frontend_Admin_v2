@@ -55,9 +55,9 @@ export async function getInvites(
   params: InviteListParams = {}
 ): Promise<PaginatedResponse<Invite>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{ items: Invite[]; page: number; pageSize: number; total: number }>>(
-    `${API_ROUTES.ADMIN.ADMIN_INVITES.LIST}${query}`
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<{ items: Invite[]; page: number; pageSize: number; total: number }>
+  >(`${API_ROUTES.ADMIN.ADMIN_INVITES.LIST}${query}`);
   // Backend wraps paginated data in { success, data } structure
   const result = response.data.data;
   return {
@@ -72,44 +72,34 @@ export async function getInvites(
 }
 
 /**
- * Get invite detail by ID
- */
-export async function getInviteById(inviteId: string): Promise<Invite> {
-  const response = await apiClient.get<InviteResponse>(
-    API_ROUTES.ADMIN.ADMIN_INVITES.DETAIL(inviteId)
-  );
-  return response.data.invite;
-}
-
-/**
  * Create a new admin invite
  */
 export async function createInvite(data: CreateInviteRequest): Promise<Invite> {
-  const response = await apiClient.post<InviteResponse>(
+  const response = await apiClient.post<ApiSuccessResponse<InviteResponse>>(
     API_ROUTES.ADMIN.ADMIN_INVITES.CREATE,
     data
   );
-  return response.data.invite;
+  return response.data.data.invite;
 }
 
 /**
  * Resend an invite email
  */
 export async function resendInvite(inviteId: string): Promise<ResendInviteResponse['invite']> {
-  const response = await apiClient.post<ResendInviteResponse>(
+  const response = await apiClient.post<ApiSuccessResponse<ResendInviteResponse>>(
     API_ROUTES.ADMIN.ADMIN_INVITES.RESEND(inviteId)
   );
-  return response.data.invite;
+  return response.data.data.invite;
 }
 
 /**
  * Cancel an active invite
  */
 export async function cancelInvite(inviteId: string): Promise<CancelInviteResponse['invite']> {
-  const response = await apiClient.post<CancelInviteResponse>(
+  const response = await apiClient.post<ApiSuccessResponse<CancelInviteResponse>>(
     API_ROUTES.ADMIN.ADMIN_INVITES.CANCEL(inviteId)
   );
-  return response.data.invite;
+  return response.data.data.invite;
 }
 
 // ============================================
@@ -123,15 +113,15 @@ export async function getInviteAudit(
   params: InviteAuditParams = {}
 ): Promise<PaginatedResponse<InviteAuditEntry>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{
-    items: InviteAuditEntry[];
-    page: number;
-    pageSize: number;
-    total: number;
-  }>>(
-    `${API_ROUTES.SUPERADMIN.AUDIT.INVITES}${query}`
-  );
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: InviteAuditEntry[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.SUPERADMIN.AUDIT.INVITES}${query}`);
+
   const result = response.data.data;
   return {
     items: Array.isArray(result.items) ? result.items : [],
@@ -141,32 +131,4 @@ export async function getInviteAudit(
       total: result.total ?? 0,
     },
   };
-}
-
-// ============================================
-// Helpers
-// ============================================
-
-export function getInviteStatusDisplay(status: InviteStatus): {
-  label: string;
-  variant: 'success' | 'warning' | 'error' | 'default';
-} {
-  const statusMap: Record<
-    InviteStatus,
-    { label: string; variant: 'success' | 'warning' | 'error' | 'default' }
-  > = {
-    ACTIVE: { label: 'Active', variant: 'success' },
-    USED: { label: 'Used', variant: 'default' },
-    CANCELLED: { label: 'Cancelled', variant: 'warning' },
-    EXPIRED: { label: 'Expired', variant: 'error' },
-  };
-  return statusMap[status];
-}
-
-export function canResendInvite(invite: Invite): boolean {
-  return invite.usedAt === null && invite.cancelledAt === null;
-}
-
-export function canCancelInvite(invite: Invite): boolean {
-  return invite.usedAt === null && invite.cancelledAt === null;
 }

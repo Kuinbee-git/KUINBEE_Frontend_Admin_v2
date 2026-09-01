@@ -15,7 +15,7 @@ export type InviteAuditEventType = 'CREATED' | 'RESENT' | 'CANCELLED' | 'USED';
 // Invite Entity
 // ============================================
 
-export interface InviteRole {
+interface InviteRole {
   roleId: string;
   name: string;
   displayName: string;

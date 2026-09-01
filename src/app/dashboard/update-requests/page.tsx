@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { UpdateRequestsView } from "@/components/update-requests/UpdateRequestsView";
+import { UpdateRequestsView } from '@/components/update-requests/UpdateRequestsView';
 
 export default function UpdateRequestsPage() {
   return <UpdateRequestsView />;

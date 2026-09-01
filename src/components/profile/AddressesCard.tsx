@@ -9,15 +9,25 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Plus, MoreVertical, Pencil, Trash2, MapPin } from 'lucide-react';
-import { useCreateAddress, useUpdateAddress, useDeleteAddress } from '@/hooks/api/useAuth';
-import { useAddresses } from '@/hooks/api/useAddresses';
+import {
+  useAddresses,
+  useCreateAddress,
+  useDeleteAddress,
+  useUpdateAddress,
+} from '@/hooks/api/useAddresses';
 import type { CreateAddressRequest, UpdateAddressRequest } from '@/types';
 import type { Address } from '@/types/address.types';
 import { AddressDialog } from './AddressDialog';
 import { DeleteAddressDialog } from './DeleteAddressDialog';
+import { formatEnumLabel } from '@/components/shared/StatusBadge';
 
 export function AddressesCard() {
-  const { data: addresses, error: addressesError } = useAddresses();
+  const {
+    data: addresses,
+    isLoading: addressesLoading,
+    error: addressesError,
+    refetch: refetchAddresses,
+  } = useAddresses();
   const createAddressMutation = useCreateAddress();
   const updateAddressMutation = useUpdateAddress();
   const deleteAddressMutation = useDeleteAddress();
@@ -101,11 +111,18 @@ export function AddressesCard() {
     } catch {
       // Error handled by mutation
     }
-  }, [addressEditMode, addressForm, editingAddressId, createAddressMutation, updateAddressMutation, resetAddressForm]);
+  }, [
+    addressEditMode,
+    addressForm,
+    editingAddressId,
+    createAddressMutation,
+    updateAddressMutation,
+    resetAddressForm,
+  ]);
 
   const handleDeleteAddress = useCallback(async () => {
     if (!deletingAddressId) return;
-    
+
     try {
       await deleteAddressMutation.mutateAsync(deletingAddressId);
       setDeleteDialogOpen(false);
@@ -119,28 +136,36 @@ export function AddressesCard() {
     <>
       <Card style={{ backgroundColor: 'var(--bg-base)' }}>
         <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <MapPin className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
               <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                 Saved Addresses
               </h2>
             </div>
-            <Button 
-              size="sm" 
-              onClick={openCreateAddressDialog}
-              className="gap-1"
-            >
+            <Button size="sm" onClick={openCreateAddressDialog} className="gap-1">
               <Plus className="h-4 w-4" />
               Add Address
             </Button>
           </div>
 
-          {addressesError ? (
+          {addressesLoading ? (
+            <p className="py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+              Loading addresses...
+            </p>
+          ) : addressesError ? (
             <div className="text-center py-8">
               <p className="text-sm" style={{ color: 'var(--state-error)' }}>
                 Failed to load addresses
               </p>
+              <Button
+                className="mt-3"
+                variant="outline"
+                size="sm"
+                onClick={() => refetchAddresses()}
+              >
+                Retry
+              </Button>
             </div>
           ) : !addresses || addresses.length === 0 ? (
             <div className="text-center py-8">
@@ -148,9 +173,9 @@ export function AddressesCard() {
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 No addresses saved yet
               </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={openCreateAddressDialog}
                 className="mt-3"
               >
@@ -163,64 +188,79 @@ export function AddressesCard() {
                 <div
                   key={address.id}
                   className="rounded-lg border p-4 hover:shadow-sm transition-shadow"
-                  style={{ 
-                    borderColor: 'var(--border-default)', 
-                    backgroundColor: 'var(--bg-surface)' 
+                  style={{
+                    borderColor: 'var(--border-default)',
+                    backgroundColor: 'var(--bg-surface)',
                   }}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <Badge variant="secondary" className="text-xs">
-                          {address.addressType.replace(/_/g, ' ')}
+                          {formatEnumLabel(address.addressType)}
                         </Badge>
                         {address.isDefault && (
-                          <Badge 
-                            className="text-xs" 
-                            style={{ backgroundColor: 'var(--state-success)', color: '#fff' }}
+                          <Badge
+                            className="text-xs"
+                            style={{
+                              backgroundColor: 'var(--state-success)',
+                              color: 'var(--brand-on-primary)',
+                            }}
                           >
                             Default
                           </Badge>
                         )}
                         {address.label && (
-                          <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                          <span
+                            className="text-xs font-medium"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
                             {address.label}
                           </span>
                         )}
                       </div>
-                      
-                      <div className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+
+                      <div
+                        className="text-sm font-medium mb-1"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
                         {address.addressLine1}
                       </div>
-                      
+
                       {address.addressLine2 && (
                         <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                           {address.addressLine2}
                         </div>
                       )}
-                      
+
                       <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                         {address.landmark && `${address.landmark}, `}
                         {address.city}, {address.state}
                       </div>
-                      
+
                       <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                         {address.country} - {address.postalCode}
                       </div>
-                      
+
                       <div className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-                        Added on {new Date(address.createdAt).toLocaleDateString('en-IN', { 
-                          day: 'numeric', 
-                          month: 'short', 
-                          year: 'numeric' 
+                        Added on{' '}
+                        {new Date(address.createdAt).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
                         })}
                       </div>
                     </div>
-                    
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreVertical className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          aria-label={`Actions for ${address.addressLine1}`}
+                        >
+                          <MoreVertical className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -228,9 +268,9 @@ export function AddressesCard() {
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => openDeleteDialog(address.id)}
-                          className="text-red-600"
+                          className="text-[var(--status-error)]"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete

@@ -40,27 +40,27 @@ export function AddressDialog({
 }: AddressDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>
-            {mode === 'create' ? 'Add New Address' : 'Edit Address'}
-          </DialogTitle>
+          <DialogTitle>{mode === 'create' ? 'Add New Address' : 'Edit Address'}</DialogTitle>
           <DialogDescription>
-            {mode === 'create' 
-              ? 'Add a new address to your profile.' 
+            {mode === 'create'
+              ? 'Add a new address to your profile.'
               : 'Update your address details.'}
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="addressType">Address Type</Label>
-              <Select 
-                value={addressForm.addressType} 
-                onValueChange={(value) => setAddressForm({ ...addressForm, addressType: value as AddressType })}
+              <Select
+                value={addressForm.addressType}
+                onValueChange={(value) =>
+                  setAddressForm({ ...addressForm, addressType: value as AddressType })
+                }
               >
-                <SelectTrigger className="mt-1">
+                <SelectTrigger id="addressType" className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -80,6 +80,7 @@ export function AddressDialog({
                 onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })}
                 placeholder="e.g., Home, Office"
                 className="mt-1"
+                maxLength={80}
               />
             </div>
           </div>
@@ -92,6 +93,9 @@ export function AddressDialog({
               onChange={(e) => setAddressForm({ ...addressForm, addressLine1: e.target.value })}
               placeholder="House/Flat No., Street Name"
               className="mt-1"
+              maxLength={200}
+              autoComplete="address-line1"
+              required
             />
           </div>
 
@@ -103,6 +107,8 @@ export function AddressDialog({
               onChange={(e) => setAddressForm({ ...addressForm, addressLine2: e.target.value })}
               placeholder="Area, Colony"
               className="mt-1"
+              maxLength={200}
+              autoComplete="address-line2"
             />
           </div>
 
@@ -114,10 +120,11 @@ export function AddressDialog({
               onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
               placeholder="Near Metro Station, School, etc."
               className="mt-1"
+              maxLength={200}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="city">City *</Label>
               <Input
@@ -126,6 +133,9 @@ export function AddressDialog({
                 onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
                 placeholder="Pune"
                 className="mt-1"
+                maxLength={100}
+                autoComplete="address-level2"
+                required
               />
             </div>
             <div>
@@ -136,11 +146,14 @@ export function AddressDialog({
                 onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
                 placeholder="Maharashtra"
                 className="mt-1"
+                maxLength={100}
+                autoComplete="address-level1"
+                required
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="country">Country</Label>
               <Input
@@ -149,6 +162,8 @@ export function AddressDialog({
                 onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
                 placeholder="India"
                 className="mt-1"
+                maxLength={100}
+                autoComplete="country-name"
               />
             </div>
             <div>
@@ -159,6 +174,9 @@ export function AddressDialog({
                 onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
                 placeholder="411038"
                 className="mt-1"
+                maxLength={32}
+                autoComplete="postal-code"
+                required
               />
             </div>
           </div>
@@ -176,25 +194,20 @@ export function AddressDialog({
         </div>
 
         <DialogFooter>
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button 
+          <Button
             onClick={onSave}
             disabled={
               isSaving ||
-              !addressForm.addressLine1 ||
-              !addressForm.city ||
-              !addressForm.state ||
-              !addressForm.postalCode
+              !addressForm.addressLine1.trim() ||
+              !addressForm.city.trim() ||
+              !addressForm.state.trim() ||
+              !addressForm.postalCode.trim()
             }
           >
-            {isSaving 
-              ? 'Saving...' 
-              : mode === 'create' ? 'Add Address' : 'Save Changes'}
+            {isSaving ? 'Saving...' : mode === 'create' ? 'Add Address' : 'Save Changes'}
           </Button>
         </DialogFooter>
       </DialogContent>

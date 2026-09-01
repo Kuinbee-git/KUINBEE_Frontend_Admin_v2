@@ -6,18 +6,15 @@
 import { apiClient } from '@/lib/api/client';
 import { API_ROUTES } from '@/lib/constants/api-routes';
 import { buildQueryString } from '@/lib/utils/service.utils';
+import { normalizePermissions, type Permission } from '@/lib/constants/permissions';
 import type {
   Role,
   RoleListItem,
   CreateRoleRequest,
   UpdateRoleRequest,
   ReplacePermissionsRequest,
-  AddPermissionRequest,
-  RemovePermissionRequest,
-  UpdateAdminRolesRequest,
   RoleResponse,
   RolePermissionsResponse,
-  AdminRolesResponse,
   AdminRoleAuditEntry,
   RolePermissionAuditEntry,
   AdminRoleAuditEventType,
@@ -75,9 +72,9 @@ export async function getRoles(
   params: RoleListParams = {}
 ): Promise<PaginatedResponse<RoleListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{ items: RoleListItem[]; page: number; pageSize: number; total: number }>>(
-    `${API_ROUTES.SUPERADMIN.ROLES.LIST}${query}`
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<{ items: RoleListItem[]; page: number; pageSize: number; total: number }>
+  >(`${API_ROUTES.ADMIN.ROLES.LIST}${query}`);
   // Backend wraps paginated data in { success, data } structure
   const result = response.data.data;
   return {
@@ -92,35 +89,25 @@ export async function getRoles(
 }
 
 /**
- * Get role detail by ID
- */
-export async function getRoleById(roleId: string): Promise<Role> {
-  const response = await apiClient.get<RoleResponse>(
-    API_ROUTES.SUPERADMIN.ROLES.DETAIL(roleId)
-  );
-  return response.data.role;
-}
-
-/**
  * Create a new role
  */
 export async function createRole(data: CreateRoleRequest): Promise<Role> {
-  const response = await apiClient.post<RoleResponse>(
+  const response = await apiClient.post<ApiSuccessResponse<RoleResponse>>(
     API_ROUTES.SUPERADMIN.ROLES.CREATE,
     data
   );
-  return response.data.role;
+  return response.data.data.role;
 }
 
 /**
  * Update a role
  */
 export async function updateRole(roleId: string, data: UpdateRoleRequest): Promise<Role> {
-  const response = await apiClient.patch<RoleResponse>(
+  const response = await apiClient.patch<ApiSuccessResponse<RoleResponse>>(
     API_ROUTES.SUPERADMIN.ROLES.UPDATE(roleId),
     data
   );
-  return response.data.role;
+  return response.data.data.role;
 }
 
 // ============================================
@@ -130,11 +117,11 @@ export async function updateRole(roleId: string, data: UpdateRoleRequest): Promi
 /**
  * Get permissions for a role
  */
-export async function getRolePermissions(roleId: string): Promise<string[]> {
-  const response = await apiClient.get<{ data: { roleId: string; permissions: string[] } }>(
-    API_ROUTES.SUPERADMIN.ROLES.PERMISSIONS.LIST(roleId)
-  );
-  return response.data.data.permissions;
+export async function getRolePermissions(roleId: string): Promise<Permission[]> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<{ roleId: string; permissions: string[] }>
+  >(API_ROUTES.SUPERADMIN.ROLES.PERMISSIONS.LIST(roleId));
+  return normalizePermissions(response.data.data.permissions);
 }
 
 /**
@@ -143,68 +130,12 @@ export async function getRolePermissions(roleId: string): Promise<string[]> {
 export async function replaceRolePermissions(
   roleId: string,
   data: ReplacePermissionsRequest
-): Promise<string[]> {
-  const response = await apiClient.put<RolePermissionsResponse>(
-    API_ROUTES.SUPERADMIN.ROLES.PERMISSIONS.REPLACE(roleId),
+): Promise<Permission[]> {
+  const response = await apiClient.put<ApiSuccessResponse<RolePermissionsResponse>>(
+    API_ROUTES.SUPERADMIN.ROLES.PERMISSIONS.PUT(roleId),
     data
   );
-  return response.data.permissions;
-}
-
-/**
- * Add a permission to a role
- */
-export async function addRolePermission(
-  roleId: string,
-  data: AddPermissionRequest
-): Promise<string[]> {
-  const response = await apiClient.post<RolePermissionsResponse>(
-    API_ROUTES.SUPERADMIN.ROLES.PERMISSIONS.ADD(roleId),
-    data
-  );
-  return response.data.permissions;
-}
-
-/**
- * Remove a permission from a role
- */
-export async function removeRolePermission(
-  roleId: string,
-  data: RemovePermissionRequest
-): Promise<string[]> {
-  const response = await apiClient.delete<RolePermissionsResponse>(
-    API_ROUTES.SUPERADMIN.ROLES.PERMISSIONS.REMOVE(roleId),
-    { permission: data.permission }
-  );
-  return response.data.permissions;
-}
-
-// ============================================
-// Admin Roles
-// ============================================
-
-/**
- * Get roles assigned to an admin
- */
-export async function getAdminRoles(adminId: string): Promise<AdminRolesResponse['roles']> {
-  const response = await apiClient.get<AdminRolesResponse>(
-    API_ROUTES.SUPERADMIN.ADMIN_ROLES.LIST(adminId)
-  );
-  return response.data.roles;
-}
-
-/**
- * Update roles for an admin (replaces all roles)
- */
-export async function updateAdminRoles(
-  adminId: string,
-  data: UpdateAdminRolesRequest
-): Promise<AdminRolesResponse['roles']> {
-  const response = await apiClient.put<AdminRolesResponse>(
-    API_ROUTES.SUPERADMIN.ADMIN_ROLES.UPDATE(adminId),
-    data
-  );
-  return response.data.roles;
+  return normalizePermissions(response.data.data.permissions);
 }
 
 // ============================================
@@ -218,15 +149,15 @@ export async function getAdminRoleAudit(
   params: AdminRoleAuditParams = {}
 ): Promise<PaginatedResponse<AdminRoleAuditEntry>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{
-    items: AdminRoleAuditEntry[];
-    page: number;
-    pageSize: number;
-    total: number;
-  }>>(
-    `${API_ROUTES.SUPERADMIN.AUDIT.ADMIN_ROLES}${query}`
-  );
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: AdminRoleAuditEntry[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.SUPERADMIN.AUDIT.ADMIN_ROLES}${query}`);
+
   const result = response.data.data;
   return {
     items: Array.isArray(result.items) ? result.items : [],
@@ -245,15 +176,15 @@ export async function getRolePermissionAudit(
   params: RolePermissionAuditParams = {}
 ): Promise<PaginatedResponse<RolePermissionAuditEntry>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{
-    items: RolePermissionAuditEntry[];
-    page: number;
-    pageSize: number;
-    total: number;
-  }>>(
-    `${API_ROUTES.SUPERADMIN.AUDIT.ROLE_PERMISSIONS}${query}`
-  );
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: RolePermissionAuditEntry[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.SUPERADMIN.AUDIT.ROLE_PERMISSIONS}${query}`);
+
   const result = response.data.data;
   return {
     items: Array.isArray(result.items) ? result.items : [],
@@ -272,9 +203,9 @@ export async function getRolePermissionAudit(
 /**
  * Get all available permissions in the system
  */
-export async function getAllPermissions(): Promise<string[]> {
-  const response = await apiClient.get<{ data: { permissions: string[] } }>(
+export async function getAllPermissions(): Promise<Permission[]> {
+  const response = await apiClient.get<ApiSuccessResponse<{ permissions: string[] }>>(
     API_ROUTES.PERMISSIONS
   );
-  return response.data.data.permissions;
+  return normalizePermissions(response.data.data.permissions);
 }

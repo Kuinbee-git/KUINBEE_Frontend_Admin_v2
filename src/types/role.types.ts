@@ -3,6 +3,8 @@
  * Matches backend /api/v1/superadmin/roles/* responses
  */
 
+import type { Permission } from '@/lib/constants/permissions';
+
 // ============================================
 // Enums
 // ============================================
@@ -26,7 +28,7 @@ export interface Role {
   /** Included in list view */
   permissionCount?: number;
   /** Included in detail view */
-  permissions?: string[];
+  permissions?: Permission[];
 }
 
 export interface RoleListItem {
@@ -49,7 +51,7 @@ export interface CreateRoleRequest {
   name: string;
   displayName: string;
   description?: string;
-  permissions: string[];
+  permissions: Permission[];
 }
 
 export interface UpdateRoleRequest {
@@ -59,15 +61,7 @@ export interface UpdateRoleRequest {
 }
 
 export interface ReplacePermissionsRequest {
-  permissions: string[];
-}
-
-export interface AddPermissionRequest {
-  permission: string;
-}
-
-export interface RemovePermissionRequest {
-  permission: string;
+  permissions: Permission[];
 }
 
 // ============================================
@@ -80,7 +74,7 @@ export interface RoleResponse {
 
 export interface RolePermissionsResponse {
   roleId: string;
-  permissions: string[];
+  permissions: Permission[];
 }
 
 // ============================================

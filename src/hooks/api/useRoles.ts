@@ -11,18 +11,13 @@ import type {
   AdminRoleAuditParams,
   RolePermissionAuditParams,
 } from '@/services/roles.service';
-import type {
-  CreateRoleRequest,
-  UpdateRoleRequest,
-  ReplacePermissionsRequest,
-  AddPermissionRequest,
-  RemovePermissionRequest,
-} from '@/types';import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
+import type { CreateRoleRequest, UpdateRoleRequest, ReplacePermissionsRequest } from '@/types';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 // ============================================
 // Query Keys
 // ============================================
 
-export const rolesKeys = {
+const rolesKeys = {
   all: ['roles'] as const,
   lists: () => [...rolesKeys.all, 'list'] as const,
   list: (params: RoleListParams) => [...rolesKeys.lists(), params] as const,
@@ -32,9 +27,11 @@ export const rolesKeys = {
   allPermissions: () => [...rolesKeys.all, 'all-permissions'] as const,
   audit: {
     adminRoles: () => [...rolesKeys.all, 'audit', 'admin-roles'] as const,
-    adminRolesList: (params: AdminRoleAuditParams) => [...rolesKeys.audit.adminRoles(), params] as const,
+    adminRolesList: (params: AdminRoleAuditParams) =>
+      [...rolesKeys.audit.adminRoles(), params] as const,
     rolePermissions: () => [...rolesKeys.all, 'audit', 'role-permissions'] as const,
-    rolePermissionsList: (params: RolePermissionAuditParams) => [...rolesKeys.audit.rolePermissions(), params] as const,
+    rolePermissionsList: (params: RolePermissionAuditParams) =>
+      [...rolesKeys.audit.rolePermissions(), params] as const,
   },
 };
 
@@ -47,14 +44,6 @@ export function useRoles(params: RoleListParams = {}) {
     queryKey: rolesKeys.list(params),
     queryFn: () => rolesService.getRoles(params),
     placeholderData: (previousData) => previousData,
-  });
-}
-
-export function useRole(roleId: string) {
-  return useQuery({
-    queryKey: rolesKeys.detail(roleId),
-    queryFn: () => rolesService.getRoleById(roleId),
-    enabled: !!roleId,
   });
 }
 
@@ -78,10 +67,14 @@ export function useAllPermissions() {
 // Audit Queries
 // ============================================
 
-export function useAdminRoleAudit(params: AdminRoleAuditParams = {}) {
+export function useAdminRoleAudit(
+  params: AdminRoleAuditParams = {},
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: rolesKeys.audit.adminRolesList(params),
     queryFn: () => rolesService.getAdminRoleAudit(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -149,39 +142,6 @@ export function useReplaceRolePermissions() {
   });
 }
 
-export function useAddRolePermission() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ roleId, data }: { roleId: string; data: AddPermissionRequest }) =>
-      rolesService.addRolePermission(roleId, data),
-    onSuccess: (_, { roleId }) => {
-      queryClient.invalidateQueries({ queryKey: rolesKeys.permissions(roleId) });
-      toast.success('Permission added');
-    },
-    onError: (error) => {
-      toast.error(getFriendlyErrorMessage(error));
-    },
-  });
-}
-
-export function useRemoveRolePermission() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ roleId, data }: { roleId: string; data: RemovePermissionRequest }) =>
-      rolesService.removeRolePermission(roleId, data),
-    onSuccess: (_, { roleId }) => {
-      queryClient.invalidateQueries({ queryKey: rolesKeys.permissions(roleId) });
-      toast.success('Permission removed');
-    },
-    onError: (error) => {
-      toast.error(getFriendlyErrorMessage(error));
-    },
-  });
-}
-
 // ============================================
 // Admin Role Mutations
 // ============================================
-

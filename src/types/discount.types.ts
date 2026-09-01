@@ -1,7 +1,7 @@
 import type { Currency, DatasetStatus } from './dataset.types';
 
 export type DiscountTargetSurface = 'DATASET_PRICING' | 'SAMPLE_ACTUAL_PRICE';
-export type DiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT';
+type DiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT';
 export type DiscountProposalStatus =
   | 'DRAFT'
   | 'SUBMITTED'
@@ -12,7 +12,7 @@ export type DiscountProposalStatus =
   | 'EXPIRED'
   | 'CANCELLED';
 
-export interface DatasetPricingDto {
+interface DatasetPricingDto {
   id: string;
   datasetId: string;
   status: string;
@@ -52,7 +52,7 @@ export interface DatasetDiscountProposal {
   updatedAt: string;
 }
 
-export interface AdminDiscountProposalDataset {
+interface AdminDiscountProposalDataset {
   id: string;
   datasetUniqueId: string;
   title: string;

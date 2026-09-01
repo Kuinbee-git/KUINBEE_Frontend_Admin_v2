@@ -21,8 +21,8 @@ import {
   useDiscountProposalReview,
   useRejectDiscountProposal,
 } from '@/hooks/api/useDiscountProposals';
-import { useMyPermissions } from '@/hooks/api/useAuth';
-import { useAuthStore } from '@/store/auth.store';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/lib/constants/permissions';
 import {
   discountStatusSemantic,
   formatDateTime,
@@ -81,18 +81,15 @@ function NotesBlock({ label, value }: { label: string; value: string | null }) {
 
 export function DiscountProposalDetail({ discountProposalId }: { discountProposalId: string }) {
   const query = useDiscountProposalReview(discountProposalId);
-  const permissionsQuery = useMyPermissions();
-  const user = useAuthStore((state) => state.user);
+  const { can } = useAuthorization();
   const approveMutation = useApproveDiscountProposal();
   const rejectMutation = useRejectDiscountProposal();
   const [action, setAction] = useState<ReviewAction>(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
 
-  const isSuperAdmin = user?.userType === 'SUPERADMIN';
-  const permissions = permissionsQuery.data ?? [];
-  const canApprove = isSuperAdmin || permissions.includes('APPROVE_DATASET');
-  const canReject = isSuperAdmin || permissions.includes('REJECT_DATASET');
+  const canApprove = can({ anyOf: [PERMISSIONS.DATASETS.APPROVE] });
+  const canReject = can({ anyOf: [PERMISSIONS.DATASETS.REJECT] });
   const isMutating = approveMutation.isPending || rejectMutation.isPending;
 
   const closeDialog = () => {
@@ -280,7 +277,7 @@ export function DiscountProposalDetail({ discountProposalId }: { discountProposa
                       {canReject ? (
                         <Button
                           variant="outline"
-                          className="border-red-500/40 text-red-600 hover:bg-red-500/10 hover:text-red-600"
+                          className="border-[var(--status-error-border)] text-[var(--status-error)] hover:bg-[var(--status-error-bg)] hover:text-[var(--status-error)]"
                           onClick={() => setAction('reject')}
                         >
                           Reject proposal
@@ -374,7 +371,11 @@ export function DiscountProposalDetail({ discountProposalId }: { discountProposa
             <Button
               onClick={confirmAction}
               disabled={isMutating || (action === 'reject' && !rejectionReason.trim())}
-              className={action === 'reject' ? 'bg-red-600 text-white hover:bg-red-700' : undefined}
+              className={
+                action === 'reject'
+                  ? 'bg-[var(--action-destructive)] text-[var(--action-on-status)] hover:opacity-90'
+                  : undefined
+              }
             >
               {isMutating
                 ? 'Saving...'

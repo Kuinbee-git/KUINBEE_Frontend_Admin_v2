@@ -137,13 +137,13 @@ export function DiscountProposalsView() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-surface)' }}>
       <div
-        className="border-b p-6"
+        className="border-b p-4 sm:p-6"
         style={{
           backgroundColor: 'var(--bg-base)',
           borderColor: 'var(--border-default)',
         }}
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
               Discount proposals
@@ -165,7 +165,7 @@ export function DiscountProposalsView() {
         onClearAll={activeFilters.length > 0 ? clearAllFilters : undefined}
       />
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div
           className="overflow-hidden rounded-lg border"
           style={{
@@ -177,7 +177,7 @@ export function DiscountProposalsView() {
             <TableSkeleton columns={7} rows={6} />
           ) : query.isError ? (
             <div className="p-8 text-center">
-              <p className="text-red-500">Failed to load discount proposals.</p>
+              <p className="text-[var(--status-error)]">Failed to load discount proposals.</p>
               <Button variant="outline" className="mt-4" onClick={() => query.refetch()}>
                 Retry
               </Button>

@@ -9,7 +9,7 @@ import type {
 } from '@/types/discount.types';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 
-export const discountProposalKeys = {
+const discountProposalKeys = {
   all: ['discount-proposals'] as const,
   lists: () => [...discountProposalKeys.all, 'list'] as const,
   list: (params: DiscountProposalListParams) => [...discountProposalKeys.lists(), params] as const,

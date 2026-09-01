@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,21 +8,21 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Upload, Loader2, File as FileIcon, X, CheckCircle2, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { useUploadDatasetFile } from "@/hooks/api/useDatasets";
-import type { UploadScope } from "@/types/dataset.types";
+} from '@/components/ui/select';
+import { Upload, Loader2, File as FileIcon, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { useUploadDatasetFile } from '@/hooks/api/useDatasets';
+import type { UploadScope } from '@/types/dataset.types';
 
 interface UploadDatasetDialogProps {
   open: boolean;
@@ -31,15 +31,17 @@ interface UploadDatasetDialogProps {
   onUploadComplete?: () => void;
 }
 
-type UploadPhase = "idle" | "starting" | "uploading" | "completing" | "done" | "error";
+type UploadPhase = 'idle' | 'starting' | 'uploading' | 'completing' | 'done' | 'error';
+
+const MAX_SINGLE_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024;
 
 const PHASE_LABELS: Record<UploadPhase, string> = {
-  idle: "",
-  starting: "Preparing upload…",
-  uploading: "Uploading to storage…",
-  completing: "Finalising…",
-  done: "Upload complete!",
-  error: "Upload failed",
+  idle: '',
+  starting: 'Preparing upload…',
+  uploading: 'Uploading to storage…',
+  completing: 'Finalising…',
+  done: 'Upload complete!',
+  error: 'Upload failed',
 };
 
 export function UploadDatasetDialog({
@@ -49,20 +51,30 @@ export function UploadDatasetDialog({
   onUploadComplete,
 }: UploadDatasetDialogProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [scope, setScope] = useState<UploadScope>("FINAL");
-  const [phase, setPhase] = useState<UploadPhase>("idle");
+  const [scope, setScope] = useState<UploadScope>('FINAL');
+  const [phase, setPhase] = useState<UploadPhase>('idle');
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useUploadDatasetFile();
 
-  const isUploading = phase !== "idle" && phase !== "done" && phase !== "error";
+  const isUploading = phase !== 'idle' && phase !== 'done' && phase !== 'error';
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size === 0) {
+        toast.error('Empty files cannot be uploaded');
+        e.target.value = '';
+        return;
+      }
+      if (file.size > MAX_SINGLE_UPLOAD_BYTES) {
+        toast.error('Files larger than 5 GB require a multipart upload workflow');
+        e.target.value = '';
+        return;
+      }
       setSelectedFile(file);
-      setPhase("idle");
+      setPhase('idle');
     }
   };
 
@@ -71,8 +83,16 @@ export function UploadDatasetDialog({
     setIsDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) {
+      if (file.size === 0) {
+        toast.error('Empty files cannot be uploaded');
+        return;
+      }
+      if (file.size > MAX_SINGLE_UPLOAD_BYTES) {
+        toast.error('Files larger than 5 GB require a multipart upload workflow');
+        return;
+      }
       setSelectedFile(file);
-      setPhase("idle");
+      setPhase('idle');
     }
   }, []);
 
@@ -87,37 +107,37 @@ export function UploadDatasetDialog({
 
   const removeFile = () => {
     setSelectedFile(null);
-    setPhase("idle");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setPhase('idle');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedFile) {
-      toast.error("Please select a file to upload");
+      toast.error('Please select a file to upload');
       return;
     }
 
-    setPhase("uploading");
+    setPhase('uploading');
 
     try {
       await uploadMutation.mutateAsync({ datasetId, file: selectedFile, scope });
-      setPhase("done");
+      setPhase('done');
       setTimeout(() => {
         onUploadComplete?.();
         resetAndClose();
       }, 1200);
     } catch {
-      setPhase("error");
+      setPhase('error');
     }
   };
 
   const resetAndClose = () => {
     setSelectedFile(null);
-    setScope("FINAL");
-    setPhase("idle");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setScope('FINAL');
+    setPhase('idle');
+    if (fileInputRef.current) fileInputRef.current.value = '';
     onOpenChange(false);
   };
 
@@ -175,13 +195,18 @@ export function UploadDatasetDialog({
                 tabIndex={0}
                 aria-label="Click or drag a file to upload"
                 className={cn(
-                  "flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-colors cursor-pointer outline-none",
+                  'flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-colors cursor-pointer outline-none',
                   isDragOver
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/60 hover:bg-muted/40"
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/60 hover:bg-muted/40'
                 )}
                 onClick={() => fileInputRef.current?.click()}
-                onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -191,7 +216,7 @@ export function UploadDatasetDialog({
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium text-foreground">
-                    Drop a file here or{" "}
+                    Drop a file here or{' '}
                     <span className="text-primary underline-offset-2 hover:underline">
                       click to browse
                     </span>
@@ -203,6 +228,7 @@ export function UploadDatasetDialog({
                 <input
                   ref={fileInputRef}
                   type="file"
+                  aria-label="Choose a dataset file"
                   onChange={handleFileSelect}
                   className="hidden"
                   tabIndex={-1}
@@ -223,7 +249,7 @@ export function UploadDatasetDialog({
                       {selectedFile.type && ` · ${selectedFile.type}`}
                     </p>
                   </div>
-                  {!isUploading && phase !== "done" && (
+                  {!isUploading && phase !== 'done' && (
                     <button
                       type="button"
                       onClick={removeFile}
@@ -249,15 +275,15 @@ export function UploadDatasetDialog({
                 )}
 
                 {/* Done state */}
-                {phase === "done" && (
-                  <div className="mt-3 flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                {phase === 'done' && (
+                  <div className="mt-3 flex items-center gap-2 text-[var(--status-success)]">
                     <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                     <span className="text-xs font-medium">Upload complete!</span>
                   </div>
                 )}
 
                 {/* Error state */}
-                {phase === "error" && (
+                {phase === 'error' && (
                   <div className="mt-3 flex items-center gap-2 text-destructive">
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     <span className="text-xs font-medium">Upload failed — please try again.</span>
@@ -276,9 +302,9 @@ export function UploadDatasetDialog({
               disabled={isUploading}
               className="min-w-[80px]"
             >
-              {phase === "done" ? "Close" : "Cancel"}
+              {phase === 'done' ? 'Close' : 'Cancel'}
             </Button>
-            {phase !== "done" && (
+            {phase !== 'done' && (
               <Button
                 type="submit"
                 disabled={isUploading || !selectedFile}

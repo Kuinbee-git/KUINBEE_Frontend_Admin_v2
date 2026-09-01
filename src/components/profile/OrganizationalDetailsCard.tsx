@@ -25,7 +25,7 @@ export function OrganizationalDetailsCard({ profile }: OrganizationalDetailsCard
         department: editedDepartment.trim() || null,
       },
     };
-    
+
     try {
       await updateProfileMutation.mutateAsync(data);
       setEditingOrgDetails(false);
@@ -42,9 +42,9 @@ export function OrganizationalDetailsCard({ profile }: OrganizationalDetailsCard
             Organizational Details
           </h2>
           {!editingOrgDetails && (
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => {
                 initializeOrgForm();
                 setEditingOrgDetails(true);
@@ -54,7 +54,7 @@ export function OrganizationalDetailsCard({ profile }: OrganizationalDetailsCard
             </Button>
           )}
         </div>
-        
+
         <div className="space-y-3">
           {editingOrgDetails ? (
             <>
@@ -66,16 +66,14 @@ export function OrganizationalDetailsCard({ profile }: OrganizationalDetailsCard
                   onChange={(e) => setEditedDepartment(e.target.value)}
                   placeholder="e.g., Data Governance, Operations"
                   className="mt-1"
+                  maxLength={120}
                 />
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setEditingOrgDetails(false)}>
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleSaveOrgDetails}
-                  disabled={updateProfileMutation.isPending}
-                >
+                <Button onClick={handleSaveOrgDetails} disabled={updateProfileMutation.isPending}>
                   {updateProfileMutation.isPending ? 'Saving...' : 'Save'}
                 </Button>
               </div>
@@ -83,28 +81,28 @@ export function OrganizationalDetailsCard({ profile }: OrganizationalDetailsCard
           ) : (
             <>
               <div>
-                <Label className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   Employee ID
-                </Label>
+                </p>
                 <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
                   {profile?.adminProfile?.employeeId || 'Not set'}
                 </p>
               </div>
               <div>
-                <Label className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   Department
-                </Label>
+                </p>
                 <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
                   {profile?.adminProfile?.department || 'Not set'}
                 </p>
               </div>
               <div>
-                <Label className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   Joining Date
-                </Label>
+                </p>
                 <p className="mt-1" style={{ color: 'var(--text-primary)' }}>
-                  {profile?.adminProfile?.joiningDate 
-                    ? new Date(profile.adminProfile.joiningDate).toLocaleDateString() 
+                  {profile?.adminProfile?.joiningDate
+                    ? new Date(profile.adminProfile.joiningDate).toLocaleDateString()
                     : 'Not set'}
                 </p>
               </div>

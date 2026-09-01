@@ -4,6 +4,5 @@ export { OrganizationalDetailsCard } from './OrganizationalDetailsCard';
 export { AddressesCard } from './AddressesCard';
 export { PermissionsCard } from './PermissionsCard';
 export { ProfileSkeleton } from './ProfileSkeleton';
-export { AddressDialog } from './AddressDialog';
-export { DeleteAddressDialog } from './DeleteAddressDialog';
 export { ErrorFallback } from './ErrorFallback';
+export { SecurityCard } from './SecurityCard';

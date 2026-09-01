@@ -1,15 +1,13 @@
 /**
  * SegmentedToggle - Canonical control for fast, mutually exclusive state switching
- * 
+ *
  * Design Philosophy:
  * - Visually integrates with dropdowns (same height, spacing, rhythm)
  * - Feels like "segmented dropdown" not "pill buttons"
  * - Used only for high-frequency workflow switches with small option sets
  */
 
-"use client";
-
-import React from "react";
+'use client';
 
 interface SegmentedToggleOption {
   value: string;
@@ -25,41 +23,41 @@ interface SegmentedToggleProps {
 
 export function SegmentedToggle({ label, value, options, onChange }: SegmentedToggleProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
       {label && (
-        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {label}
         </span>
       )}
       <div
         className="inline-flex rounded-md"
+        role="group"
+        aria-label={label ?? 'View options'}
         style={{
-          backgroundColor: "var(--bg-surface)",
-          border: "1px solid var(--border-default)",
-          padding: "2px",
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border-default)',
+          padding: '2px',
         }}
       >
         {options.map((option, index) => {
           const isActive = value === option.value;
           const isFirst = index === 0;
           const isLast = index === options.length - 1;
-          
+
           return (
             <button
+              type="button"
               key={option.value}
               onClick={() => onChange(option.value)}
+              aria-pressed={isActive}
               className="px-3 py-1.5 text-xs transition-all"
               style={{
-                backgroundColor: isActive ? "var(--brand-primary)" : "transparent",
-                color: isActive ? "#ffffff" : "var(--text-primary)",
-                borderRadius: isFirst 
-                  ? "4px 0 0 4px" 
-                  : isLast 
-                  ? "0 4px 4px 0" 
-                  : "0",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: isActive ? "500" : "400",
+                backgroundColor: isActive ? 'var(--action-primary)' : 'transparent',
+                color: isActive ? 'var(--primary-foreground)' : 'var(--text-primary)',
+                borderRadius: isFirst ? '4px 0 0 4px' : isLast ? '0 4px 4px 0' : '0',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: isActive ? '500' : '400',
               }}
             >
               {option.label}

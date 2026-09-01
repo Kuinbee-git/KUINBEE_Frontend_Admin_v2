@@ -8,10 +8,10 @@
  * - No visual variance between different entity types
  */
 
-import React from 'react';
+import { type CSSProperties } from 'react';
 import { Badge } from '../ui/badge';
 
-type SemanticStatus =
+export type SemanticStatus =
   | 'success' // Published, Verified, Approved
   | 'in_progress' // Under Review, In Progress
   | 'pending' // Pending Verification, Pending
@@ -26,50 +26,49 @@ interface StatusBadgeProps {
 
 const semanticStyles: Record<SemanticStatus, { bg: string; color: string; border: string }> = {
   success: {
-    bg: 'rgba(16, 185, 129, 0.1)',
-    color: 'var(--state-success)',
-    border: 'rgba(16, 185, 129, 0.3)',
+    bg: 'var(--status-success-bg)',
+    color: 'var(--status-success)',
+    border: 'var(--status-success-border)',
   },
   in_progress: {
-    bg: 'rgba(56, 189, 248, 0.1)',
-    color: '#38bdf8',
-    border: 'rgba(56, 189, 248, 0.3)',
+    bg: 'var(--status-info-bg)',
+    color: 'var(--status-info)',
+    border: 'var(--status-info-border)',
   },
   pending: {
-    bg: 'rgba(245, 158, 11, 0.1)',
-    color: 'var(--state-warning)',
-    border: 'rgba(245, 158, 11, 0.3)',
+    bg: 'var(--status-warning-bg)',
+    color: 'var(--status-warning)',
+    border: 'var(--status-warning-border)',
   },
   neutral: {
-    bg: 'rgba(107, 114, 128, 0.1)',
-    color: 'var(--text-muted)',
-    border: 'rgba(107, 114, 128, 0.3)',
+    bg: 'var(--status-neutral-bg)',
+    color: 'var(--status-neutral)',
+    border: 'var(--status-neutral-border)',
   },
   warning: {
-    bg: 'rgba(245, 158, 11, 0.1)',
-    color: 'var(--state-warning)',
-    border: 'rgba(245, 158, 11, 0.3)',
+    bg: 'var(--status-warning-bg)',
+    color: 'var(--status-warning)',
+    border: 'var(--status-warning-border)',
   },
   error: {
-    bg: 'rgba(239, 68, 68, 0.1)',
-    color: 'var(--state-error)',
-    border: 'rgba(239, 68, 68, 0.3)',
+    bg: 'var(--status-error-bg)',
+    color: 'var(--status-error)',
+    border: 'var(--status-error-border)',
   },
 };
 
-export function StatusBadge({ status, semanticType }: StatusBadgeProps) {
+export function getSemanticStatusStyle(semanticType: SemanticStatus): CSSProperties {
   const style = semanticStyles[semanticType];
+  return {
+    backgroundColor: style.bg,
+    color: style.color,
+    borderColor: style.border,
+  };
+}
 
+export function StatusBadge({ status, semanticType }: StatusBadgeProps) {
   return (
-    <Badge
-      variant="outline"
-      className="text-xs"
-      style={{
-        backgroundColor: style.bg,
-        color: style.color,
-        borderColor: style.border,
-      }}
-    >
+    <Badge variant="outline" className="text-xs" style={getSemanticStatusStyle(semanticType)}>
       {status}
     </Badge>
   );
@@ -86,6 +85,7 @@ export function getDatasetStatusSemantic(status: string): SemanticStatus {
     case 'UNDER_REVIEW':
       return 'in_progress';
     case 'SUBMITTED':
+    case 'RESUBMITTED':
     case 'PENDING_VERIFICATION':
     case 'PENDING_REVIEW':
     case 'PENDING':
@@ -127,25 +127,49 @@ export function getVerificationStatusSemantic(status: string): SemanticStatus {
 
 // Helper function to map KYC status to semantic type
 export function getKYCStatusSemantic(status: string): SemanticStatus {
-  switch (status) {
-    case 'verified':
+  switch (status.toUpperCase()) {
+    case 'VERIFIED':
       return 'success';
-    case 'in_progress':
+    case 'IN_PROGRESS':
       return 'in_progress';
-    case 'pending':
+    case 'PENDING':
       return 'pending';
-    case 'rejected':
-    case 'failed':
+    case 'REJECTED':
+    case 'FAILED':
       return 'error';
     default:
       return 'neutral';
   }
 }
 
-// Format status labels consistently
-export function formatStatusLabel(status: string): string {
-  return status
+const DISPLAY_ACRONYMS = new Set([
+  'API',
+  'CSV',
+  'GST',
+  'GSTIN',
+  'ID',
+  'JSON',
+  'KYC',
+  'PAN',
+  'PDF',
+  'URL',
+  'XML',
+  'ZIP',
+]);
+
+export function formatEnumLabel(value: string): string {
+  return value
     .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => {
+      const upper = word.toUpperCase();
+      if (DISPLAY_ACRONYMS.has(upper)) return upper;
+      const lower = word.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
     .join(' ');
+}
+
+// Format status labels consistently.
+export function formatStatusLabel(status: string): string {
+  return formatEnumLabel(status);
 }

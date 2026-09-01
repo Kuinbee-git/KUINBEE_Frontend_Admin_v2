@@ -1,38 +1,34 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useThemeStore } from "@/store/theme.store";
-import { PasswordInput } from "@/components/shared/PasswordInput";
-import { useAcceptInvite } from "@/hooks";
-import type { ApiError } from "@/types";
+import { useState, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PasswordInput } from '@/components/shared/PasswordInput';
+import { useAcceptInvite } from '@/hooks';
+import type { ApiError } from '@/types';
 
 interface AcceptInviteFormProps {
   token: string;
 }
 
 export function AcceptInviteForm({ token }: AcceptInviteFormProps) {
-  const { theme } = useThemeStore();
   const acceptInviteMutation = useAcceptInvite();
-  
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const isDark = theme === "dark";
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // Validation
   const passwordError = useMemo(() => {
     if (!password) return null;
-    if (password.length < 8) return "Password must be at least 8 characters";
+    if (password.length < 8) return 'Password must be at least 8 characters';
     return null;
   }, [password]);
 
   const confirmPasswordError = useMemo(() => {
     if (!confirmPassword) return null;
-    if (password !== confirmPassword) return "Passwords do not match";
+    if (password !== confirmPassword) return 'Passwords do not match';
     return null;
   }, [password, confirmPassword]);
 
@@ -106,9 +102,9 @@ export function AcceptInviteForm({ token }: AcceptInviteFormProps) {
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      
+
       if (!isValid) return;
-      
+
       acceptInviteMutation.mutate({ token, password });
     },
     [token, password, isValid, acceptInviteMutation]
@@ -126,12 +122,10 @@ export function AcceptInviteForm({ token }: AcceptInviteFormProps) {
           >
             <Alert
               variant="destructive"
-              className={`mb-6 border-[#ef4444]/30 ${
-                isDark ? "bg-[#ef4444]/10 backdrop-blur-sm" : "bg-[#fef2f2]"
-              }`}
+              className="mb-6 border-[var(--status-error-border)] bg-[var(--status-error-bg)]"
             >
-              <AlertCircle className="h-4 w-4 text-[#ef4444]" />
-              <AlertDescription className="text-[#ef4444]">
+              <AlertCircle className="h-4 w-4 text-[var(--status-error)]" />
+              <AlertDescription className="text-[var(--status-error)]">
                 {errorMessage}
               </AlertDescription>
             </Alert>
@@ -149,14 +143,12 @@ export function AcceptInviteForm({ token }: AcceptInviteFormProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={acceptInviteMutation.isPending}
-            isDark={isDark}
             required
             placeholder="Min. 8 characters"
+            autoComplete="new-password"
           />
           {passwordError && (
-            <p className="text-xs text-[#ef4444] mt-1.5">
-              {passwordError}
-            </p>
+            <p className="mt-1.5 text-xs text-[var(--status-error)]">{passwordError}</p>
           )}
           {password && !passwordError && (
             <motion.div
@@ -164,8 +156,8 @@ export function AcceptInviteForm({ token }: AcceptInviteFormProps) {
               animate={{ opacity: 1 }}
               className="flex items-center gap-1.5 mt-1.5"
             >
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-              <p className="text-xs text-emerald-500">Password meets requirements</p>
+              <CheckCircle2 className="h-3.5 w-3.5 text-[var(--status-success)]" />
+              <p className="text-xs text-[var(--status-success)]">Password meets requirements</p>
             </motion.div>
           )}
         </div>
@@ -178,14 +170,12 @@ export function AcceptInviteForm({ token }: AcceptInviteFormProps) {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             disabled={acceptInviteMutation.isPending}
-            isDark={isDark}
             required
             placeholder="Re-enter password"
+            autoComplete="new-password"
           />
           {confirmPasswordError && (
-            <p className="text-xs text-[#ef4444] mt-1.5">
-              {confirmPasswordError}
-            </p>
+            <p className="mt-1.5 text-xs text-[var(--status-error)]">{confirmPasswordError}</p>
           )}
           {confirmPassword && !confirmPasswordError && (
             <motion.div
@@ -193,8 +183,8 @@ export function AcceptInviteForm({ token }: AcceptInviteFormProps) {
               animate={{ opacity: 1 }}
               className="flex items-center gap-1.5 mt-1.5"
             >
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-              <p className="text-xs text-emerald-500">Passwords match</p>
+              <CheckCircle2 className="h-3.5 w-3.5 text-[var(--status-success)]" />
+              <p className="text-xs text-[var(--status-success)]">Passwords match</p>
             </motion.div>
           )}
         </div>
@@ -202,25 +192,22 @@ export function AcceptInviteForm({ token }: AcceptInviteFormProps) {
         <Button
           type="submit"
           disabled={acceptInviteMutation.isPending || !isValid}
-          className="w-full h-12 text-white font-semibold disabled:opacity-50 mt-8 glass-button glass-shadow-hover border"
-          style={{
-            background: "linear-gradient(135deg, #1a2240 0%, #2a3250 100%)",
-          }}
+          className="glass-button glass-shadow-hover mt-8 h-12 w-full border font-semibold disabled:opacity-50"
         >
           {acceptInviteMutation.isPending ? (
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent opacity-80" />
               <span>Activating account...</span>
             </div>
           ) : (
-            "Accept Invitation & Continue"
+            'Accept Invitation & Continue'
           )}
         </Button>
       </form>
 
       {/* Helper Text */}
       <div className="mt-6 text-center">
-        <p className={`text-xs ${isDark ? "text-white/50" : "text-[#8b93a5]"}`}>
+        <p className="text-xs text-[var(--text-muted)]">
           By accepting this invitation, you agree to join as an admin user.
         </p>
       </div>

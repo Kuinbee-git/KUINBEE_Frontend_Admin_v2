@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { SuppliersView } from "@/components/suppliers/SuppliersView";
+import { SuppliersView } from '@/components/suppliers/SuppliersView';
 
 export default function SuppliersPage() {
   return <SuppliersView />;

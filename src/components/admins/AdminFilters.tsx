@@ -1,10 +1,9 @@
 /**
  * AdminFilters - Admin filter bar using generic FilterBar
  */
-"use client";
-import React from 'react';
+'use client';
 import { FilterBar, FilterConfig } from '@/components/shared/FilterBar';
-import { ADMIN_STATUS_OPTIONS, ADMIN_TYPE_OPTIONS, DEPARTMENT_OPTIONS } from '@/constants/admin.constants';
+import { ADMIN_STATUS_OPTIONS, ADMIN_TYPE_OPTIONS } from '@/constants/admin.constants';
 
 interface AdminFiltersProps {
   searchQuery: string;
@@ -13,8 +12,6 @@ interface AdminFiltersProps {
   setStatusFilter: (value: string) => void;
   typeFilter: string;
   setTypeFilter: (value: string) => void;
-  departmentFilter: string;
-  setDepartmentFilter: (value: string) => void;
   onClearAll: () => void;
 }
 
@@ -25,8 +22,6 @@ export function AdminFilters({
   setStatusFilter,
   typeFilter,
   setTypeFilter,
-  departmentFilter,
-  setDepartmentFilter,
   onClearAll,
 }: AdminFiltersProps) {
   const filters: FilterConfig<unknown>[] = [
@@ -55,20 +50,7 @@ export function AdminFilters({
       onChange: (value) => setTypeFilter(value as string),
       options: ADMIN_TYPE_OPTIONS,
     },
-    {
-      id: 'department',
-      type: 'select',
-      label: 'Department',
-      value: departmentFilter,
-      onChange: (value) => setDepartmentFilter(value as string),
-      options: DEPARTMENT_OPTIONS,
-    },
   ];
 
-  return (
-    <FilterBar
-      filters={filters}
-      onClearAll={onClearAll}
-    />
-  );
+  return <FilterBar filters={filters} onClearAll={onClearAll} />;
 }

@@ -2,8 +2,7 @@
  * AdminTable - Admin list table using generic DataTable
  * Uses new AdminListItem type with personalInfo structure
  */
-"use client";
-import React from 'react';
+'use client';
 import { DataTable, ColumnDef } from '@/components/shared/DataTable';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { getAdminStatusInfo, getAdminTypeLabel } from '@/utils/admin.utils';
@@ -17,8 +16,10 @@ interface AdminTableProps {
 // Helper to get display name from AdminListItem
 function getDisplayName(admin: AdminListItem): string {
   if (admin.personalInfo) {
-    return admin.personalInfo.fullName?.trim()
-      || `${admin.personalInfo.firstName} ${admin.personalInfo.lastName}`.trim();
+    return (
+      admin.personalInfo.fullName?.trim() ||
+      `${admin.personalInfo.firstName} ${admin.personalInfo.lastName}`.trim()
+    );
   }
   return admin.email;
 }
@@ -41,7 +42,7 @@ export function AdminTable({ admins, onRowClick }: AdminTableProps) {
   const columns: ColumnDef<AdminListItem>[] = [
     {
       header: 'Name',
-      render: (_, admin) => (
+      render: (admin) => (
         <div>
           <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
             {getDisplayName(admin)}
@@ -54,26 +55,28 @@ export function AdminTable({ admins, onRowClick }: AdminTableProps) {
     },
     {
       header: 'Type',
-      render: (_, admin) => (
-        <span style={{ color: 'var(--text-primary)' }}>
-          {getAdminTypeLabel(admin.userType)}
-        </span>
+      render: (admin) => (
+        <span style={{ color: 'var(--text-primary)' }}>{getAdminTypeLabel(admin.userType)}</span>
       ),
     },
     {
       header: 'Status',
-      render: (_, admin) => {
+      render: (admin) => {
         const statusInfo = getAdminStatusInfo(admin.status);
-        const semanticType: 'success' | 'error' | 'neutral' | 'warning' = 
-          statusInfo.variant === 'success' ? 'success' : 
-          statusInfo.variant === 'error' ? 'error' : 
-          statusInfo.variant === 'warning' ? 'warning' : 'neutral';
+        const semanticType: 'success' | 'error' | 'neutral' | 'warning' =
+          statusInfo.variant === 'success'
+            ? 'success'
+            : statusInfo.variant === 'error'
+              ? 'error'
+              : statusInfo.variant === 'warning'
+                ? 'warning'
+                : 'neutral';
         return <StatusBadge status={statusInfo.label} semanticType={semanticType} />;
       },
     },
     {
       header: 'Department',
-      render: (_, admin) => (
+      render: (admin) => (
         <span style={{ color: 'var(--text-primary)' }}>
           {admin.adminProfile?.department || 'N/A'}
         </span>
@@ -81,15 +84,13 @@ export function AdminTable({ admins, onRowClick }: AdminTableProps) {
     },
     {
       header: 'Last Active',
-      render: (_, admin) => (
-        <span style={{ color: 'var(--text-muted)' }}>
-          {formatLastLogin(admin.lastLoginAt)}
-        </span>
+      render: (admin) => (
+        <span style={{ color: 'var(--text-muted)' }}>{formatLastLogin(admin.lastLoginAt)}</span>
       ),
     },
     {
       header: 'Employee ID',
-      render: (_, admin) => (
+      render: (admin) => (
         <span style={{ color: 'var(--text-muted)' }}>
           {admin.adminProfile?.employeeId || 'N/A'}
         </span>
@@ -97,7 +98,7 @@ export function AdminTable({ admins, onRowClick }: AdminTableProps) {
     },
     {
       header: 'Roles',
-      render: (_, admin) => (
+      render: (admin) => (
         <span style={{ color: 'var(--text-primary)' }}>
           {admin.roles && admin.roles.length > 0
             ? admin.roles.map((role) => role.displayName).join(', ')
@@ -113,6 +114,8 @@ export function AdminTable({ admins, onRowClick }: AdminTableProps) {
       data={admins}
       onRowClick={onRowClick ? (admin) => onRowClick(admin.id) : undefined}
       getRowKey={(admin) => admin.id}
+      ariaLabel="Administrators"
+      getRowLabel={(admin) => `Open administrator ${admin.email}`}
     />
   );
 }

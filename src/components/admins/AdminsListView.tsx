@@ -1,13 +1,13 @@
 /**
  * AdminsListView - Admin list using real API data
  */
-"use client";
-import React, { useState, useMemo } from 'react';
-import { ArrowLeft } from 'lucide-react';
+'use client';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { AdminTable } from '@/components/admins/AdminTable';
 import { AdminFilters } from '@/components/admins/AdminFilters';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { useAdmins } from '@/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { AdminListItem } from '@/types/admin.types';
@@ -21,36 +21,34 @@ export function AdminsListView({ onAdminClick, onBack }: AdminsListViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
 
   // Debounce search query
   const debouncedSearch = useDebounce(searchQuery, 500);
-  
-  // Compute page based on filter changes (resets to 1 when filters change)
-  const filterKey = `${debouncedSearch}-${statusFilter}-${typeFilter}-${departmentFilter}`;
-  const [currentFilterKey, setCurrentFilterKey] = useState(filterKey);
+
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  
-  // Reset page when filters change
-  if (filterKey !== currentFilterKey) {
-    setCurrentFilterKey(filterKey);
-    setPage(1);
-  }
 
   // Build API params
-
-  // Build API params
-  const params = useMemo(() => ({
-    page,
-    pageSize: limit,
-    q: debouncedSearch || undefined,
-    status: (statusFilter !== 'all' ? statusFilter : 'ALL') as 'ALL' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION' | 'DELETED',
-    sort: 'createdAt:desc',
-  }), [page, limit, debouncedSearch, statusFilter]);
+  const params = useMemo(
+    () => ({
+      page,
+      pageSize: limit,
+      q: debouncedSearch || undefined,
+      status: (statusFilter !== 'all' ? statusFilter : 'ALL') as
+        | 'ALL'
+        | 'ACTIVE'
+        | 'INACTIVE'
+        | 'SUSPENDED'
+        | 'PENDING_VERIFICATION'
+        | 'DELETED',
+      userType: (typeFilter !== 'all' ? typeFilter : 'ALL') as 'ALL' | 'ADMIN' | 'SUPERADMIN',
+      sort: 'createdAt:desc' as const,
+    }),
+    [page, limit, debouncedSearch, statusFilter, typeFilter]
+  );
 
   // Fetch admins
-  const { data, isLoading, isError } = useAdmins(params);
+  const { data, isLoading, isError, refetch } = useAdmins(params);
 
   // Convert API response to AdminListItem format for UI
   const admins: AdminListItem[] = useMemo(() => {
@@ -72,95 +70,72 @@ export function AdminsListView({ onAdminClick, onBack }: AdminsListViewProps) {
     }));
   }, [data]);
 
-  // Apply client-side filters (type and department not in API)
-  const filteredAdmins = useMemo(() => {
-    return admins.filter((admin) => {
-      // Type filter
-      if (typeFilter !== 'all' && admin.userType !== typeFilter) {
-        return false;
-      }
-
-      // Department filter
-      if (departmentFilter !== 'all' && admin.adminProfile?.department !== departmentFilter) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [admins, typeFilter, departmentFilter]);
-
   // Clear all filters
   const handleClearAll = () => {
     setSearchQuery('');
     setStatusFilter('all');
     setTypeFilter('all');
-    setDepartmentFilter('all');
     setPage(1);
   };
 
-  const totalPages = data?.pagination ? Math.ceil(data.pagination.total / data.pagination.pageSize) : 0;
+  const totalPages = data?.pagination
+    ? Math.ceil(data.pagination.total / data.pagination.pageSize)
+    : 0;
 
   if (isError) {
     return (
       <div className="p-8 text-center">
-        <p className="text-red-500">Failed to load admins. Please try again.</p>
+        <p className="text-[var(--status-error)]">Failed to load admins. Please try again.</p>
+        <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+          Retry
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-surface)' }}>
-      {/* Page Header */}
-      <div
-        className="p-6 border-b"
-        style={{
-          backgroundColor: 'var(--bg-base)',
-          borderColor: 'var(--border-default)',
-        }}
-      >
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-4">
-            {onBack && (
-              <Button variant="outline" size="sm" onClick={onBack}>
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            )}
-            <div>
-              <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                Admins
-              </h1>
-              <p style={{ color: 'var(--text-muted)' }}>
-                {filteredAdmins.length} admin{filteredAdmins.length !== 1 ? 's' : ''} found
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Admins"
+        description={`${data?.pagination.total ?? 0} admin${data?.pagination.total === 1 ? '' : 's'} found`}
+        onBack={onBack}
+        backLabel="Back from admins"
+      />
 
       {/* Filter Bar */}
       <AdminFilters
         searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
+        setSearchQuery={(value) => {
+          setSearchQuery(value);
+          setPage(1);
+        }}
         statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
+        setStatusFilter={(value) => {
+          setStatusFilter(value);
+          setPage(1);
+        }}
         typeFilter={typeFilter}
-        setTypeFilter={setTypeFilter}
-        departmentFilter={departmentFilter}
-        setDepartmentFilter={setDepartmentFilter}
+        setTypeFilter={(value) => {
+          setTypeFilter(value);
+          setPage(1);
+        }}
         onClearAll={handleClearAll}
       />
 
       {/* Admin Table */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {isLoading ? (
           <TableSkeleton rows={10} columns={6} />
-        ) : !data || !Array.isArray(data.items) || filteredAdmins.length === 0 ? (
-          <div className="p-12 text-center border rounded-lg" style={{ borderColor: 'var(--border-primary)' }}>
+        ) : !data || !Array.isArray(data.items) || admins.length === 0 ? (
+          <div
+            className="p-12 text-center border rounded-lg"
+            style={{ borderColor: 'var(--border-primary)' }}
+          >
             <p className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
               No admins found
             </p>
             <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
-              {searchQuery || statusFilter !== 'all' || typeFilter !== 'all' || departmentFilter !== 'all'
+              {searchQuery || statusFilter !== 'all' || typeFilter !== 'all'
                 ? 'Try adjusting your filters to see more results.'
                 : 'There are no admins in the system yet.'}
             </p>
@@ -174,16 +149,15 @@ export function AdminsListView({ onAdminClick, onBack }: AdminsListViewProps) {
                 borderColor: 'var(--border-default)',
               }}
             >
-              <AdminTable admins={filteredAdmins} onRowClick={onAdminClick} />
+              <AdminTable admins={admins} onRowClick={onAdminClick} />
             </div>
 
             {/* Pagination */}
             {data && data.pagination && totalPages > 1 && (
-              <div className="flex items-center justify-between pt-4">
+              <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   Showing {(page - 1) * limit + 1} to{' '}
-                  {Math.min(page * limit, data.pagination.total)} of{' '}
-                  {data.pagination.total} admins
+                  {Math.min(page * limit, data.pagination.total)} of {data.pagination.total} admins
                 </p>
                 <div className="flex gap-2">
                   <Button

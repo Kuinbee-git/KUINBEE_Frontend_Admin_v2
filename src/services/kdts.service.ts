@@ -11,18 +11,21 @@ import type {
   AdminKdtsUpsertResponse,
   AdminKdtsUpdateBody,
   AdminKdtsUpdateResponse,
+  ApiSuccessResponse,
 } from '@/types';
 
 // ============================================
-// Get KDTS Score (Public)
+// Get KDTS Score (Admin)
 // ============================================
 
 /**
- * Get current KDTS score and history for a dataset
- * Auth: None (Public route)
+ * Get current KDTS score and internal scoring history for a dataset.
+ * Auth: Admin/Superadmin with dataset detail access.
  */
 export async function getDatasetKdts(datasetId: string): Promise<DatasetKdtsGetResponse> {
-  const response = await apiClient.get<{ data: DatasetKdtsGetResponse }>(API_ROUTES.ADMIN.DATASETS.KDTS.GET(datasetId));
+  const response = await apiClient.get<ApiSuccessResponse<DatasetKdtsGetResponse>>(
+    API_ROUTES.ADMIN.DATASETS.KDTS.GET(datasetId)
+  );
   return response.data.data;
 }
 
@@ -38,7 +41,7 @@ export async function createOrUpdateKdts(
   datasetId: string,
   body: AdminKdtsUpsertBody
 ): Promise<AdminKdtsUpsertResponse> {
-  const response = await apiClient.post<{ data: AdminKdtsUpsertResponse }>(
+  const response = await apiClient.post<ApiSuccessResponse<AdminKdtsUpsertResponse>>(
     API_ROUTES.ADMIN.DATASETS.KDTS.CREATE_UPDATE(datasetId),
     body
   );
@@ -58,7 +61,7 @@ export async function updateKdtsHistory(
   historyId: string,
   body: AdminKdtsUpdateBody
 ): Promise<AdminKdtsUpdateResponse> {
-  const response = await apiClient.put<{ data: AdminKdtsUpdateResponse }>(
+  const response = await apiClient.put<ApiSuccessResponse<AdminKdtsUpdateResponse>>(
     API_ROUTES.ADMIN.DATASETS.KDTS.UPDATE_HISTORY(historyId),
     body
   );
@@ -71,11 +74,22 @@ export async function updateKdtsHistory(
 
 /**
  * Calculate final KDTS score from breakdown
- * Formula: (Q + L + P + U + F) / 5
+ * Formula: 30% Q + 25% L + 20% P + 15% U + 10% F.
  */
-export function calculateKdtsScore(breakdown: { Q: number; L: number; P: number; U: number; F: number }): number {
-  const total = breakdown.Q + breakdown.L + breakdown.P + breakdown.U + breakdown.F;
-  return total / 5;
+export function calculateKdtsScore(breakdown: {
+  Q: number;
+  L: number;
+  P: number;
+  U: number;
+  F: number;
+}): number {
+  const score =
+    0.3 * breakdown.Q +
+    0.25 * breakdown.L +
+    0.2 * breakdown.P +
+    0.15 * breakdown.U +
+    0.1 * breakdown.F;
+  return Math.round(score * 100) / 100;
 }
 
 /**
@@ -91,24 +105,24 @@ export function formatKdtsScore(score: number | string): string {
  */
 export const KDTS_LABELS = {
   Q: {
-    name: 'Completeness & Compliance',
-    description: 'How complete and compliant with standards is the dataset?',
-    shortName: 'Completeness',
+    name: 'Quality',
+    description: 'Schema integrity, completeness, accuracy, uniqueness, and distribution health.',
+    shortName: 'Quality',
   },
   L: {
-    name: 'Legitimacy & Authority',
-    description: 'Is the data from a legitimate and authoritative source?',
-    shortName: 'Legitimacy',
+    name: 'Legal & Compliance',
+    description: 'Ownership, resale permission, privacy risk, and jurisdiction fit.',
+    shortName: 'Legal',
   },
   P: {
-    name: 'Precision & Accuracy',
-    description: 'How precise and accurate is the data?',
-    shortName: 'Precision',
+    name: 'Provenance',
+    description: 'Methodology, source type, transformation lineage, and bias disclosure.',
+    shortName: 'Provenance',
   },
   U: {
-    name: 'Usefulness & Relevance',
-    description: 'How useful and relevant is the data for its intended purpose?',
-    shortName: 'Usefulness',
+    name: 'Usability',
+    description: 'Joinability, documentation, delivery readiness, and integration ease.',
+    shortName: 'Usability',
   },
   F: {
     name: 'Freshness & Timeliness',

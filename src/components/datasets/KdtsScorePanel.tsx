@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Edit2, Save, X, Loader2, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,16 +18,22 @@ import type {
   KdtsBreakdown,
   AdminKdtsUpsertBody,
   AdminKdtsUpdateBody,
+  AdminKdtsUpdateResponse,
 } from '@/types';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
+import { datasetsKeys } from '@/hooks/api/useDatasets';
+import { formatDate } from '@/utils/date.utils';
+import { toast } from 'sonner';
 
 interface KdtsScorePanelProps {
   datasetId: string;
-  isAdmin?: boolean;
+  canEdit?: boolean;
 }
 
 const EMPTY_BREAKDOWN: KdtsBreakdown = { Q: 0, L: 0, P: 0, U: 0, F: 0 };
 
-export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelProps) {
+export function KdtsScorePanel({ datasetId, canEdit = false }: KdtsScorePanelProps) {
+  const queryClient = useQueryClient();
   const [kdts, setKdts] = useState<DatasetKdtsGetResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,11 +44,7 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
   const [formData, setFormData] = useState<KdtsBreakdown>(EMPTY_BREAKDOWN);
   const [note, setNote] = useState('');
 
-  useEffect(() => {
-    loadKdts();
-  }, [datasetId]);
-
-  const loadKdts = async () => {
+  const loadKdts = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -49,12 +52,15 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
       setKdts(data);
       setFormData(data.breakdown ?? EMPTY_BREAKDOWN);
     } catch (err) {
-      console.error('Failed to load KDTS:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load KDTS data');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
-  };
+  }, [datasetId]);
+
+  useEffect(() => {
+    void loadKdts();
+  }, [loadKdts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +73,7 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
         P: formData.P,
         U: formData.U,
         F: formData.F,
-        note: note || 'Updated KDTS score',
+        note: note.trim() || 'Updated KDTS score',
       };
       const response = await createOrUpdateKdts(datasetId, body);
       setKdts((prev) => {
@@ -82,8 +88,16 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
       });
       setIsEditing(false);
       setNote('');
+      void queryClient.invalidateQueries({ queryKey: datasetsKeys.detail(datasetId) });
+      void queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: datasetsKeys.audit(datasetId) });
+      if (response.dataset.autoDelisted) {
+        toast.warning('Dataset automatically unpublished', {
+          description: 'Its Legal & Compliance score is below the sellability threshold of 60.',
+        });
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update KDTS score');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -98,10 +112,7 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
       >
         <CardContent className="pt-6">
           <div className="flex items-center justify-center gap-2 py-4">
-            <Loader2
-              className="w-4 h-4 animate-spin"
-              style={{ color: 'var(--text-muted)' }}
-            />
+            <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--text-muted)' }} />
             <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
               Loading KDTS data...
             </span>
@@ -123,15 +134,25 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
             <div
               className="flex items-start gap-3 p-3 rounded-lg"
               style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
+                backgroundColor: 'var(--status-error-bg)',
+                border: '1px solid var(--status-error-border)',
               }}
             >
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--state-error)' }} />
-              <p className="text-sm" style={{ color: 'var(--state-error)' }}>{error}</p>
+              <AlertCircle
+                className="w-4 h-4 flex-shrink-0 mt-0.5"
+                style={{ color: 'var(--state-error)' }}
+              />
+              <p className="text-sm" style={{ color: 'var(--state-error)' }}>
+                {error}
+              </p>
+              <Button className="ml-auto" size="sm" variant="outline" onClick={loadKdts}>
+                Retry
+              </Button>
             </div>
           ) : (
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No KDTS data available.</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              No KDTS data available.
+            </p>
           )}
         </CardContent>
       </Card>
@@ -150,7 +171,7 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
           style={{ borderColor: 'var(--border-default)' }}
         >
           <CardTitle style={{ color: 'var(--text-primary)' }}>KDTS Score</CardTitle>
-          {isAdmin && !isEditing && (
+          {canEdit && !isEditing && (
             <Button
               variant="ghost"
               size="sm"
@@ -169,12 +190,17 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
             <div
               className="flex items-start gap-3 p-3 rounded-lg mb-4"
               style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
+                backgroundColor: 'var(--status-error-bg)',
+                border: '1px solid var(--status-error-border)',
               }}
             >
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--state-error)' }} />
-              <p className="text-sm" style={{ color: 'var(--state-error)' }}>{error}</p>
+              <AlertCircle
+                className="w-4 h-4 flex-shrink-0 mt-0.5"
+                style={{ color: 'var(--state-error)' }}
+              />
+              <p className="text-sm" style={{ color: 'var(--state-error)' }}>
+                {error}
+              </p>
             </div>
           )}
 
@@ -197,40 +223,66 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
                       </span>
                     </div>
                     <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="1"
+                      aria-label={`${key} — ${KDTS_LABELS[key].shortName}`}
                       value={formData[key] === 0 ? '' : String(formData[key])}
                       onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, [key]: parseInt(e.target.value) || 0 }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          [key]: parseInt(e.target.value, 10) || 0,
+                        }))
                       }
                       className="w-full px-3 py-2 rounded-md text-sm"
                       style={{
                         backgroundColor: 'var(--bg-surface)',
                         color: 'var(--text-primary)',
                         border: '1px solid var(--border-default)',
-                        outline: 'none',
                       }}
                     />
                   </div>
                 ))}
               </div>
 
+              {formData.L < 60 ? (
+                <div
+                  className="flex items-start gap-2 rounded-lg p-3 text-sm"
+                  style={{
+                    backgroundColor: 'var(--status-error-bg)',
+                    border: '1px solid var(--status-error-border)',
+                    color: 'var(--state-error)',
+                  }}
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                  <p>
+                    A Legal &amp; Compliance score below 60 makes this dataset unsellable. Saving
+                    this score automatically unpublishes a currently published dataset.
+                  </p>
+                </div>
+              ) : null}
+
               <div>
-                <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-primary)' }}>
+                <label
+                  htmlFor="kdts-note"
+                  className="text-sm font-medium mb-1 block"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   Note
                 </label>
                 <input
+                  id="kdts-note"
                   type="text"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
+                  maxLength={1000}
                   placeholder="Optional note about this update..."
                   className="w-full px-3 py-2 rounded-md text-sm"
                   style={{
                     backgroundColor: 'var(--bg-surface)',
                     color: 'var(--text-primary)',
                     border: '1px solid var(--border-default)',
-                    outline: 'none',
                   }}
                 />
               </div>
@@ -239,8 +291,8 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
               <div
                 className="p-3 rounded-lg"
                 style={{
-                  backgroundColor: 'rgba(56, 189, 248, 0.08)',
-                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  backgroundColor: 'var(--status-info-bg)',
+                  border: '1px solid var(--status-info-border)',
                 }}
               >
                 <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
@@ -276,7 +328,7 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
                   disabled={submitting}
                   style={{
                     backgroundColor: 'var(--state-info)',
-                    color: '#ffffff',
+                    color: 'var(--brand-on-primary)',
                   }}
                 >
                   {submitting ? (
@@ -367,10 +419,7 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
           className="overflow-hidden"
           style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}
         >
-          <CardHeader
-            className="border-b"
-            style={{ borderColor: 'var(--border-default)' }}
-          >
+          <CardHeader className="border-b" style={{ borderColor: 'var(--border-default)' }}>
             <CardTitle style={{ color: 'var(--text-primary)' }}>Scoring History</CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
@@ -395,18 +444,18 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
                         {new Date(entry.createdAt).toLocaleString()}
                       </p>
                     </div>
-                    {isAdmin && (
+                    {canEdit && (
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         onClick={() =>
-                          setEditingHistoryId(
-                            editingHistoryId === entry.id ? null : entry.id
-                          )
+                          setEditingHistoryId(editingHistoryId === entry.id ? null : entry.id)
                         }
                         style={{ color: 'var(--state-info)' }}
+                        aria-label={`Edit KDTS review from ${formatDate(entry.createdAt)}`}
                       >
-                        <Edit2 className="w-4 h-4" />
+                        <Edit2 className="w-4 h-4" aria-hidden="true" />
                       </Button>
                     )}
                   </div>
@@ -414,21 +463,18 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
                   {/* Breakdown row */}
                   {entry.breakdown && (
                     <div className="grid grid-cols-5 gap-1.5 mb-2">
-                      {(Object.keys(entry.breakdown) as Array<keyof KdtsBreakdown>).map(
-                        (key) => (
-                          <div
-                            key={key}
-                            className="text-center px-2 py-1 rounded text-xs"
-                            style={{
-                              backgroundColor: 'var(--bg-hover)',
-                              color: 'var(--text-secondary)',
-                            }}
-                          >
-                            <span className="font-semibold">{key}</span>{' '}
-                            {entry.breakdown[key]}
-                          </div>
-                        )
-                      )}
+                      {(Object.keys(entry.breakdown) as Array<keyof KdtsBreakdown>).map((key) => (
+                        <div
+                          key={key}
+                          className="text-center px-2 py-1 rounded text-xs"
+                          style={{
+                            backgroundColor: 'var(--bg-hover)',
+                            color: 'var(--text-secondary)',
+                          }}
+                        >
+                          <span className="font-semibold">{key}</span> {entry.breakdown[key]}
+                        </div>
+                      ))}
                     </div>
                   )}
 
@@ -438,12 +484,25 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
                     </p>
                   )}
 
-                  {isAdmin && editingHistoryId === entry.id && (
+                  {canEdit && editingHistoryId === entry.id && (
                     <EditHistoryForm
                       historyId={entry.id}
                       initialBreakdown={entry.breakdown ?? EMPTY_BREAKDOWN}
                       initialNote={entry.note}
-                      onSuccess={() => {
+                      onSuccess={(response) => {
+                        void queryClient.invalidateQueries({
+                          queryKey: datasetsKeys.detail(datasetId),
+                        });
+                        void queryClient.invalidateQueries({ queryKey: datasetsKeys.lists() });
+                        void queryClient.invalidateQueries({
+                          queryKey: datasetsKeys.audit(datasetId),
+                        });
+                        if (response.dataset.autoDelisted) {
+                          toast.warning('Dataset automatically unpublished', {
+                            description:
+                              'Its Legal & Compliance score is below the sellability threshold of 60.',
+                          });
+                        }
                         setEditingHistoryId(null);
                         loadKdts();
                       }}
@@ -467,8 +526,8 @@ export function KdtsScorePanel({ datasetId, isAdmin = false }: KdtsScorePanelPro
 interface EditHistoryFormProps {
   historyId: string;
   initialBreakdown: KdtsBreakdown;
-  initialNote: string;
-  onSuccess: () => void;
+  initialNote: string | null;
+  onSuccess: (response: AdminKdtsUpdateResponse) => void;
   onCancel: () => void;
 }
 
@@ -480,7 +539,8 @@ function EditHistoryForm({
   onCancel,
 }: EditHistoryFormProps) {
   const [formData, setFormData] = useState(initialBreakdown);
-  const [note, setNote] = useState(initialNote);
+  const originalNote = initialNote ?? '';
+  const [note, setNote] = useState(originalNote);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -490,8 +550,13 @@ function EditHistoryForm({
     setError(null);
 
     try {
-      const updates: AdminKdtsUpdateBody = { note };
-      let hasChanges = note !== initialNote;
+      const updates: AdminKdtsUpdateBody = {};
+      let hasChanges = false;
+
+      if (note !== originalNote) {
+        updates.note = note.trim() || null;
+        hasChanges = true;
+      }
 
       (Object.keys(formData) as Array<keyof KdtsBreakdown>).forEach((key) => {
         if (formData[key] !== initialBreakdown[key]) {
@@ -506,10 +571,10 @@ function EditHistoryForm({
         return;
       }
 
-      await updateKdtsHistory(historyId, updates);
-      onSuccess();
+      const response = await updateKdtsHistory(historyId, updates);
+      onSuccess(response);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update history');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -520,20 +585,25 @@ function EditHistoryForm({
       onSubmit={handleSubmit}
       className="mt-3 p-3 rounded-lg space-y-3"
       style={{
-        backgroundColor: 'rgba(56, 189, 248, 0.06)',
-        border: '1px solid rgba(56, 189, 248, 0.2)',
+        backgroundColor: 'var(--status-info-bg)',
+        border: '1px solid var(--status-info-border)',
       }}
     >
       {error && (
         <div
           className="flex items-start gap-2 p-2 rounded"
           style={{
-            backgroundColor: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+            backgroundColor: 'var(--status-error-bg)',
+            border: '1px solid var(--status-error-border)',
           }}
         >
-          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: 'var(--state-error)' }} />
-          <p className="text-xs" style={{ color: 'var(--state-error)' }}>{error}</p>
+          <AlertCircle
+            className="w-3.5 h-3.5 flex-shrink-0 mt-0.5"
+            style={{ color: 'var(--state-error)' }}
+          />
+          <p className="text-xs" style={{ color: 'var(--state-error)' }}>
+            {error}
+          </p>
         </div>
       )}
 
@@ -541,19 +611,20 @@ function EditHistoryForm({
         {(Object.keys(formData) as Array<keyof KdtsBreakdown>).map((key) => (
           <input
             key={key}
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
+            type="number"
+            min={0}
+            max={100}
+            step="1"
+            aria-label={`${key} score`}
             value={formData[key] === 0 ? '' : String(formData[key])}
             onChange={(e) =>
-              setFormData((prev) => ({ ...prev, [key]: parseInt(e.target.value) || 0 }))
+              setFormData((prev) => ({ ...prev, [key]: parseInt(e.target.value, 10) || 0 }))
             }
             className="px-2 py-1 rounded text-xs"
             style={{
               backgroundColor: 'var(--bg-base)',
               color: 'var(--text-primary)',
               border: '1px solid var(--border-default)',
-              outline: 'none',
             }}
             placeholder={key}
           />
@@ -562,15 +633,16 @@ function EditHistoryForm({
 
       <input
         type="text"
+        aria-label="History update note"
         value={note}
         onChange={(e) => setNote(e.target.value)}
+        maxLength={1000}
         placeholder="Update note..."
         className="w-full px-2 py-1 rounded text-xs"
         style={{
           backgroundColor: 'var(--bg-base)',
           color: 'var(--text-primary)',
           border: '1px solid var(--border-default)',
-          outline: 'none',
         }}
       />
 
@@ -594,7 +666,7 @@ function EditHistoryForm({
           disabled={submitting}
           style={{
             backgroundColor: 'var(--state-info)',
-            color: '#ffffff',
+            color: 'var(--brand-on-primary)',
           }}
         >
           {submitting ? (

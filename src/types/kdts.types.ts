@@ -5,44 +5,44 @@
 
 // ===== KDTS Breakdown Components =====
 export interface KdtsBreakdown {
-  Q: number; // Completeness & Compliance
-  L: number; // Legitimacy & Authority
-  P: number; // Precision & Accuracy
-  U: number; // Usefulness & Relevance
+  Q: number; // Quality
+  L: number; // Legal & Compliance
+  P: number; // Provenance
+  U: number; // Usability
   F: number; // Freshness & Timeliness
 }
 
 // ===== KDTS History Entry =====
-export interface KdtsHistoryEntry {
+interface KdtsHistoryEntry {
   id: string;
   datasetId: string;
   finalScore: string; // Decimal string (e.g., "82.50")
   breakdown: KdtsBreakdown;
   adminId: string;
   createdAt: string; // ISO 8601 timestamp
-  note: string;
+  note: string | null;
   admin?: {
     id: string;
-    name: string;
-  };
+    name: string | null;
+  } | null;
 }
 
 // ===== GET KDTS Response =====
 export interface DatasetKdtsGetResponse {
-  currentScore: string; // Decimal string (e.g., "82.50")
-  breakdown: KdtsBreakdown;
+  currentScore: string | null; // Decimal string (e.g., "82.50")
+  breakdown: KdtsBreakdown | null;
   history: KdtsHistoryEntry[];
-  updatedAt: string; // ISO 8601 timestamp
+  updatedAt: string | null; // ISO 8601 timestamp
 }
 
 // ===== POST/PUT KDTS Request Body =====
 export interface AdminKdtsUpsertBody {
-  Q?: number;
-  L?: number;
-  P?: number;
-  U?: number;
-  F?: number;
-  note: string;
+  Q: number;
+  L: number;
+  P: number;
+  U: number;
+  F: number;
+  note?: string;
 }
 
 export interface AdminKdtsUpdateBody {
@@ -51,7 +51,7 @@ export interface AdminKdtsUpdateBody {
   P?: number;
   U?: number;
   F?: number;
-  note?: string;
+  note?: string | null;
 }
 
 // ===== POST/PUT KDTS Response =====
@@ -59,23 +59,17 @@ export interface AdminKdtsUpsertResponse {
   history: KdtsHistoryEntry;
   dataset: {
     id: string;
-    kdtsScore: string; // Decimal string
+    kdtsScore: string | null; // Decimal string
+    status:
+      | 'SUBMITTED'
+      | 'UNDER_REVIEW'
+      | 'VERIFIED'
+      | 'PUBLISHED'
+      | 'REJECTED'
+      | 'DELISTED'
+      | 'ARCHIVED';
+    autoDelisted: boolean;
   };
 }
 
-export interface AdminKdtsUpdateResponse extends AdminKdtsUpsertResponse {}
-
-// ===== Combined types =====
-export interface KdtsHistory {
-  id: string;
-  datasetId: string;
-  finalScore: string;
-  breakdown: KdtsBreakdown;
-  adminId: string;
-  createdAt: string;
-  note: string;
-  admin: {
-    id: string;
-    name: string;
-  };
-}
+export type AdminKdtsUpdateResponse = AdminKdtsUpsertResponse;

@@ -1,5 +1,5 @@
-import { SupplierDetailView } from "@/components/suppliers/SupplierDetailView";
-import { use } from "react";
+import { SupplierDetailView } from '@/components/suppliers/SupplierDetailView';
+import { use } from 'react';
 
 interface SupplierDetailPageProps {
   params: Promise<{

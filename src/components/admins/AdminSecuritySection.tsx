@@ -2,8 +2,7 @@
  * AdminSecuritySection - Security state and verification status
  * Uses AdminDetailResponse from API
  */
-"use client";
-import React from 'react';
+'use client';
 import { Shield, Mail, Activity } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { getAdminStatusInfo, getAdminTypeLabel } from '@/utils/admin.utils';
@@ -63,8 +62,13 @@ export function AdminSecuritySection({ admin }: AdminSecuritySectionProps) {
         <div className="flex items-start gap-3">
           <Shield className="w-5 h-5 mt-0.5" style={{ color: 'var(--text-muted)' }} />
           <div>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Account Status</p>
-            <StatusBadge status={statusInfo.label} semanticType={getSemanticType(statusInfo.variant)} />
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Account Status
+            </p>
+            <StatusBadge
+              status={statusInfo.label}
+              semanticType={getSemanticType(statusInfo.variant)}
+            />
           </div>
         </div>
 
@@ -72,8 +76,12 @@ export function AdminSecuritySection({ admin }: AdminSecuritySectionProps) {
         <div className="flex items-start gap-3">
           <Shield className="w-5 h-5 mt-0.5" style={{ color: 'var(--text-muted)' }} />
           <div>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Admin Type</p>
-            <p style={{ color: 'var(--text-primary)' }}>{getAdminTypeLabel(admin.admin.userType)}</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Admin Type
+            </p>
+            <p style={{ color: 'var(--text-primary)' }}>
+              {getAdminTypeLabel(admin.admin.userType)}
+            </p>
           </div>
         </div>
 
@@ -81,7 +89,9 @@ export function AdminSecuritySection({ admin }: AdminSecuritySectionProps) {
         <div className="flex items-start gap-3">
           <Mail className="w-5 h-5 mt-0.5" style={{ color: 'var(--text-muted)' }} />
           <div>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Email Verified</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Email Verified
+            </p>
             <StatusBadge
               status={admin.admin.emailVerified ? 'Verified' : 'Not Verified'}
               semanticType={admin.admin.emailVerified ? 'success' : 'warning'}
@@ -93,8 +103,12 @@ export function AdminSecuritySection({ admin }: AdminSecuritySectionProps) {
         <div className="flex items-start gap-3">
           <Activity className="w-5 h-5 mt-0.5" style={{ color: 'var(--text-muted)' }} />
           <div>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Last Active</p>
-            <p style={{ color: 'var(--text-primary)' }}>{formatLastLogin(admin.admin.lastLoginAt)}</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Last Active
+            </p>
+            <p style={{ color: 'var(--text-primary)' }}>
+              {formatLastLogin(admin.admin.lastLoginAt)}
+            </p>
           </div>
         </div>
       </div>

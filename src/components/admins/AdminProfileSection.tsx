@@ -1,8 +1,7 @@
 /**
  * AdminProfileSection - Admin profile and employment information
  */
-"use client";
-import React from 'react';
+'use client';
 import { User, Mail, Phone, Briefcase, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { AdminDetailResponse } from '@/types/admin.types';
@@ -18,6 +17,8 @@ interface AdminProfileSectionProps {
     department: string;
   };
   onEditChange: (field: string, value: string) => void;
+  canEdit: boolean;
+  isSaving: boolean;
 }
 
 export function AdminProfileSection({
@@ -28,11 +29,17 @@ export function AdminProfileSection({
   onCancel,
   editData,
   onEditChange,
+  canEdit,
+  isSaving,
 }: AdminProfileSectionProps) {
-  const displayName = admin.personalInfo?.fullName?.trim()
-    || [admin.personalInfo?.firstName, admin.personalInfo?.lastName].filter(Boolean).join(' ').trim()
-    || admin.admin.email;
-  
+  const displayName =
+    admin.personalInfo?.fullName?.trim() ||
+    [admin.personalInfo?.firstName, admin.personalInfo?.lastName]
+      .filter(Boolean)
+      .join(' ')
+      .trim() ||
+    admin.admin.email;
+
   return (
     <div
       className="p-6 rounded-lg border"
@@ -45,20 +52,20 @@ export function AdminProfileSection({
         <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
           Profile & Employment
         </h3>
-        {!isEditing ? (
+        {!isEditing && canEdit ? (
           <Button variant="outline" size="sm" onClick={onToggleEdit}>
             Edit Profile
           </Button>
-        ) : (
+        ) : isEditing ? (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onCancel}>
+            <Button variant="outline" size="sm" onClick={onCancel} disabled={isSaving}>
               Cancel
             </Button>
-            <Button size="sm" onClick={onSave}>
-              Save Changes
+            <Button size="sm" onClick={onSave} disabled={isSaving}>
+              {isSaving ? 'Saving…' : 'Save Changes'}
             </Button>
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -66,7 +73,9 @@ export function AdminProfileSection({
         <div className="flex items-start gap-3">
           <User className="w-5 h-5 mt-0.5" style={{ color: 'var(--text-muted)' }} />
           <div>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Full Name</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Full Name
+            </p>
             <p style={{ color: 'var(--text-primary)' }}>{displayName}</p>
           </div>
         </div>
@@ -75,7 +84,9 @@ export function AdminProfileSection({
         <div className="flex items-start gap-3">
           <Mail className="w-5 h-5 mt-0.5" style={{ color: 'var(--text-muted)' }} />
           <div>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Email</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Email
+            </p>
             <p style={{ color: 'var(--text-primary)' }}>{admin.admin.email}</p>
           </div>
         </div>
@@ -85,7 +96,9 @@ export function AdminProfileSection({
           <div className="flex items-start gap-3">
             <Phone className="w-5 h-5 mt-0.5" style={{ color: 'var(--text-muted)' }} />
             <div>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Phone</p>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Phone
+              </p>
               <p style={{ color: 'var(--text-primary)' }}>{admin.admin.phone}</p>
             </div>
           </div>
@@ -95,10 +108,13 @@ export function AdminProfileSection({
         <div className="flex items-start gap-3">
           <Hash className="w-5 h-5 mt-0.5" style={{ color: 'var(--text-muted)' }} />
           <div className="flex-1">
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Employee ID</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Employee ID
+            </p>
             {isEditing ? (
               <input
                 type="text"
+                aria-label="Employee ID"
                 value={editData.employeeId}
                 onChange={(e) => onEditChange('employeeId', e.target.value)}
                 className="w-full px-2 py-1 rounded border"
@@ -120,10 +136,13 @@ export function AdminProfileSection({
         <div className="flex items-start gap-3">
           <Briefcase className="w-5 h-5 mt-0.5" style={{ color: 'var(--text-muted)' }} />
           <div className="flex-1">
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Department</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              Department
+            </p>
             {isEditing ? (
               <input
                 type="text"
+                aria-label="Department"
                 value={editData.department}
                 onChange={(e) => onEditChange('department', e.target.value)}
                 className="w-full px-2 py-1 rounded border"

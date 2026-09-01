@@ -14,7 +14,7 @@ import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 // Query Keys
 // ============================================
 
-export const supplierInvitesKeys = {
+const supplierInvitesKeys = {
   all: ['supplier-invites'] as const,
   lists: () => [...supplierInvitesKeys.all, 'list'] as const,
   list: (params: SupplierInviteListParams) => [...supplierInvitesKeys.lists(), params] as const,
@@ -34,14 +34,6 @@ export function useSupplierInvites(params: SupplierInviteListParams = {}) {
   });
 }
 
-export function useSupplierInvite(inviteId: string) {
-  return useQuery({
-    queryKey: supplierInvitesKeys.detail(inviteId),
-    queryFn: () => supplierInvitesService.getSupplierInviteById(inviteId),
-    enabled: !!inviteId,
-  });
-}
-
 // ============================================
 // Mutations
 // ============================================
@@ -50,7 +42,7 @@ export function useCreateSupplierInvite() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateSupplierInviteRequest) => 
+    mutationFn: (data: CreateSupplierInviteRequest) =>
       supplierInvitesService.createSupplierInvite(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: supplierInvitesKeys.lists() });
@@ -66,8 +58,7 @@ export function useResendSupplierInvite() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (inviteId: string) => 
-      supplierInvitesService.resendSupplierInvite(inviteId),
+    mutationFn: (inviteId: string) => supplierInvitesService.resendSupplierInvite(inviteId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: supplierInvitesKeys.lists() });
       toast.success('Supplier invite resent successfully');

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { Mail, User, Building2, Users as UsersIcon } from "lucide-react";
+import { useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { Mail, User, Building2, Users as UsersIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,14 +10,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
-import { useCreateSupplierInvite } from "@/hooks";
-import type { CreateSupplierInviteRequest, SupplierInviteType } from "@/types";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { useCreateSupplierInvite } from '@/hooks';
+import type { CreateSupplierInviteRequest, SupplierInviteType } from '@/types';
 
 interface InviteSupplierDialogProps {
   open: boolean;
@@ -35,44 +35,46 @@ interface FormData {
 
 export function InviteSupplierDialog({ open, onOpenChange }: InviteSupplierDialogProps) {
   const createMutation = useCreateSupplierInvite();
-  const [inviteType, setInviteType] = useState<SupplierInviteType>("COMPANY");
+  const [inviteType, setInviteType] = useState<SupplierInviteType>('COMPANY');
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-    watch,
+    control,
+    setValue,
   } = useForm<FormData>({
     defaultValues: {
-      email: "",
-      supplierInviteType: "COMPANY",
-      individualName: "",
-      companyName: "",
-      contactPersonName: "",
+      email: '',
+      supplierInviteType: 'COMPANY',
+      individualName: '',
+      companyName: '',
+      contactPersonName: '',
       sendEmail: true,
     },
   });
 
-  const sendEmail = watch("sendEmail");
+  const sendEmail = useWatch({ control, name: 'sendEmail' });
 
   const onSubmit = (data: FormData) => {
     const request: CreateSupplierInviteRequest = {
-      email: data.email,
+      email: data.email.trim().toLowerCase(),
       supplierInviteType: inviteType,
       sendEmail: data.sendEmail,
     };
 
-    if (inviteType === "INDIVIDUAL") {
-      request.individualName = data.individualName;
+    if (inviteType === 'INDIVIDUAL') {
+      request.individualName = data.individualName.trim();
     } else {
-      request.companyName = data.companyName;
-      request.contactPersonName = data.contactPersonName;
+      request.companyName = data.companyName.trim();
+      request.contactPersonName = data.contactPersonName.trim();
     }
 
     createMutation.mutate(request, {
       onSuccess: () => {
         reset();
+        setInviteType('COMPANY');
         onOpenChange(false);
       },
     });
@@ -80,6 +82,7 @@ export function InviteSupplierDialog({ open, onOpenChange }: InviteSupplierDialo
 
   const handleClose = () => {
     reset();
+    setInviteType('COMPANY');
     onOpenChange(false);
   };
 
@@ -96,11 +99,17 @@ export function InviteSupplierDialog({ open, onOpenChange }: InviteSupplierDialo
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Supplier Type Selection */}
           <div className="space-y-3">
-            <Label>Supplier Type</Label>
+            <span id="supplier-type-label" className="text-sm font-medium">
+              Supplier Type
+            </span>
             <RadioGroup
+              aria-labelledby="supplier-type-label"
               value={inviteType}
-              onValueChange={(value: SupplierInviteType) => setInviteType(value)}
-              className="flex gap-4"
+              onValueChange={(value: SupplierInviteType) => {
+                setInviteType(value);
+                setValue('supplierInviteType', value, { shouldDirty: true });
+              }}
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2"
             >
               <div className="flex items-center space-x-2 flex-1">
                 <RadioGroupItem value="COMPANY" id="company" />
@@ -122,7 +131,7 @@ export function InviteSupplierDialog({ open, onOpenChange }: InviteSupplierDialo
           {/* Email */}
           <div className="space-y-2">
             <Label htmlFor="email">
-              Email <span className="text-red-500">*</span>
+              Email <span className="text-[var(--status-error)]">*</span>
             </Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -131,25 +140,25 @@ export function InviteSupplierDialog({ open, onOpenChange }: InviteSupplierDialo
                 type="email"
                 placeholder="supplier@example.com"
                 className="pl-9"
-                {...register("email", {
-                  required: "Email is required",
+                {...register('email', {
+                  required: 'Email is required',
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: "Invalid email address",
+                    message: 'Invalid email address',
                   },
                 })}
               />
             </div>
             {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
+              <p className="text-sm text-[var(--status-error)]">{errors.email.message}</p>
             )}
           </div>
 
           {/* Conditional Fields Based on Type */}
-          {inviteType === "INDIVIDUAL" ? (
+          {inviteType === 'INDIVIDUAL' ? (
             <div className="space-y-2">
               <Label htmlFor="individualName">
-                Full Name <span className="text-red-500">*</span>
+                Full Name <span className="text-[var(--status-error)]">*</span>
               </Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -157,20 +166,22 @@ export function InviteSupplierDialog({ open, onOpenChange }: InviteSupplierDialo
                   id="individualName"
                   placeholder="John Doe"
                   className="pl-9"
-                  {...register("individualName", {
-                    required: inviteType === "INDIVIDUAL" ? "Full name is required" : false,
+                  {...register('individualName', {
+                    required: inviteType === 'INDIVIDUAL' ? 'Full name is required' : false,
                   })}
                 />
               </div>
               {errors.individualName && (
-                <p className="text-sm text-red-500">{errors.individualName.message}</p>
+                <p className="text-sm text-[var(--status-error)]">
+                  {errors.individualName.message}
+                </p>
               )}
             </div>
           ) : (
             <>
               <div className="space-y-2">
                 <Label htmlFor="companyName">
-                  Company Name <span className="text-red-500">*</span>
+                  Company Name <span className="text-[var(--status-error)]">*</span>
                 </Label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -178,19 +189,19 @@ export function InviteSupplierDialog({ open, onOpenChange }: InviteSupplierDialo
                     id="companyName"
                     placeholder="Acme Corporation"
                     className="pl-9"
-                    {...register("companyName", {
-                      required: inviteType === "COMPANY" ? "Company name is required" : false,
+                    {...register('companyName', {
+                      required: inviteType === 'COMPANY' ? 'Company name is required' : false,
                     })}
                   />
                 </div>
                 {errors.companyName && (
-                  <p className="text-sm text-red-500">{errors.companyName.message}</p>
+                  <p className="text-sm text-[var(--status-error)]">{errors.companyName.message}</p>
                 )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="contactPersonName">
-                  Contact Person <span className="text-red-500">*</span>
+                  Contact Person <span className="text-[var(--status-error)]">*</span>
                 </Label>
                 <div className="relative">
                   <UsersIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -198,13 +209,15 @@ export function InviteSupplierDialog({ open, onOpenChange }: InviteSupplierDialo
                     id="contactPersonName"
                     placeholder="Jane Smith"
                     className="pl-9"
-                    {...register("contactPersonName", {
-                      required: inviteType === "COMPANY" ? "Contact person is required" : false,
+                    {...register('contactPersonName', {
+                      required: inviteType === 'COMPANY' ? 'Contact person is required' : false,
                     })}
                   />
                 </div>
                 {errors.contactPersonName && (
-                  <p className="text-sm text-red-500">{errors.contactPersonName.message}</p>
+                  <p className="text-sm text-[var(--status-error)]">
+                    {errors.contactPersonName.message}
+                  </p>
                 )}
               </div>
             </>
@@ -223,9 +236,7 @@ export function InviteSupplierDialog({ open, onOpenChange }: InviteSupplierDialo
             <Switch
               id="sendEmail"
               checked={sendEmail}
-              onCheckedChange={(checked) => {
-                register("sendEmail").onChange({ target: { value: checked } });
-              }}
+              onCheckedChange={(checked) => setValue('sendEmail', checked, { shouldDirty: true })}
             />
           </div>
 
@@ -234,7 +245,7 @@ export function InviteSupplierDialog({ open, onOpenChange }: InviteSupplierDialo
               Cancel
             </Button>
             <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Sending..." : "Send Invite"}
+              {createMutation.isPending ? 'Sending...' : 'Send Invite'}
             </Button>
           </DialogFooter>
         </form>

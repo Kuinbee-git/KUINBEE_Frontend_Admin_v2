@@ -9,7 +9,6 @@ import { buildQueryString } from '@/lib/utils/service.utils';
 import type {
   SupplierInvite,
   CreateSupplierInviteRequest,
-  SupplierInviteResponse,
   SupplierInviteType,
   PaginatedResponse,
   ApiSuccessResponse,
@@ -24,7 +23,7 @@ export interface SupplierInviteListParams {
   pageSize?: number;
   q?: string;
   supplierInviteType?: SupplierInviteType;
-  sort?: string;
+  sort?: 'createdAt:desc' | 'createdAt:asc';
 }
 
 // ============================================
@@ -38,15 +37,15 @@ export async function getSupplierInvites(
   params: SupplierInviteListParams = {}
 ): Promise<PaginatedResponse<SupplierInvite>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{
-    items: SupplierInvite[];
-    page: number;
-    pageSize: number;
-    total: number;
-  }>>(
-    `${API_ROUTES.ADMIN.SUPPLIER_INVITES.LIST}${query}`
-  );
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: SupplierInvite[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.SUPPLIER_INVITES.LIST}${query}`);
+
   const result = response.data.data;
   return {
     items: Array.isArray(result.items) ? result.items : [],
@@ -59,34 +58,24 @@ export async function getSupplierInvites(
 }
 
 /**
- * Get supplier invite detail by ID
- */
-export async function getSupplierInviteById(inviteId: string): Promise<SupplierInvite> {
-  const response = await apiClient.get<SupplierInviteResponse>(
-    API_ROUTES.ADMIN.SUPPLIER_INVITES.DETAIL(inviteId)
-  );
-  return response.data.invite;
-}
-
-/**
  * Create a new supplier invite
  */
 export async function createSupplierInvite(
   data: CreateSupplierInviteRequest
 ): Promise<SupplierInvite> {
-  const response = await apiClient.post<SupplierInviteResponse>(
+  const response = await apiClient.post<ApiSuccessResponse<{ invite: SupplierInvite }>>(
     API_ROUTES.ADMIN.SUPPLIER_INVITES.CREATE,
     data
   );
-  return response.data.invite;
+  return response.data.data.invite;
 }
 
 /**
  * Resend a supplier invite email
  */
 export async function resendSupplierInvite(inviteId: string): Promise<SupplierInvite> {
-  const response = await apiClient.post<SupplierInviteResponse>(
+  const response = await apiClient.post<ApiSuccessResponse<{ invite: SupplierInvite }>>(
     API_ROUTES.ADMIN.SUPPLIER_INVITES.RESEND(inviteId)
   );
-  return response.data.invite;
+  return response.data.data.invite;
 }

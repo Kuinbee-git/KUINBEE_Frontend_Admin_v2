@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api/client';
 import { API_ROUTES } from '@/lib/constants/api-routes';
 import type {
   Address,
+  ApiSuccessResponse,
   CreateAddressRequest,
   UpdateAddressRequest,
 } from '@/types';
@@ -15,11 +16,11 @@ import type {
 // Types
 // ============================================
 
-export interface AddressResponse {
+interface AddressResponse {
   address: Address;
 }
 
-export interface AddressesResponse {
+interface AddressesResponse {
   items: Address[];
 }
 
@@ -31,7 +32,7 @@ export interface AddressesResponse {
  * Get all addresses for the current admin
  */
 export async function getAddresses(): Promise<Address[]> {
-  const response = await apiClient.get<{ success: boolean; data: AddressesResponse }>(
+  const response = await apiClient.get<ApiSuccessResponse<AddressesResponse>>(
     API_ROUTES.ADMIN.ADDRESSES.LIST
   );
   return response.data.data.items;
@@ -41,11 +42,11 @@ export async function getAddresses(): Promise<Address[]> {
  * Create a new address
  */
 export async function createAddress(data: CreateAddressRequest): Promise<Address> {
-  const response = await apiClient.post<AddressResponse>(
+  const response = await apiClient.post<ApiSuccessResponse<AddressResponse>>(
     API_ROUTES.ADMIN.ADDRESSES.CREATE,
     data
   );
-  return response.data.address;
+  return response.data.data.address;
 }
 
 /**
@@ -55,11 +56,11 @@ export async function updateAddress(
   addressId: string,
   data: UpdateAddressRequest
 ): Promise<Address> {
-  const response = await apiClient.patch<AddressResponse>(
+  const response = await apiClient.patch<ApiSuccessResponse<AddressResponse>>(
     API_ROUTES.ADMIN.ADDRESSES.UPDATE(addressId),
     data
   );
-  return response.data.address;
+  return response.data.data.address;
 }
 
 /**

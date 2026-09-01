@@ -6,7 +6,22 @@
 
 import type { ApiError } from '@/types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const configuredTimeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS);
+const REQUEST_TIMEOUT_MS =
+  Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 20_000;
+const configuredUploadTimeout = Number(process.env.NEXT_PUBLIC_UPLOAD_TIMEOUT_MS);
+const UPLOAD_TIMEOUT_MS =
+  Number.isFinite(configuredUploadTimeout) && configuredUploadTimeout > 0
+    ? configuredUploadTimeout
+    : 10 * 60 * 1000;
+
+/**
+ * Fired when an authenticated request proves that the browser session is no
+ * longer valid. The dashboard guard owns the redirect and cache cleanup so
+ * public authentication screens can still render ordinary 401 errors.
+ */
+export const SESSION_EXPIRED_EVENT = 'kuinbee:session-expired';
 
 // ============================================
 // Types
@@ -20,8 +35,6 @@ interface RequestConfig extends Omit<RequestInit, 'body'> {
   body?: unknown;
   /** Skip JSON content-type header (for file uploads) */
   skipContentType?: boolean;
-  /** Suppress expected development-console errors, such as an anonymous /auth/me check. */
-  suppressErrorLog?: boolean;
 }
 
 interface ApiResponse<T> {
@@ -46,7 +59,9 @@ class ApiClient {
    * Filters out undefined/null values
    */
   private buildUrl(endpoint: string, params?: QueryParams): string {
-    const url = new URL(`${this.baseURL}${endpoint}`);
+    const runtimeOrigin =
+      typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
+    const url = new URL(`${this.baseURL.replace(/\/+$/, '')}${endpoint}`, runtimeOrigin);
 
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -63,17 +78,9 @@ class ApiClient {
    * Handle API response
    * Throws ApiError for non-ok responses
    */
-  private async handleResponse<T>(
-    response: Response,
-    suppressErrorLog = false
-  ): Promise<ApiResponse<T>> {
+  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     const contentType = response.headers.get('content-type');
     const isJson = contentType?.includes('application/json');
-
-    // Log response for debugging
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-      console.log(`[API] ${response.status} ${response.url}`);
-    }
 
     // Handle error responses
     if (!response.ok) {
@@ -115,23 +122,9 @@ class ApiClient {
         details: errorDetails,
       };
 
-      // Log error for debugging
-      if (
-        !suppressErrorLog &&
-        typeof window !== 'undefined' &&
-        process.env.NODE_ENV === 'development'
-      ) {
-        console.error('[API Error]', {
-          status: response.status,
-          statusText: response.statusText,
-          code: error.code,
-          message: error.message,
-          details: error.details,
-        });
+      if (response.status === 401 && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
       }
-
-      // Don't auto-redirect on 401 - let the app handle it
-      // The dashboard/components will handle auth failures appropriately
 
       throw error;
     }
@@ -158,16 +151,26 @@ class ApiClient {
    * Automatically includes credentials (cookies) for auth
    */
   async request<T>(endpoint: string, config: RequestConfig = {}): Promise<ApiResponse<T>> {
-    const { params, body, headers, skipContentType, suppressErrorLog, ...rest } = config;
+    const { params, body, headers, skipContentType, ...rest } = config;
     const url = this.buildUrl(endpoint, params);
 
     // Default headers
     const defaultHeaders: HeadersInit = {};
-    
+
     // Add JSON content-type for requests with body (unless skipped)
-    if (body && !skipContentType) {
+    if (body !== undefined && !skipContentType) {
       defaultHeaders['Content-Type'] = 'application/json';
     }
+
+    const controller = new AbortController();
+    let didTimeout = false;
+    const forwardAbort = () => controller.abort(rest.signal?.reason);
+    if (rest.signal?.aborted) forwardAbort();
+    else rest.signal?.addEventListener('abort', forwardAbort, { once: true });
+    const timeoutId = globalThis.setTimeout(() => {
+      didTimeout = true;
+      controller.abort();
+    }, REQUEST_TIMEOUT_MS);
 
     try {
       const response = await fetch(url, {
@@ -178,22 +181,43 @@ class ApiClient {
         },
         // IMPORTANT: Include credentials for cookie-based auth
         credentials: 'include',
-        // Serialize body as JSON if it's an object
-        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+        // Raw bodies are supported when callers intentionally omit JSON content type.
+        body:
+          body === undefined
+            ? undefined
+            : skipContentType
+              ? (body as BodyInit)
+              : JSON.stringify(body),
       });
 
-      return this.handleResponse<T>(response, suppressErrorLog);
+      return await this.handleResponse<T>(response);
     } catch (error) {
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
+        const apiError: ApiError = {
+          code: didTimeout ? 'REQUEST_TIMEOUT' : 'REQUEST_ABORTED',
+          message: didTimeout
+            ? 'The server took too long to respond. Please try again.'
+            : 'The request was cancelled.',
+          statusCode: 0,
+        };
+        throw apiError;
+      }
+
       // Handle network errors (CORS, connection refused, timeout, etc.)
       if (error instanceof TypeError) {
         const apiError: ApiError = {
           code: 'NETWORK_ERROR',
-          message: 'Unable to connect to the server. Please check your internet connection or try again later.',
+          message:
+            'Unable to connect to the server. Please check your internet connection or try again later.',
           statusCode: 0,
         };
         throw apiError;
       }
       throw error;
+    } finally {
+      globalThis.clearTimeout(timeoutId);
+      rest.signal?.removeEventListener('abort', forwardAbort);
     }
   }
 
@@ -231,13 +255,54 @@ class ApiClient {
   async uploadToPresignedUrl(
     presignedUrl: string,
     file: File | Blob,
-    contentType?: string
+    requiredHeaders: Record<string, string> = {}
   ): Promise<Response> {
-    return fetch(presignedUrl, {
-      method: 'PUT',
-      body: file,
-      headers: contentType ? { 'Content-Type': contentType } : undefined,
-    });
+    const controller = new AbortController();
+    const timeoutId = globalThis.setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+
+    try {
+      const headers = new Headers(requiredHeaders);
+      if (!headers.has('Content-Type') && file.type) headers.set('Content-Type', file.type);
+
+      const response = await fetch(presignedUrl, {
+        method: 'PUT',
+        body: file,
+        headers,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const error: ApiError = {
+          code: 'UPLOAD_FAILED',
+          message: `Storage rejected the upload (${response.status}). Please try again.`,
+          statusCode: response.status,
+        };
+        throw error;
+      }
+
+      return response;
+    } catch (error) {
+      if (error && typeof error === 'object' && 'code' in error) throw error;
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
+        const apiError: ApiError = {
+          code: 'UPLOAD_TIMEOUT',
+          message: 'The file upload took too long. Check your connection and try again.',
+          statusCode: 0,
+        };
+        throw apiError;
+      }
+      if (error instanceof TypeError) {
+        const apiError: ApiError = {
+          code: 'NETWORK_ERROR',
+          message: 'The storage service could not be reached. Check your connection and try again.',
+          statusCode: 0,
+        };
+        throw apiError;
+      }
+      throw error;
+    } finally {
+      globalThis.clearTimeout(timeoutId);
+    }
   }
 }
 
@@ -248,4 +313,4 @@ class ApiClient {
 export const apiClient = new ApiClient(BASE_URL);
 
 // Re-export types for convenience
-export type { ApiResponse, RequestConfig, QueryParams };
+export type { QueryParams };

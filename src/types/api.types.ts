@@ -29,25 +29,6 @@ export interface PaginatedResponse<T> {
 }
 
 // ============================================
-// Common Query Params
-// ============================================
-
-export interface QueryParams {
-  page?: number;
-  pageSize?: number;
-  q?: string;
-  sort?: string;
-}
-
-// ============================================
-// Success Response
-// ============================================
-
-export interface SuccessResponse {
-  success: true;
-}
-
-// ============================================
 // API Wrapper Response (for endpoints that wrap data)
 // ============================================
 

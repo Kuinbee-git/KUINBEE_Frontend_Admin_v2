@@ -8,7 +8,7 @@ import type { ApiError } from '@/types';
 /**
  * Extract error message from different error types
  */
-export function getErrorMessage(error: unknown): string {
+function getErrorMessage(error: unknown): string {
   if (!error) return 'An unknown error occurred';
 
   // ApiError from our client
@@ -33,7 +33,7 @@ export function getErrorMessage(error: unknown): string {
 /**
  * Check if error is an ApiError
  */
-export function isApiError(error: unknown): error is ApiError {
+function isApiError(error: unknown): error is ApiError {
   return (
     typeof error === 'object' &&
     error !== null &&
@@ -41,6 +41,11 @@ export function isApiError(error: unknown): error is ApiError {
     'message' in error &&
     'statusCode' in error
   );
+}
+
+/** A 401 is handled globally by clearing the session and redirecting to sign-in. */
+export function isSessionExpiredError(error: unknown): boolean {
+  return isApiError(error) && error.statusCode === 401;
 }
 
 /**
@@ -58,7 +63,7 @@ export function getFriendlyErrorMessage(error: unknown): string {
     case 401:
       return 'Session expired. Please login again.';
     case 403:
-      return 'You don\'t have permission to perform this action.';
+      return "You don't have permission to perform this action.";
     case 404:
       return 'The requested resource was not found.';
     case 409:

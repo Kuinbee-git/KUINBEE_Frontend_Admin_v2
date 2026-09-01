@@ -27,12 +27,7 @@ import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { useDataRequirements } from '@/hooks/api/useDataRequirements';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { DataRequirementSource, DataRequirementStatus } from '@/types';
-import {
-  formatDate,
-  sourceLabel,
-  statusLabel,
-  statusSemantic,
-} from './dataRequirementAdminUtils';
+import { formatDate, sourceLabel, statusLabel, statusSemantic } from './dataRequirementAdminUtils';
 
 const statuses: Array<DataRequirementStatus | 'ALL'> = [
   'ALL',
@@ -101,6 +96,7 @@ export function DataRequirementsView() {
               style={{ color: 'var(--text-muted)' }}
             />
             <Input
+              aria-label="Search data requirements"
               value={q}
               onChange={(event) => {
                 setQ(event.target.value);
@@ -117,7 +113,9 @@ export function DataRequirementsView() {
               setPage(1);
             }}
           >
-            <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger aria-label="Filter data requirements by status">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
             <SelectContent>
               {statuses.map((item) => (
                 <SelectItem value={item} key={item}>
@@ -133,7 +131,9 @@ export function DataRequirementsView() {
               setPage(1);
             }}
           >
-            <SelectTrigger><SelectValue placeholder="Origin" /></SelectTrigger>
+            <SelectTrigger aria-label="Filter data requirements by origin">
+              <SelectValue placeholder="Origin" />
+            </SelectTrigger>
             <SelectContent>
               {sources.map((item) => (
                 <SelectItem value={item} key={item}>
@@ -143,7 +143,9 @@ export function DataRequirementsView() {
             </SelectContent>
           </Select>
           <Select value={sort} onValueChange={(value) => setSort(value as typeof sort)}>
-            <SelectTrigger><SelectValue placeholder="Sort" /></SelectTrigger>
+            <SelectTrigger aria-label="Sort data requirements">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="NEWEST">Newest first</SelectItem>
               <SelectItem value="OLDEST">Oldest first</SelectItem>
@@ -231,7 +233,10 @@ export function DataRequirementsView() {
                       <TableCell>
                         <div>
                           <p className="max-w-[360px] truncate font-medium">{item.title}</p>
-                          <p className="mt-0.5 max-w-[360px] truncate text-xs" style={{ color: 'var(--text-muted)' }}>
+                          <p
+                            className="mt-0.5 max-w-[360px] truncate text-xs"
+                            style={{ color: 'var(--text-muted)' }}
+                          >
                             {item.organization || 'No organisation provided'}
                           </p>
                         </div>
@@ -239,7 +244,10 @@ export function DataRequirementsView() {
                       <TableCell>{sourceLabel(item.source)}</TableCell>
                       <TableCell>{item.contactName}</TableCell>
                       <TableCell>
-                        <StatusBadge status={statusLabel(item.status)} semanticType={statusSemantic(item.status)} />
+                        <StatusBadge
+                          status={statusLabel(item.status)}
+                          semanticType={statusSemantic(item.status)}
+                        />
                       </TableCell>
                       <TableCell>{formatDate(item.createdAt)}</TableCell>
                     </TableRow>
@@ -255,14 +263,23 @@ export function DataRequirementsView() {
                     <CardContent className="space-y-3 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-medium" style={{ color: 'var(--brand-primary)' }}>
+                          <p
+                            className="text-xs font-medium"
+                            style={{ color: 'var(--brand-primary)' }}
+                          >
                             {item.referenceCode}
                           </p>
                           <p className="mt-1 font-semibold">{item.title}</p>
                         </div>
-                        <StatusBadge status={statusLabel(item.status)} semanticType={statusSemantic(item.status)} />
+                        <StatusBadge
+                          status={statusLabel(item.status)}
+                          semanticType={statusSemantic(item.status)}
+                        />
                       </div>
-                      <div className="flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <div
+                        className="flex justify-between text-xs"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
                         <span>{sourceLabel(item.source)}</span>
                         <span>{formatDate(item.createdAt)}</span>
                       </div>
@@ -273,12 +290,16 @@ export function DataRequirementsView() {
             </div>
 
             {(pagination?.totalPages ?? 0) > 1 ? (
-              <div className="mt-5 flex items-center justify-between">
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   Page {pagination?.page} of {pagination?.totalPages}
                 </p>
                 <div className="flex gap-2">
-                  <Button variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>
+                  <Button
+                    variant="outline"
+                    disabled={page <= 1}
+                    onClick={() => setPage((value) => value - 1)}
+                  >
                     Previous
                   </Button>
                   <Button

@@ -18,14 +18,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { StatusBadge } from '@/components/shared/StatusBadge';
-import { useMyPermissions } from '@/hooks/api/useAuth';
+import { formatEnumLabel, StatusBadge } from '@/components/shared/StatusBadge';
 import {
   useDataRequirement,
   useDataRequirementAction,
   usePatchDataRequirement,
 } from '@/hooks/api/useDataRequirements';
-import { useAuthStore } from '@/store/auth.store';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/lib/constants/permissions';
+import { buildUserAppUrl } from '@/lib/utils/url.utils';
 import type {
   DataRequirementAction,
   DataRequirementDetail as Detail,
@@ -38,18 +39,25 @@ import {
   statusLabel,
   statusSemantic,
 } from './dataRequirementAdminUtils';
-import { isDemoDataRequirement } from '@/services/data-requirement.demo';
-
-const USER_APP_URL =
-  process.env.NEXT_PUBLIC_USER_APP_URL ||
-  process.env.NEXT_PUBLIC_MARKETPLACE_URL ||
-  'http://localhost:5175';
 
 const lines = (value: string) =>
   value
     .split('\n')
     .map((item) => item.trim())
     .filter(Boolean);
+
+const validateLineItems = (
+  label: string,
+  items: string[],
+  maxItems: number,
+  maxItemLength: number
+) => {
+  if (items.length > maxItems) return `${label} can contain at most ${maxItems} items.`;
+  if (items.some((item) => item.length > maxItemLength)) {
+    return `Each ${label.toLowerCase()} item must be ${maxItemLength} characters or fewer.`;
+  }
+  return null;
+};
 
 const actionCopy: Record<
   DataRequirementAction,
@@ -97,16 +105,13 @@ const actionsFor = (status: DataRequirementStatus): DataRequirementAction[] => {
   return [];
 };
 
-function ReadField({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
+function ReadField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+      <p
+        className="text-xs font-medium uppercase tracking-wide"
+        style={{ color: 'var(--text-muted)' }}
+      >
         {label}
       </p>
       <p className="mt-1 whitespace-pre-wrap text-sm" style={{ color: 'var(--text-primary)' }}>
@@ -141,29 +146,31 @@ const toForm = (detail: Detail): FormState => ({
 });
 
 export function DataRequirementDetail({ requirementId }: { requirementId: string }) {
-  const isDemo = isDemoDataRequirement(requirementId);
-  const user = useAuthStore((state) => state.user);
-  const permissionQuery = useMyPermissions();
-  const permissions = permissionQuery.data ?? [];
-  const isSuperadmin = user?.userType === 'SUPERADMIN';
-  const canManage = isSuperadmin || permissions.includes('MANAGE_DATA_REQUIREMENTS');
-  const canPublish = isSuperadmin || permissions.includes('PUBLISH_DATA_REQUIREMENTS');
+  const { can } = useAuthorization();
+  const canManage = can({ anyOf: [PERMISSIONS.DATA_REQUIREMENTS.MANAGE] });
+  const canPublish = can({ anyOf: [PERMISSIONS.DATA_REQUIREMENTS.PUBLISH] });
   const query = useDataRequirement(requirementId);
   const patchMutation = usePatchDataRequirement();
   const actionMutation = useDataRequirementAction();
   const [formOverrides, setFormOverrides] = useState<FormState | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [dialogAction, setDialogAction] = useState<DataRequirementAction | null>(null);
   const [actionNote, setActionNote] = useState('');
 
   if (query.isLoading) {
-    return <main className="p-6">Loading data requirement…</main>;
+    return <main className="p-4 sm:p-6">Loading data requirement…</main>;
   }
   if (query.isError || !query.data) {
     return (
-      <main className="p-6">
+      <main className="p-4 sm:p-6">
         <Alert variant="destructive">
           <AlertTitle>Failed to load requirement</AlertTitle>
-          <AlertDescription>Refresh the page or return to the requirements queue.</AlertDescription>
+          <AlertDescription className="mt-2 space-y-3">
+            <p>The requirement details could not be loaded.</p>
+            <Button variant="outline" onClick={() => query.refetch()}>
+              Retry
+            </Button>
+          </AlertDescription>
         </Alert>
       </main>
     );
@@ -171,53 +178,90 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
 
   const requirement = query.data;
   const form = formOverrides ?? toForm(requirement);
-  const isPublishReady =
-    !!requirement.publicSummary && !!requirement.publicSpecifications?.length;
+  const isPublishReady = !!requirement.publicSummary && !!requirement.publicSpecifications?.length;
   const availableActions = actionsFor(requirement.status).filter((action) => {
     if (action === 'publish') return canPublish && isPublishReady;
     if (action === 'unpublish') return canPublish;
     return canManage;
   });
-  const update = (key: keyof FormState, value: string) =>
+  const update = (key: keyof FormState, value: string) => {
+    setFormError(null);
     setFormOverrides((current) => ({
       ...(current ?? toForm(requirement)),
       [key]: value,
     }));
+  };
   const isBusy = patchMutation.isPending || actionMutation.isPending;
 
-  const save = () =>
-    patchMutation.mutate({
-      requirementId,
-      expectedVersion: requirement.version,
-      title: form.title,
-      industry: form.industry,
-      dataType: form.dataType,
-      publicSummary: form.publicSummary || null,
-      publicSpecifications: lines(form.publicSpecifications),
-      publicCoverage: lines(form.publicCoverage),
-      publicVolume: lines(form.publicVolume),
-      publicDeliveryDate: form.publicDeliveryDate || null,
-      adminNotes: form.adminNotes || null,
-    });
+  const save = async () => {
+    const title = form.title.trim();
+    const industry = form.industry.trim();
+    const dataType = form.dataType.trim();
+    const publicSummary = form.publicSummary.trim();
+    const publicSpecifications = lines(form.publicSpecifications);
+    const publicCoverage = lines(form.publicCoverage);
+    const publicVolume = lines(form.publicVolume);
+    const adminNotes = form.adminNotes.trim();
+
+    const validationError =
+      (title.length < 5 ? 'Title must contain at least 5 characters.' : null) ||
+      (!industry ? 'Industry is required.' : null) ||
+      (!dataType ? 'Data type is required.' : null) ||
+      (publicSummary && publicSummary.length < 20
+        ? 'Public summary must contain at least 20 characters or be left empty.'
+        : null) ||
+      validateLineItems('Specifications', publicSpecifications, 30, 500) ||
+      validateLineItems('Coverage', publicCoverage, 30, 200) ||
+      validateLineItems('Volume', publicVolume, 20, 200);
+
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
+    setFormError(null);
+    try {
+      await patchMutation.mutateAsync({
+        requirementId,
+        expectedVersion: requirement.version,
+        title,
+        industry,
+        dataType,
+        publicSummary: publicSummary || null,
+        publicSpecifications,
+        publicCoverage,
+        publicVolume,
+        publicDeliveryDate: form.publicDeliveryDate || null,
+        adminNotes: adminNotes || null,
+      });
+      setFormOverrides(null);
+    } catch {
+      // The mutation hook presents the server error and preserves the draft for correction.
+    }
+  };
 
   const confirmAction = async () => {
     if (!dialogAction) return;
     const copy = actionCopy[dialogAction];
     if (copy.needsReason && actionNote.trim().length < 10) return;
-    await actionMutation.mutateAsync({
-      requirementId,
-      action: dialogAction,
-      expectedVersion: requirement.version,
-      ...(dialogAction === 'reject'
-        ? { reason: actionNote.trim() }
-        : { note: actionNote.trim() || undefined }),
-    });
-    setDialogAction(null);
-    setActionNote('');
+    try {
+      await actionMutation.mutateAsync({
+        requirementId,
+        action: dialogAction,
+        expectedVersion: requirement.version,
+        ...(dialogAction === 'reject'
+          ? { reason: actionNote.trim() }
+          : { note: actionNote.trim() || undefined }),
+      });
+      setDialogAction(null);
+      setActionNote('');
+    } catch {
+      // The mutation hook presents the error and the confirmation stays open.
+    }
   };
 
-  const publicUrl = requirement.slug && !isDemo
-    ? `${USER_APP_URL.replace(/\/$/, '')}/data-request/active-requirements/${requirement.slug}`
+  const publicUrl = requirement.slug
+    ? buildUserAppUrl(`/data-request/active-requirements/${requirement.slug}`)
     : null;
 
   return (
@@ -255,7 +299,7 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
           </div>
           {publicUrl && requirement.status === 'PUBLISHED' ? (
             <Button asChild variant="outline">
-              <a href={publicUrl} target="_blank" rel="noreferrer">
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer">
                 View public page <ExternalLink className="ml-2 h-4 w-4" />
               </a>
             </Button>
@@ -265,25 +309,12 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
 
       <div className="grid gap-6 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
-          {isDemo ? (
-            <Alert
-              className="requirement-preview-alert"
-              style={{
-                borderColor: 'color-mix(in srgb, var(--state-info) 30%, transparent)',
-                backgroundColor: 'color-mix(in srgb, var(--state-info) 7%, transparent)',
-              }}
-            >
-              <AlertTitle>Demo requirement</AlertTitle>
-              <AlertDescription>
-                This preview record is development-only. Saving and lifecycle actions are disabled.
-              </AlertDescription>
-            </Alert>
-          ) : null}
           <Card className="requirement-panel">
             <CardHeader>
               <CardTitle>Public requirement</CardTitle>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                These are the curated fields shown on the marketplace. Use one item per line for lists.
+                These are the curated fields shown on the marketplace. Use one item per line for
+                lists.
               </p>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -304,6 +335,7 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
                     id="requirement-industry"
                     value={form.industry}
                     disabled={!canManage}
+                    maxLength={150}
                     onChange={(event) => update('industry', event.target.value)}
                   />
                 </div>
@@ -313,6 +345,7 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
                     id="requirement-type"
                     value={form.dataType}
                     disabled={!canManage}
+                    maxLength={150}
                     onChange={(event) => update('dataType', event.target.value)}
                   />
                 </div>
@@ -323,6 +356,7 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
                     value={form.publicSummary}
                     disabled={!canManage}
                     rows={4}
+                    maxLength={1200}
                     placeholder="Write the concise summary shown on the marketplace."
                     onChange={(event) => update('publicSummary', event.target.value)}
                   />
@@ -334,6 +368,7 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
                     value={form.publicSpecifications}
                     disabled={!canManage}
                     rows={6}
+                    maxLength={15029}
                     placeholder="Add one public specification per line."
                     onChange={(event) => update('publicSpecifications', event.target.value)}
                   />
@@ -345,6 +380,7 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
                     value={form.publicCoverage}
                     disabled={!canManage}
                     rows={4}
+                    maxLength={6029}
                     placeholder="Add one geography or language per line."
                     onChange={(event) => update('publicCoverage', event.target.value)}
                   />
@@ -356,6 +392,7 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
                     value={form.publicVolume}
                     disabled={!canManage}
                     rows={4}
+                    maxLength={4019}
                     placeholder="Add one volume milestone per line."
                     onChange={(event) => update('publicVolume', event.target.value)}
                   />
@@ -377,14 +414,24 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
                     value={form.adminNotes}
                     disabled={!canManage}
                     rows={3}
+                    maxLength={5000}
                     placeholder="Internal notes are never shown publicly."
                     onChange={(event) => update('adminNotes', event.target.value)}
                   />
                 </div>
               </div>
+              {formError ? (
+                <Alert variant="destructive" role="alert">
+                  <AlertTitle>Check the requirement fields</AlertTitle>
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              ) : null}
               {canManage ? (
-                <div className="flex justify-end border-t pt-4" style={{ borderColor: 'var(--border-default)' }}>
-                  <Button disabled={isBusy || isDemo} onClick={save}>
+                <div
+                  className="flex justify-end border-t pt-4"
+                  style={{ borderColor: 'var(--border-default)' }}
+                >
+                  <Button disabled={isBusy} onClick={save}>
                     {patchMutation.isPending ? 'Saving…' : 'Save changes'}
                   </Button>
                 </div>
@@ -393,26 +440,42 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
           </Card>
 
           <Card className="requirement-panel">
-            <CardHeader><CardTitle>Original submission</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Original submission</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-5 md:grid-cols-2">
                 <ReadField label="Description" value={requirement.description} />
                 <ReadField label="Intended use" value={requirement.intendedUse} />
-                <ReadField label="Requested formats" value={requirement.requestedFormats.join(', ')} />
-                <ReadField label="Geographies" value={requirement.requestedGeographies.join(', ')} />
+                <ReadField
+                  label="Requested formats"
+                  value={requirement.requestedFormats.join(', ')}
+                />
+                <ReadField
+                  label="Geographies"
+                  value={requirement.requestedGeographies.join(', ')}
+                />
                 <ReadField label="Languages" value={requirement.requestedLanguages.join(', ')} />
                 <ReadField label="Expected volume" value={requirement.expectedVolume} />
-                <ReadField label="Target delivery" value={formatDate(requirement.targetDeliveryDate)} />
+                <ReadField
+                  label="Target delivery"
+                  value={formatDate(requirement.targetDeliveryDate)}
+                />
                 <ReadField label="Budget range" value={requirement.budgetRange} />
                 <ReadField label="Licensing / compliance" value={requirement.licensingCompliance} />
                 <ReadField label="Additional notes" value={requirement.submitterNotes} />
               </div>
               <Separator />
               <details>
-                <summary className="cursor-pointer text-sm font-medium">View immutable source payload</summary>
+                <summary className="cursor-pointer text-sm font-medium">
+                  View immutable source payload
+                </summary>
                 <pre
                   className="mt-3 max-h-80 overflow-auto rounded-lg border p-3 text-xs"
-                  style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
+                  style={{
+                    backgroundColor: 'var(--bg-surface)',
+                    borderColor: 'var(--border-default)',
+                  }}
                 >
                   {JSON.stringify(requirement.originalSubmission, null, 2)}
                 </pre>
@@ -421,7 +484,9 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
           </Card>
 
           <Card className="requirement-panel">
-            <CardHeader><CardTitle>Activity</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Activity</CardTitle>
+            </CardHeader>
             <CardContent>
               <div className="space-y-5">
                 {[...requirement.events].reverse().map((event, index) => (
@@ -441,14 +506,15 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
                     />
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <p className="text-sm font-medium">
-                          {event.action.toLowerCase().replaceAll('_', ' ')}
-                        </p>
+                        <p className="text-sm font-medium">{formatEnumLabel(event.action)}</p>
                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {event.actorName} · {event.actorType.toLowerCase()}
+                          {event.actorName} · {formatEnumLabel(event.actorType)}
                         </p>
                         {event.note ? (
-                          <p className="mt-2 whitespace-pre-wrap text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          <p
+                            className="mt-2 whitespace-pre-wrap text-sm"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
                             {event.note}
                           </p>
                         ) : null}
@@ -466,15 +532,17 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
 
         <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
           <Card className="requirement-panel">
-            <CardHeader><CardTitle>Lifecycle actions</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Lifecycle actions</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               {availableActions.length ? (
                 availableActions.map((action) => (
                   <Button
                     key={action}
-                    variant={action === 'reject' && !isDemo ? 'destructive' : 'outline'}
+                    variant={action === 'reject' ? 'destructive' : 'outline'}
                     className="w-full"
-                    disabled={isBusy || isDemo}
+                    disabled={isBusy}
                     onClick={() => {
                       setDialogAction(action);
                       setActionNote('');
@@ -501,7 +569,9 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
           </Card>
 
           <Card className="requirement-panel">
-            <CardHeader><CardTitle>Submission origin</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Submission origin</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <ReadField label="Origin" value={sourceLabel(requirement.source)} />
               <ReadField label="Contact" value={requirement.contactName} />
@@ -512,12 +582,17 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
           </Card>
 
           <Card className="requirement-panel">
-            <CardHeader><CardTitle>Record details</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Record details</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <ReadField label="Reference" value={requirement.referenceCode} />
               <ReadField label="Version" value={String(requirement.version)} />
               <ReadField label="Slug" value={requirement.slug} />
-              <ReadField label="Review started" value={formatDateTime(requirement.reviewStartedAt)} />
+              <ReadField
+                label="Review started"
+                value={formatDateTime(requirement.reviewStartedAt)}
+              />
               <ReadField label="Published" value={formatDateTime(requirement.publishedAt)} />
               <ReadField label="Rejected" value={formatDateTime(requirement.rejectedAt)} />
               <ReadField label="Closed" value={formatDateTime(requirement.closedAt)} />
@@ -540,25 +615,38 @@ export function DataRequirementDetail({ requirementId }: { requirementId: string
               </DialogHeader>
               <div className="space-y-2">
                 <Label htmlFor="action-note">
-                  {actionCopy[dialogAction].needsReason ? 'Reason (required)' : 'Internal note (optional)'}
+                  {actionCopy[dialogAction].needsReason
+                    ? 'Reason (required)'
+                    : 'Internal note (optional)'}
                 </Label>
                 <Textarea
                   id="action-note"
                   value={actionNote}
                   rows={4}
+                  maxLength={3000}
                   onChange={(event) => setActionNote(event.target.value)}
                 />
-                {actionCopy[dialogAction].needsReason && actionNote.trim().length > 0 && actionNote.trim().length < 10 ? (
+                <p className="text-right text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {actionNote.length}/3000
+                </p>
+                {actionCopy[dialogAction].needsReason &&
+                actionNote.trim().length > 0 &&
+                actionNote.trim().length < 10 ? (
                   <p className="text-xs" style={{ color: 'var(--state-error)' }}>
                     Enter at least 10 characters.
                   </p>
                 ) : null}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogAction(null)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setDialogAction(null)}>
+                  Cancel
+                </Button>
                 <Button
                   variant={dialogAction === 'reject' ? 'destructive' : 'default'}
-                  disabled={isBusy || Boolean(actionCopy[dialogAction].needsReason && actionNote.trim().length < 10)}
+                  disabled={
+                    isBusy ||
+                    Boolean(actionCopy[dialogAction].needsReason && actionNote.trim().length < 10)
+                  }
                   onClick={confirmAction}
                 >
                   {actionMutation.isPending ? 'Updating…' : actionCopy[dialogAction].confirm}

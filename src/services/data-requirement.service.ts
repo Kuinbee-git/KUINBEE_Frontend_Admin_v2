@@ -8,12 +8,6 @@ import type {
   DataRequirementPage,
   DataRequirementPatch,
 } from '@/types';
-import {
-  getDemoDataRequirement,
-  isDemoDataRequirement,
-  listDemoDataRequirements,
-} from './data-requirement.demo';
-
 type BackendPage<T> = {
   items: T[];
   page: number;
@@ -24,9 +18,6 @@ type BackendPage<T> = {
 export async function listDataRequirements(
   params: DataRequirementListParams
 ): Promise<DataRequirementPage> {
-  if (process.env.NEXT_PUBLIC_USE_DEMO_DATA === 'true') {
-    return listDemoDataRequirements(params);
-  }
   const response = await apiClient.get<
     ApiSuccessResponse<BackendPage<DataRequirementPage['items'][number]>>
   >(`/v1/admin/data-requirements${buildQueryString(params)}`);
@@ -43,20 +34,13 @@ export async function listDataRequirements(
 }
 
 export async function getDataRequirement(requirementId: string) {
-  if (process.env.NEXT_PUBLIC_USE_DEMO_DATA === 'true' && isDemoDataRequirement(requirementId)) {
-    const requirement = getDemoDataRequirement(requirementId);
-    if (requirement) return requirement;
-  }
   const response = await apiClient.get<ApiSuccessResponse<DataRequirementDetail>>(
     `/v1/admin/data-requirements/${requirementId}`
   );
   return response.data.data;
 }
 
-export async function patchDataRequirement({
-  requirementId,
-  ...body
-}: DataRequirementPatch) {
+export async function patchDataRequirement({ requirementId, ...body }: DataRequirementPatch) {
   const response = await apiClient.patch<ApiSuccessResponse<DataRequirementDetail>>(
     `/v1/admin/data-requirements/${requirementId}`,
     body

@@ -4,7 +4,7 @@ import type { DataRequirementListParams } from '@/types';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import * as service from '@/services/data-requirement.service';
 
-export const dataRequirementKeys = {
+const dataRequirementKeys = {
   all: ['data-requirements'] as const,
   lists: () => [...dataRequirementKeys.all, 'list'] as const,
   list: (params: DataRequirementListParams) => [...dataRequirementKeys.lists(), params] as const,
@@ -12,8 +12,7 @@ export const dataRequirementKeys = {
   detail: (id: string) => [...dataRequirementKeys.details(), id] as const,
 };
 
-const message = (error: unknown, fallback: string) =>
-  getFriendlyErrorMessage(error) || fallback;
+const message = (error: unknown, fallback: string) => getFriendlyErrorMessage(error) || fallback;
 
 export function useDataRequirements(params: DataRequirementListParams) {
   return useQuery({

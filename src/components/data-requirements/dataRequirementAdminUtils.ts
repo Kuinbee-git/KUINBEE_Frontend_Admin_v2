@@ -4,7 +4,7 @@ export const statusLabel = (status: DataRequirementStatus) =>
   status
     .toLowerCase()
     .split('_')
-    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
 export const sourceLabel = (source: DataRequirementSource) =>

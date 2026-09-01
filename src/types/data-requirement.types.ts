@@ -7,7 +7,7 @@ export type DataRequirementStatus =
   | 'CLOSED'
   | 'ARCHIVED';
 
-export interface DataRequirementListItem {
+interface DataRequirementListItem {
   id: string;
   referenceCode: string;
   title: string;
@@ -20,7 +20,7 @@ export interface DataRequirementListItem {
   updatedAt: string;
 }
 
-export interface DataRequirementEvent {
+interface DataRequirementEvent {
   id: string;
   fromStatus: DataRequirementStatus | null;
   toStatus: DataRequirementStatus;

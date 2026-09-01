@@ -1,26 +1,22 @@
-"use client";
+'use client';
 
-import React, { ReactNode, useState } from "react";
-import { Search, X, SlidersHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import React, { ReactNode, useState } from 'react';
+import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { SegmentedToggle } from "@/components/shared/SegmentedToggle";
+} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { SegmentedToggle } from '@/components/shared/SegmentedToggle';
 
-export type FilterType = "search" | "select" | "toggle" | "checkbox" | "popover";
+type FilterType = 'search' | 'select' | 'toggle' | 'checkbox' | 'popover';
 
 export interface FilterOption {
   value: string;
@@ -66,51 +62,58 @@ export function FilterBar({
 
   const renderFilter = (filter: FilterConfig) => {
     switch (filter.type) {
-      case "search":
+      case 'search':
         return (
-          <div key={filter.id} className="flex-1 max-w-md">
+          <div key={filter.id} className="w-full min-w-0 flex-1 sm:max-w-md">
             <Label
+              htmlFor={filter.id}
               className="text-xs mb-1.5 block"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: 'var(--text-muted)' }}
             >
               {filter.label}
             </Label>
             <div className="relative">
               <Search
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4"
-                style={{ color: "var(--text-muted)" }}
+                style={{ color: 'var(--text-muted)' }}
+                aria-hidden="true"
               />
               <Input
+                id={filter.id}
+                type="search"
                 placeholder={filter.placeholder}
                 value={filter.value as string}
                 onChange={(e) => filter.onChange(e.target.value)}
                 className="pl-10"
                 style={{
-                  backgroundColor: "var(--bg-base)",
-                  borderColor: "var(--border-default)",
-                  color: "var(--text-primary)",
+                  backgroundColor: 'var(--bg-base)',
+                  borderColor: 'var(--border-default)',
+                  color: 'var(--text-primary)',
                 }}
               />
             </div>
           </div>
         );
 
-      case "select":
+      case 'select':
         return (
-          <div key={filter.id}>
-            <Label className="text-xs mb-1.5 block" style={{ color: "var(--text-muted)" }}>
+          <div key={filter.id} className="w-full sm:w-auto">
+            <Label
+              htmlFor={filter.id}
+              className="text-xs mb-1.5 block"
+              style={{ color: 'var(--text-muted)' }}
+            >
               {filter.label}
             </Label>
-            <Select
-              value={filter.value as string}
-              onValueChange={filter.onChange}
-            >
+            <Select value={filter.value as string} onValueChange={filter.onChange}>
               <SelectTrigger
-                className={`h-9 ${filter.width || "w-[180px]"}`}
+                id={filter.id}
+                aria-label={filter.label}
+                className="h-9 w-full sm:w-[180px]"
                 style={{
-                  backgroundColor: "var(--bg-base)",
-                  borderColor: "var(--border-default)",
-                  color: "var(--text-primary)",
+                  backgroundColor: 'var(--bg-base)',
+                  borderColor: 'var(--border-default)',
+                  color: 'var(--text-primary)',
                 }}
               >
                 <SelectValue />
@@ -126,7 +129,7 @@ export function FilterBar({
           </div>
         );
 
-      case "toggle":
+      case 'toggle':
         return (
           <SegmentedToggle
             key={filter.id}
@@ -137,7 +140,25 @@ export function FilterBar({
           />
         );
 
-      case "popover":
+      case 'checkbox':
+        return (
+          <div key={filter.id} className="flex min-h-9 items-center gap-2">
+            <Checkbox
+              id={filter.id}
+              checked={Boolean(filter.value)}
+              onCheckedChange={(checked) => filter.onChange(checked === true)}
+            />
+            <Label
+              htmlFor={filter.id}
+              className="cursor-pointer"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              {filter.label}
+            </Label>
+          </div>
+        );
+
+      case 'popover':
         return (
           <Popover key={filter.id}>
             <PopoverTrigger asChild>
@@ -146,9 +167,9 @@ export function FilterBar({
                 size="sm"
                 className="h-9"
                 style={{
-                  backgroundColor: "var(--bg-base)",
-                  borderColor: "var(--border-default)",
-                  color: "var(--text-primary)",
+                  backgroundColor: 'var(--bg-base)',
+                  borderColor: 'var(--border-default)',
+                  color: 'var(--text-primary)',
                 }}
               >
                 {filter.label}
@@ -156,8 +177,8 @@ export function FilterBar({
                   <span
                     className="ml-2 px-1.5 py-0.5 text-xs rounded"
                     style={{
-                      backgroundColor: "var(--brand-primary)",
-                      color: "#ffffff",
+                      backgroundColor: 'var(--brand-primary)',
+                      color: 'var(--brand-on-primary)',
                     }}
                   >
                     {filter.value.length}
@@ -168,15 +189,12 @@ export function FilterBar({
             <PopoverContent
               className="w-64"
               style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-default)",
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-default)',
               }}
             >
               <div className="space-y-3">
-                <h4
-                  className="text-sm font-medium"
-                  style={{ color: "var(--text-primary)" }}
-                >
+                <h4 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                   {filter.label}
                 </h4>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -184,24 +202,20 @@ export function FilterBar({
                     <div key={option.value} className="flex items-center gap-2">
                       <Checkbox
                         id={`${filter.id}-${option.value}`}
-                        checked={(filter.value as string[]).includes(
-                          option.value
-                        )}
+                        checked={(filter.value as string[]).includes(option.value)}
                         onCheckedChange={(checked) => {
                           const currentValues = filter.value as string[];
                           if (checked) {
                             filter.onChange([...currentValues, option.value]);
                           } else {
-                            filter.onChange(
-                              currentValues.filter((v) => v !== option.value)
-                            );
+                            filter.onChange(currentValues.filter((v) => v !== option.value));
                           }
                         }}
                       />
                       <label
                         htmlFor={`${filter.id}-${option.value}`}
                         className="text-sm cursor-pointer"
-                        style={{ color: "var(--text-secondary)" }}
+                        style={{ color: 'var(--text-secondary)' }}
                       >
                         {option.label}
                       </label>
@@ -222,25 +236,25 @@ export function FilterBar({
     <div
       className="border-b"
       style={{
-        backgroundColor: "var(--bg-base)",
-        borderColor: "var(--border-default)",
+        backgroundColor: 'var(--bg-base)',
+        borderColor: 'var(--border-default)',
       }}
     >
       {/* Primary Filters Row */}
-      <div className="px-6 py-4">
+      <div className="px-4 py-4 sm:px-6">
         <div className="flex flex-wrap items-end gap-4">
           {primaryFilters.map((filter, index) => (
             <React.Fragment key={filter.id}>
               {renderFilter(filter)}
               {/* Add separator between toggles and selects/popovers */}
-              {filter.type === "toggle" && 
-               index < primaryFilters.length - 1 && 
-               primaryFilters[index + 1].type !== "toggle" && (
-                <div
-                  className="h-8 w-px"
-                  style={{ backgroundColor: "var(--border-default)" }}
-                />
-              )}
+              {filter.type === 'toggle' &&
+                index < primaryFilters.length - 1 &&
+                primaryFilters[index + 1]?.type !== 'toggle' && (
+                  <div
+                    className="hidden h-8 w-px sm:block"
+                    style={{ backgroundColor: 'var(--border-default)' }}
+                  />
+                )}
             </React.Fragment>
           ))}
 
@@ -249,17 +263,16 @@ export function FilterBar({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setAdvancedOpen(!advancedOpen)}
-              className="ml-auto"
+              onClick={() => setAdvancedOpen((current) => !current)}
+              aria-expanded={advancedOpen}
+              className="w-full sm:ml-auto sm:w-auto"
               style={{
-                backgroundColor: advancedOpen
-                  ? "var(--bg-hover)"
-                  : "var(--bg-base)",
-                borderColor: "var(--border-default)",
-                color: "var(--text-primary)",
+                backgroundColor: advancedOpen ? 'var(--bg-hover)' : 'var(--bg-base)',
+                borderColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
               }}
             >
-              <SlidersHorizontal className="w-4 h-4 mr-2" />
+              <SlidersHorizontal className="w-4 h-4 mr-2" aria-hidden="true" />
               Advanced Filters
             </Button>
           )}
@@ -269,8 +282,8 @@ export function FilterBar({
       {/* Advanced Filters Panel */}
       {showAdvancedFilters && advancedOpen && advancedFilters.length > 0 && (
         <div
-          className="px-6 pb-6 pt-0 border-t"
-          style={{ borderColor: "var(--border-subtle)" }}
+          className="border-t px-4 pb-6 pt-0 sm:px-6"
+          style={{ borderColor: 'var(--border-subtle)' }}
         >
           <div className="flex flex-wrap items-center gap-4 pt-4">
             {advancedFilters.map(renderFilter)}
@@ -281,47 +294,35 @@ export function FilterBar({
       {/* Active Filters Chips */}
       {activeFilters.length > 0 && (
         <div
-          className="px-6 pb-4 flex flex-wrap items-center gap-2"
+          className="flex flex-wrap items-center gap-2 px-4 pb-4 sm:px-6"
           style={{
-            borderTop: "1px solid var(--border-subtle)",
-            paddingTop: "1rem",
+            borderTop: '1px solid var(--border-subtle)',
+            paddingTop: '1rem',
           }}
         >
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
             Active Filters:
           </span>
           {activeFilters.map((filter) => (
             <button
+              type="button"
               key={filter.key}
               onClick={filter.onRemove}
-              className="px-2 py-1 text-xs rounded-md flex items-center gap-1.5 transition-colors"
+              aria-label={`Remove filter: ${filter.label}`}
+              className="flex items-center gap-1.5 rounded-md border bg-[var(--bg-surface)] px-2 py-1 text-xs text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)]"
               style={{
-                backgroundColor: "var(--bg-surface)",
-                border: "1px solid var(--border-default)",
-                color: "var(--text-secondary)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--bg-surface)";
+                borderColor: 'var(--border-default)',
               }}
             >
               {filter.label}
-              <X className="w-3 h-3" />
+              <X className="w-3 h-3" aria-hidden="true" />
             </button>
           ))}
           {onClearAll && (
             <button
+              type="button"
               onClick={onClearAll}
-              className="text-xs ml-2 transition-colors"
-              style={{ color: "var(--text-muted)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "var(--status-error)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "var(--text-muted)";
-              }}
+              className="ml-2 text-xs text-[var(--text-muted)] transition-colors hover:text-[var(--status-error)]"
             >
               Clear all
             </button>

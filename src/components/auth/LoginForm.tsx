@@ -1,25 +1,22 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useThemeStore } from "@/store/theme.store";
-import { PasswordInput } from "@/components/shared/PasswordInput";
-import { useLogin } from "@/hooks";
-import type { ApiError } from "@/types";
+import { useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'motion/react';
+import { AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PasswordInput } from '@/components/shared/PasswordInput';
+import { useLogin } from '@/hooks';
+import type { ApiError } from '@/types';
 
 export function LoginForm() {
-  const { theme } = useThemeStore();
   const loginMutation = useLogin();
-  
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
-  const isDark = theme === "dark";
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   // Get user-friendly error message
   const errorMessage = useMemo(() => {
@@ -65,7 +62,7 @@ export function LoginForm() {
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      
+
       // The useLogin hook already handles navigation, don't duplicate
       loginMutation.mutate({ email, password });
     },
@@ -84,12 +81,10 @@ export function LoginForm() {
           >
             <Alert
               variant="destructive"
-              className={`mb-6 border-[#ef4444]/30 ${
-                isDark ? "bg-[#ef4444]/10 backdrop-blur-sm" : "bg-[#fef2f2]"
-              }`}
+              className="mb-6 border-[var(--status-error-border)] bg-[var(--status-error-bg)]"
             >
-              <AlertCircle className="h-4 w-4 text-[#ef4444]" />
-              <AlertDescription className="text-[#ef4444]">
+              <AlertCircle className="h-4 w-4 text-[var(--status-error)]" />
+              <AlertDescription className="text-[var(--status-error)]">
                 {errorMessage}
               </AlertDescription>
             </Alert>
@@ -101,10 +96,7 @@ export function LoginForm() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Email Field */}
         <div className="space-y-2">
-          <Label
-            htmlFor="email"
-            className={`text-sm font-medium ${isDark ? "text-white/90" : "text-[#1a2240]"}`}
-          >
+          <Label htmlFor="email" className="text-sm font-medium text-[var(--text-primary)]">
             Email
           </Label>
           <Input
@@ -115,12 +107,9 @@ export function LoginForm() {
             onChange={(e) => setEmail(e.target.value)}
             disabled={loginMutation.isPending}
             required
-            className={`h-12 glass-input transition-all ${
-              isDark
-                ? "border-white/10 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:border-white/30 focus-visible:bg-white/10 focus-visible:shadow-lg focus-visible:shadow-white/10 disabled:bg-white/5 disabled:text-white/40"
-                : "border-[#dde3f0] bg-white/70 text-[#1a2240] placeholder:text-[#8b93a5] focus-visible:ring-2 focus-visible:ring-[#1a2240]/10 focus-visible:border-[#bcc4d6] focus-visible:bg-white/95 focus-visible:shadow-lg focus-visible:shadow-[#1a2240]/8 disabled:bg-[#f5f7fb] disabled:text-[#8b93a5]"
-            }`}
-            style={{ backdropFilter: "blur(16px)" }}
+            autoComplete="username"
+            className="glass-input h-12 text-[var(--text-primary)] transition-colors placeholder:text-[var(--text-muted)] disabled:bg-[var(--bg-hover)] disabled:text-[var(--text-disabled)]"
+            style={{ backdropFilter: 'blur(16px)' }}
           />
         </div>
 
@@ -131,47 +120,40 @@ export function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           disabled={loginMutation.isPending}
-          isDark={isDark}
           required
+          autoComplete="current-password"
         />
 
         <Button
           type="submit"
           disabled={loginMutation.isPending}
-          className="w-full h-12 text-white font-semibold disabled:opacity-50 mt-8 glass-button glass-shadow-hover border"
-          style={{
-            background: "linear-gradient(135deg, #1a2240 0%, #2a3250 100%)",
-          }}
+          className="glass-button glass-shadow-hover mt-8 h-12 w-full border font-semibold disabled:opacity-50"
         >
           {loginMutation.isPending ? (
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent opacity-80" />
               Signing in...
             </div>
           ) : (
-            "Sign in"
+            'Sign in'
           )}
         </Button>
 
         {/* Forgot Password Link */}
         <div className="text-center pt-4">
-          <button
-            type="button"
-            disabled={loginMutation.isPending}
-            className={`text-sm underline-offset-4 hover:underline disabled:no-underline transition-colors ${
-              isDark
-                ? "text-white/60 hover:text-white disabled:text-white/30"
-                : "text-[#525d6f] hover:text-[#1a2240] disabled:text-[#8b93a5]"
-            }`}
+          <Link
+            href="/auth/forgot-password"
+            aria-disabled={loginMutation.isPending}
+            className="text-sm text-[var(--text-muted)] underline-offset-4 transition-colors hover:text-[var(--text-primary)] hover:underline"
           >
             Forgot password
-          </button>
+          </Link>
         </div>
       </form>
 
       {/* Security Notice */}
-      <div className={`mt-8 pt-6 border-t ${isDark ? "border-white/10" : "border-[#dde3f0]"}`}>
-        <p className={`text-xs text-center leading-relaxed ${isDark ? "text-white/50" : "text-[#7a8494]"}`}>
+      <div className="mt-8 border-t border-[var(--border-default)] pt-6">
+        <p className="text-center text-xs leading-relaxed text-[var(--text-muted)]">
           Access monitored · Additional verification may be required
         </p>
       </div>

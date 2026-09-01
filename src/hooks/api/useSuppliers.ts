@@ -5,9 +5,10 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import * as suppliersService from '@/services/suppliers.service';
-import type { 
-  SupplierListParams, 
+import type {
+  SupplierListParams,
   SupplierAnalyticsParams,
   SupplierManualKycQueueParams,
 } from '@/services/suppliers.service';
@@ -17,15 +18,17 @@ import type { RejectSupplierKycRequest } from '@/types';
 // Query Keys
 // ============================================
 
-export const suppliersKeys = {
+const suppliersKeys = {
   all: ['suppliers'] as const,
   lists: () => [...suppliersKeys.all, 'list'] as const,
   list: (params: SupplierListParams) => [...suppliersKeys.lists(), params] as const,
   details: () => [...suppliersKeys.all, 'detail'] as const,
   detail: (id: string) => [...suppliersKeys.details(), id] as const,
-  analytics: (id: string, params: SupplierAnalyticsParams) => [...suppliersKeys.all, 'analytics', id, params] as const,
+  analytics: (id: string, params: SupplierAnalyticsParams) =>
+    [...suppliersKeys.all, 'analytics', id, params] as const,
   kyc: (id: string) => [...suppliersKeys.all, 'kyc', id] as const,
-  kycQueue: (params: SupplierManualKycQueueParams) => [...suppliersKeys.all, 'kyc-queue', params] as const,
+  kycQueue: (params: SupplierManualKycQueueParams) =>
+    [...suppliersKeys.all, 'kyc-queue', params] as const,
 };
 
 // ============================================
@@ -35,11 +38,12 @@ export const suppliersKeys = {
 /**
  * Get paginated list of suppliers
  */
-export function useSuppliers(params: SupplierListParams = {}) {
+export function useSuppliers(params: SupplierListParams = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: suppliersKeys.list(params),
     queryFn: () => suppliersService.getSuppliers(params),
     placeholderData: (previousData) => previousData,
+    enabled: options.enabled,
   });
 }
 
@@ -57,10 +61,7 @@ export function useSupplier(supplierId: string) {
 /**
  * Get supplier analytics
  */
-export function useSupplierAnalytics(
-  supplierId: string, 
-  params: SupplierAnalyticsParams = {}
-) {
+export function useSupplierAnalytics(supplierId: string, params: SupplierAnalyticsParams = {}) {
   return useQuery({
     queryKey: suppliersKeys.analytics(supplierId, params),
     queryFn: () => suppliersService.getSupplierAnalytics(supplierId, params),
@@ -86,7 +87,6 @@ export function useSupplierManualKycQueue(params: SupplierManualKycQueueParams =
   return useQuery({
     queryKey: suppliersKeys.kycQueue(params),
     queryFn: () => suppliersService.getSupplierManualKycQueue(params),
-    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -102,8 +102,8 @@ export function usePickSupplierManualKyc() {
       queryClient.invalidateQueries({ queryKey: suppliersKeys.all });
       toast.success('Supplier picked successfully');
     },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Failed to pick supplier');
+    onError: (error: unknown) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to pick supplier');
     },
   });
 }
@@ -120,8 +120,8 @@ export function useVerifySupplierManualKyc() {
       queryClient.invalidateQueries({ queryKey: suppliersKeys.all });
       toast.success('Supplier verified successfully');
     },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Failed to verify supplier');
+    onError: (error: unknown) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to verify supplier');
     },
   });
 }
@@ -139,8 +139,8 @@ export function useRejectSupplierManualKyc() {
       queryClient.invalidateQueries({ queryKey: suppliersKeys.all });
       toast.success('Supplier KYC rejected');
     },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Failed to reject supplier');
+    onError: (error: unknown) => {
+      toast.error(getFriendlyErrorMessage(error) || 'Failed to reject supplier');
     },
   });
 }

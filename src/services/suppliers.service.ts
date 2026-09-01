@@ -12,12 +12,15 @@ import type {
   SupplierAnalytics,
   SupplierKyc,
   SupplierManualKycQueueResponse,
-  SupplierManualKycActionResponse,
+  SupplierManualKycPickResponse,
+  SupplierManualKycVerifyResponse,
+  SupplierManualKycRejectResponse,
   ManualKycStatus,
   RejectSupplierKycRequest,
   PaginatedResponse,
   ApiSuccessResponse,
 } from '@/types';
+import type { BusinessDomain } from '@/types/supplier.types';
 
 // ============================================
 // Types
@@ -27,9 +30,11 @@ export interface SupplierListParams {
   page?: number;
   pageSize?: number;
   q?: string;
-  supplierType?: "INDIVIDUAL" | "COMPANY" | "ALL";
-  status?: "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING_VERIFICATION" | "DELETED" | "ALL";
-  sort?: "createdAt:desc" | "createdAt:asc";
+  supplierType?: 'INDIVIDUAL' | 'COMPANY' | 'ALL';
+  status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION' | 'DELETED' | 'ALL';
+  contactEmailVerified?: boolean;
+  businessDomains?: BusinessDomain[];
+  sort?: 'createdAt:desc' | 'createdAt:asc';
 }
 
 export interface SupplierAnalyticsParams {
@@ -40,6 +45,20 @@ export interface SupplierManualKycQueueParams {
   page?: number;
   pageSize?: number;
   status?: ManualKycStatus;
+}
+
+/**
+ * Accept the standard `{ success, data }` envelope and the previous flat
+ * response during rolling deployments, so the queue stays available while
+ * frontend and backend instances are replaced.
+ */
+type SupplierKycApiResponse<T extends object> = ApiSuccessResponse<T> | (T & { success: true });
+
+function unwrapSupplierKycResponse<T extends object>(response: SupplierKycApiResponse<T>): T {
+  if ('data' in response && response.data && typeof response.data === 'object') {
+    return response.data as T;
+  }
+  return response as T;
 }
 
 // ============================================
@@ -53,15 +72,15 @@ export async function getSuppliers(
   params: SupplierListParams = {}
 ): Promise<PaginatedResponse<SupplierListItem>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<{
-    items: SupplierListItem[];
-    page: number;
-    pageSize: number;
-    total: number;
-  }>>(
-    `${API_ROUTES.ADMIN.SUPPLIERS.LIST}${query}`
-  );
-  
+  const response = await apiClient.get<
+    ApiSuccessResponse<{
+      items: SupplierListItem[];
+      page: number;
+      pageSize: number;
+      total: number;
+    }>
+  >(`${API_ROUTES.ADMIN.SUPPLIERS.LIST}${query}`);
+
   const result = response.data.data;
   return {
     items: Array.isArray(result.items) ? result.items : [],
@@ -114,18 +133,29 @@ export async function getSupplierManualKycQueue(
   params: SupplierManualKycQueueParams = {}
 ): Promise<PaginatedResponse<NonNullable<SupplierManualKycQueueResponse['items']>[number]>> {
   const query = buildQueryString(params);
-  const response = await apiClient.get<ApiSuccessResponse<SupplierManualKycQueueResponse> | SupplierManualKycQueueResponse>(
+  const response = await apiClient.get<SupplierKycApiResponse<SupplierManualKycQueueResponse>>(
     `${API_ROUTES.ADMIN.SUPPLIERS.KYC_QUEUE}${query}`
   );
-  const payload = response.data as ApiSuccessResponse<SupplierManualKycQueueResponse> | SupplierManualKycQueueResponse;
-  const result = "data" in payload ? payload.data : payload;
+  const result = unwrapSupplierKycResponse(response.data);
+
+  if (
+    !Array.isArray(result.items) ||
+    !Number.isInteger(result.page) ||
+    result.page < 1 ||
+    !Number.isInteger(result.pageSize) ||
+    result.pageSize < 1 ||
+    !Number.isInteger(result.total) ||
+    result.total < 0
+  ) {
+    throw new Error('Supplier KYC queue returned an invalid response');
+  }
 
   return {
-    items: Array.isArray(result.items) ? result.items : [],
+    items: result.items,
     pagination: {
-      page: result.page ?? 1,
-      pageSize: result.pageSize ?? 20,
-      total: result.total ?? 0,
+      page: result.page,
+      pageSize: result.pageSize,
+      total: result.total,
     },
   };
 }
@@ -133,23 +163,25 @@ export async function getSupplierManualKycQueue(
 /**
  * Pick supplier KYC for review
  */
-export async function pickSupplierManualKyc(supplierId: string): Promise<SupplierManualKycActionResponse> {
-  const response = await apiClient.post<ApiSuccessResponse<SupplierManualKycActionResponse> | SupplierManualKycActionResponse>(
+export async function pickSupplierManualKyc(
+  supplierId: string
+): Promise<SupplierManualKycPickResponse> {
+  const response = await apiClient.post<SupplierKycApiResponse<SupplierManualKycPickResponse>>(
     API_ROUTES.ADMIN.SUPPLIERS.KYC_PICK(supplierId)
   );
-  const payload = response.data as ApiSuccessResponse<SupplierManualKycActionResponse> | SupplierManualKycActionResponse;
-  return "data" in payload ? payload.data : payload;
+  return unwrapSupplierKycResponse(response.data);
 }
 
 /**
  * Verify supplier manual KYC
  */
-export async function verifySupplierManualKyc(supplierId: string): Promise<SupplierManualKycActionResponse> {
-  const response = await apiClient.post<ApiSuccessResponse<SupplierManualKycActionResponse> | SupplierManualKycActionResponse>(
+export async function verifySupplierManualKyc(
+  supplierId: string
+): Promise<SupplierManualKycVerifyResponse> {
+  const response = await apiClient.post<SupplierKycApiResponse<SupplierManualKycVerifyResponse>>(
     API_ROUTES.ADMIN.SUPPLIERS.KYC_VERIFY(supplierId)
   );
-  const payload = response.data as ApiSuccessResponse<SupplierManualKycActionResponse> | SupplierManualKycActionResponse;
-  return "data" in payload ? payload.data : payload;
+  return unwrapSupplierKycResponse(response.data);
 }
 
 /**
@@ -158,13 +190,12 @@ export async function verifySupplierManualKyc(supplierId: string): Promise<Suppl
 export async function rejectSupplierManualKyc(
   supplierId: string,
   data: RejectSupplierKycRequest
-): Promise<SupplierManualKycActionResponse> {
-  const response = await apiClient.post<ApiSuccessResponse<SupplierManualKycActionResponse> | SupplierManualKycActionResponse>(
+): Promise<SupplierManualKycRejectResponse> {
+  const response = await apiClient.post<SupplierKycApiResponse<SupplierManualKycRejectResponse>>(
     API_ROUTES.ADMIN.SUPPLIERS.KYC_REJECT(supplierId),
     data
   );
-  const payload = response.data as ApiSuccessResponse<SupplierManualKycActionResponse> | SupplierManualKycActionResponse;
-  return "data" in payload ? payload.data : payload;
+  return unwrapSupplierKycResponse(response.data);
 }
 
 // ============================================
@@ -186,7 +217,7 @@ export async function markOfflineContractDone(
   supplierId: string
 ): Promise<OfflineContractResponse> {
   const response = await apiClient.post<ApiSuccessResponse<OfflineContractResponse>>(
-    `/v1/admin/suppliers/${supplierId}/offline-contract/mark-done`
+    API_ROUTES.ADMIN.SUPPLIERS.MARK_OFFLINE_CONTRACT_DONE(supplierId)
   );
   return response.data.data;
 }

@@ -2,18 +2,31 @@
  * Supplier Types
  */
 
+export type BusinessDomain =
+  | 'HEALTHCARE'
+  | 'FINANCE'
+  | 'EDUCATION'
+  | 'ECOMMERCE'
+  | 'AGRICULTURE'
+  | 'TECHNOLOGY'
+  | 'GOVERNMENT'
+  | 'RESEARCH'
+  | 'MARKETING'
+  | 'SOCIAL_MEDIA'
+  | 'OTHER';
+
 // Supplier List Item (for directory view)
 export interface SupplierListItem {
   supplier: {
     id: string;
     email: string;
     phone: string | null;
-    status: "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING_VERIFICATION" | "DELETED";
+    status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION' | 'DELETED';
     createdAt: string; // ISO
     updatedAt: string; // ISO
   };
   supplierProfile: {
-    supplierType: "INDIVIDUAL" | "COMPANY";
+    supplierType: 'INDIVIDUAL' | 'COMPANY';
     companyName: string | null;
     websiteUrl: string | null;
     individualName: string | null;
@@ -28,8 +41,8 @@ export interface SupplierListItem {
     updatedAt: string; // ISO
   };
   kyc: {
-    provider: "SIGNZY";
-    status: "PENDING" | "IN_PROGRESS" | "VERIFIED" | "REJECTED" | "FAILED";
+    provider: 'SIGNZY';
+    status: 'PENDING' | 'IN_PROGRESS' | 'VERIFIED' | 'REJECTED' | 'FAILED';
   } | null;
 }
 
@@ -39,15 +52,15 @@ export interface SupplierDetail {
     id: string;
     email: string;
     phone: string | null;
-    status: "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING_VERIFICATION" | "DELETED";
+    status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION' | 'DELETED';
     emailVerified: boolean;
     createdAt: string; // ISO
     updatedAt: string; // ISO
     lastLoginAt: string | null; // ISO
-    deletedAt: string | null;   // ISO
+    deletedAt: string | null; // ISO
   };
   supplierProfile: {
-    supplierType: "INDIVIDUAL" | "COMPANY";
+    supplierType: 'INDIVIDUAL' | 'COMPANY';
     companyName: string | null;
     websiteUrl: string | null;
     individualName: string | null;
@@ -72,8 +85,8 @@ export interface SupplierDetail {
   };
   kyc: {
     id: string;
-    provider: "SIGNZY";
-    status: "PENDING" | "IN_PROGRESS" | "VERIFIED" | "REJECTED" | "FAILED";
+    provider: 'SIGNZY';
+    status: 'PENDING' | 'IN_PROGRESS' | 'VERIFIED' | 'REJECTED' | 'FAILED';
     failureReason: string | null;
     createdAt: string; // ISO
     updatedAt: string; // ISO
@@ -98,27 +111,27 @@ export interface SupplierKyc {
   supplierId: string;
   kyc: {
     id: string;
-    provider: "SIGNZY";
-    status: "PENDING" | "IN_PROGRESS" | "VERIFIED" | "REJECTED" | "FAILED";
+    provider: 'SIGNZY';
+    status: 'PENDING' | 'IN_PROGRESS' | 'VERIFIED' | 'REJECTED' | 'FAILED';
     failureReason: string | null;
     createdAt: string; // ISO
     updatedAt: string; // ISO
     checks: Array<{
       id: string;
-      checkType: "AADHAAR" | "PAN" | "COMPANY_PAN" | "GSTIN" | "CIN";
-      status: "PENDING" | "SUBMITTED" | "IN_PROGRESS" | "VERIFIED" | "REJECTED" | "FAILED";
+      checkType: 'AADHAAR' | 'PAN' | 'COMPANY_PAN' | 'GSTIN' | 'CIN';
+      status: 'PENDING' | 'SUBMITTED' | 'IN_PROGRESS' | 'VERIFIED' | 'REJECTED' | 'FAILED';
       valueMasked: string;
       providerRequestId: string | null;
       providerReferenceId: string | null;
       submittedAt: string | null; // ISO
-      verifiedAt: string | null;  // ISO
+      verifiedAt: string | null; // ISO
       createdAt: string; // ISO
       updatedAt: string; // ISO
     }>;
   } | null;
 }
 
-export type ManualKycStatus = "PENDING" | "VERIFIED" | "REJECTED";
+export type ManualKycStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 
 export interface SupplierManualKycQueueItem {
   supplierId: string;
@@ -137,6 +150,9 @@ export interface SupplierManualKycQueueItem {
     email: string;
   } | null;
   pickedAt: string | null;
+  verifiedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
 }
 
 export interface SupplierManualKycQueueResponse {
@@ -147,11 +163,25 @@ export interface SupplierManualKycQueueResponse {
 }
 
 export interface RejectSupplierKycRequest {
-  reason: string;
+  rejectionReason: string;
 }
 
-export interface SupplierManualKycActionResponse {
-  success: true;
+export interface SupplierManualKycPickResponse {
+  supplierId: string;
+  pickedByAdminId: string;
+  pickedAt: string;
+}
+
+export interface SupplierManualKycVerifyResponse {
+  supplierId: string;
+  verifiedAt: string;
+  onboardingCompletedAt: string;
+}
+
+export interface SupplierManualKycRejectResponse {
+  supplierId: string;
+  rejectedAt: string;
+  rejectionReason: string;
 }
 
 // ============================================
@@ -169,7 +199,7 @@ export interface SupplierInvite {
   contactPersonName?: string;
   createdBy: string;
   createdAt: string;
-  sentAt: string;
+  sentAt: string | null;
   sendCount: number;
 }
 
@@ -180,8 +210,4 @@ export interface CreateSupplierInviteRequest {
   companyName?: string;
   contactPersonName?: string;
   sendEmail?: boolean;
-}
-
-export interface SupplierInviteResponse {
-  invite: SupplierInvite;
 }

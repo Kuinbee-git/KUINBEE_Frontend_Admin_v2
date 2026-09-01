@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { Plus, Minus, RefreshCw, Key } from "lucide-react";
+import { Plus, Minus, RefreshCw, Key } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -8,9 +8,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import type { RolePermissionAuditEntry, RolePermissionAuditEventType } from "@/types";
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import type { RolePermissionAuditEntry, RolePermissionAuditEventType } from '@/types';
 
 interface RolePermissionAuditTableProps {
   logs: RolePermissionAuditEntry[];
@@ -22,18 +22,21 @@ function getEventBadge(eventType: RolePermissionAuditEventType) {
     { label: string; className: string; icon: typeof Plus }
   > = {
     ADDED: {
-      label: "Added",
-      className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+      label: 'Added',
+      className:
+        'bg-[var(--status-success-bg)] text-[var(--status-success)] border-[var(--status-success-border)]',
       icon: Plus,
     },
     REMOVED: {
-      label: "Removed",
-      className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+      label: 'Removed',
+      className:
+        'bg-[var(--status-error-bg)] text-[var(--status-error)] border-[var(--status-error-border)]',
       icon: Minus,
     },
     REPLACED: {
-      label: "Replaced",
-      className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+      label: 'Replaced',
+      className:
+        'bg-[var(--status-info-bg)] text-[var(--status-info)] border-[var(--status-info-border)]',
       icon: RefreshCw,
     },
   };
@@ -54,26 +57,24 @@ export function RolePermissionAuditTable({ logs }: RolePermissionAuditTableProps
       <TableHeader>
         <TableRow
           style={{
-            backgroundColor: "var(--bg-surface)",
-            borderColor: "var(--border-default)",
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-default)',
           }}
         >
-          <TableHead style={{ color: "var(--text-muted)" }}>Timestamp</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Event</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Role</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Permission</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Actor</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Metadata</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Timestamp</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Event</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Role</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Permission</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Actor</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Metadata</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {logs.map((log) => (
-          <TableRow key={log.id} style={{ borderColor: "var(--border-default)" }}>
-            <TableCell style={{ color: "var(--text-muted)" }}>
+          <TableRow key={log.id} style={{ borderColor: 'var(--border-default)' }}>
+            <TableCell style={{ color: 'var(--text-muted)' }}>
               <div className="flex flex-col gap-1">
-                <span className="text-sm">
-                  {new Date(log.createdAt).toLocaleDateString()}
-                </span>
+                <span className="text-sm">{new Date(log.createdAt).toLocaleDateString()}</span>
                 <span className="text-xs opacity-70">
                   {new Date(log.createdAt).toLocaleTimeString()}
                 </span>
@@ -82,12 +83,12 @@ export function RolePermissionAuditTable({ logs }: RolePermissionAuditTableProps
             <TableCell>{getEventBadge(log.eventType)}</TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
-                <Key className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                <Key className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                     {log.role.displayName}
                   </span>
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     {log.role.name}
                   </span>
                 </div>
@@ -96,17 +97,17 @@ export function RolePermissionAuditTable({ logs }: RolePermissionAuditTableProps
             <TableCell>
               <code
                 className="text-xs px-2 py-1 rounded font-mono"
-                style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)' }}
               >
                 {log.permission}
               </code>
             </TableCell>
             <TableCell>
               <div className="flex flex-col gap-1">
-                <span className="text-sm" style={{ color: "var(--text-primary)" }}>
+                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                   {log.actor.name}
                 </span>
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {log.actor.email}
                 </span>
               </div>
@@ -114,15 +115,16 @@ export function RolePermissionAuditTable({ logs }: RolePermissionAuditTableProps
             <TableCell>
               {log.metadata && Object.keys(log.metadata).length > 0 ? (
                 <details className="cursor-pointer">
-                  <summary className="text-xs text-blue-600 dark:text-blue-400">
-                    View metadata
-                  </summary>
-                  <pre className="text-xs mt-2 p-2 rounded" style={{ backgroundColor: "var(--bg-surface)" }}>
+                  <summary className="text-xs text-[var(--status-info)]">View metadata</summary>
+                  <pre
+                    className="text-xs mt-2 p-2 rounded"
+                    style={{ backgroundColor: 'var(--bg-surface)' }}
+                  >
                     {JSON.stringify(log.metadata, null, 2)}
                   </pre>
                 </details>
               ) : (
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   None
                 </span>
               )}

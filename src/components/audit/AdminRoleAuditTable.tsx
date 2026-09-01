@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { UserPlus, UserMinus, Shield } from "lucide-react";
+import { UserPlus, UserMinus, Shield } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -8,9 +8,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import type { AdminRoleAuditEntry, AdminRoleAuditEventType } from "@/types";
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import type { AdminRoleAuditEntry, AdminRoleAuditEventType } from '@/types';
 
 interface AdminRoleAuditTableProps {
   logs: AdminRoleAuditEntry[];
@@ -22,13 +22,15 @@ function getEventBadge(eventType: AdminRoleAuditEventType) {
     { label: string; className: string; icon: typeof UserPlus }
   > = {
     ASSIGNED: {
-      label: "Assigned",
-      className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+      label: 'Assigned',
+      className:
+        'bg-[var(--status-success-bg)] text-[var(--status-success)] border-[var(--status-success-border)]',
       icon: UserPlus,
     },
     REVOKED: {
-      label: "Revoked",
-      className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+      label: 'Revoked',
+      className:
+        'bg-[var(--status-error-bg)] text-[var(--status-error)] border-[var(--status-error-border)]',
       icon: UserMinus,
     },
   };
@@ -49,26 +51,24 @@ export function AdminRoleAuditTable({ logs }: AdminRoleAuditTableProps) {
       <TableHeader>
         <TableRow
           style={{
-            backgroundColor: "var(--bg-surface)",
-            borderColor: "var(--border-default)",
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-default)',
           }}
         >
-          <TableHead style={{ color: "var(--text-muted)" }}>Timestamp</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Event</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Admin</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Role</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Actor</TableHead>
-          <TableHead style={{ color: "var(--text-muted)" }}>Metadata</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Timestamp</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Event</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Admin</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Role</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Actor</TableHead>
+          <TableHead style={{ color: 'var(--text-muted)' }}>Metadata</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {logs.map((log) => (
-          <TableRow key={log.id} style={{ borderColor: "var(--border-default)" }}>
-            <TableCell style={{ color: "var(--text-muted)" }}>
+          <TableRow key={log.id} style={{ borderColor: 'var(--border-default)' }}>
+            <TableCell style={{ color: 'var(--text-muted)' }}>
               <div className="flex flex-col gap-1">
-                <span className="text-sm">
-                  {new Date(log.createdAt).toLocaleDateString()}
-                </span>
+                <span className="text-sm">{new Date(log.createdAt).toLocaleDateString()}</span>
                 <span className="text-xs opacity-70">
                   {new Date(log.createdAt).toLocaleTimeString()}
                 </span>
@@ -77,22 +77,22 @@ export function AdminRoleAuditTable({ logs }: AdminRoleAuditTableProps) {
             <TableCell>{getEventBadge(log.eventType)}</TableCell>
             <TableCell>
               <div className="flex flex-col gap-1">
-                <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                   {log.admin.name}
                 </span>
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {log.admin.email}
                 </span>
               </div>
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                <Shield className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                     {log.role.displayName}
                   </span>
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     {log.role.name}
                   </span>
                 </div>
@@ -100,10 +100,10 @@ export function AdminRoleAuditTable({ logs }: AdminRoleAuditTableProps) {
             </TableCell>
             <TableCell>
               <div className="flex flex-col gap-1">
-                <span className="text-sm" style={{ color: "var(--text-primary)" }}>
+                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                   {log.actor.name}
                 </span>
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {log.actor.email}
                 </span>
               </div>
@@ -111,15 +111,16 @@ export function AdminRoleAuditTable({ logs }: AdminRoleAuditTableProps) {
             <TableCell>
               {log.metadata && Object.keys(log.metadata).length > 0 ? (
                 <details className="cursor-pointer">
-                  <summary className="text-xs text-blue-600 dark:text-blue-400">
-                    View metadata
-                  </summary>
-                  <pre className="text-xs mt-2 p-2 rounded" style={{ backgroundColor: "var(--bg-surface)" }}>
+                  <summary className="text-xs text-[var(--status-info)]">View metadata</summary>
+                  <pre
+                    className="text-xs mt-2 p-2 rounded"
+                    style={{ backgroundColor: 'var(--bg-surface)' }}
+                  >
                     {JSON.stringify(log.metadata, null, 2)}
                   </pre>
                 </details>
               ) : (
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   None
                 </span>
               )}

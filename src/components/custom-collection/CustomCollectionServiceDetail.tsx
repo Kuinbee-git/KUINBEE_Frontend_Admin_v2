@@ -26,8 +26,9 @@ import {
   useRejectCustomCollectionRevision,
   useRequestCustomCollectionChanges,
 } from '@/hooks/api/useCustomCollection';
-import { useMyPermissions } from '@/hooks/api/useAuth';
-import { useAuthStore } from '@/store/auth.store';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/lib/constants/permissions';
+import { buildUserAppUrl } from '@/lib/utils/url.utils';
 import type { CustomCollectionRevision, CustomCollectionRevisionStatus } from '@/types';
 import {
   formatCustomCollectionStatus,
@@ -36,11 +37,6 @@ import {
 } from './customCollectionAdminUtils';
 
 type ReviewAction = 'approve' | 'request-changes' | 'reject' | 'archive';
-
-const USER_MARKETPLACE_URL =
-  process.env.NEXT_PUBLIC_USER_APP_URL ||
-  process.env.NEXT_PUBLIC_MARKETPLACE_URL ||
-  'http://localhost:5175';
 
 const arrayText = (items: string[], other?: string | null) =>
   [...items, ...(other ? [other] : [])].join(', ') || '—';
@@ -169,16 +165,14 @@ export function CustomCollectionServiceDetail({ serviceId }: { serviceId: string
   const backHref = fromView
     ? `/dashboard/custom-collection-services?view=${encodeURIComponent(fromView)}`
     : '/dashboard/custom-collection-services';
-  const currentAdmin = useAuthStore((state) => state.user);
+  const { can, user: currentAdmin } = useAuthorization();
   const currentAdminId = currentAdmin?.id;
-  const permissionsQuery = useMyPermissions();
-  const permissions = permissionsQuery.data ?? [];
-  const canReviewServices =
-    currentAdmin?.userType === 'SUPERADMIN' ||
-    permissions.includes('REVIEW_CUSTOM_COLLECTION_SERVICE');
-  const canManageLeads =
-    currentAdmin?.userType === 'SUPERADMIN' ||
-    permissions.includes('MANAGE_CUSTOM_COLLECTION_LEADS');
+  const canReviewServices = can({
+    anyOf: [PERMISSIONS.CUSTOM_COLLECTION.REVIEW_SERVICES],
+  });
+  const canManageLeads = can({
+    anyOf: [PERMISSIONS.CUSTOM_COLLECTION.MANAGE_LEADS],
+  });
   const query = useCustomCollectionService(serviceId);
   const pickMutation = usePickCustomCollectionRevision();
   const approveMutation = useApproveCustomCollectionRevision();
@@ -249,42 +243,51 @@ export function CustomCollectionServiceDetail({ serviceId }: { serviceId: string
     if (!service || !reviewRevision || !dialogAction || !dialogCopy) return;
     if (dialogCopy.requiresNote && !note.trim()) return;
 
-    if (dialogAction === 'approve') {
-      await approveMutation.mutateAsync({
-        serviceId: service.id,
-        revisionId: reviewRevision.id,
-        note: note.trim() || undefined,
-      });
-    } else if (dialogAction === 'request-changes') {
-      await changesMutation.mutateAsync({
-        serviceId: service.id,
-        revisionId: reviewRevision.id,
-        note: note.trim(),
-      });
-    } else if (dialogAction === 'reject') {
-      await rejectMutation.mutateAsync({
-        serviceId: service.id,
-        revisionId: reviewRevision.id,
-        note: note.trim(),
-      });
-    } else {
-      await archiveMutation.mutateAsync({ serviceId: service.id, reason: note.trim() });
-    }
+    try {
+      if (dialogAction === 'approve') {
+        await approveMutation.mutateAsync({
+          serviceId: service.id,
+          revisionId: reviewRevision.id,
+          note: note.trim() || undefined,
+        });
+      } else if (dialogAction === 'request-changes') {
+        await changesMutation.mutateAsync({
+          serviceId: service.id,
+          revisionId: reviewRevision.id,
+          note: note.trim(),
+        });
+      } else if (dialogAction === 'reject') {
+        await rejectMutation.mutateAsync({
+          serviceId: service.id,
+          revisionId: reviewRevision.id,
+          note: note.trim(),
+        });
+      } else {
+        await archiveMutation.mutateAsync({ serviceId: service.id, reason: note.trim() });
+      }
 
-    setDialogAction(null);
-    setNote('');
+      setDialogAction(null);
+      setNote('');
+    } catch {
+      // The mutation hook presents the error and keeps the decision context intact.
+    }
   };
 
   if (query.isLoading) {
-    return <main className="p-6">Loading custom service review…</main>;
+    return <main className="p-4 sm:p-6">Loading custom service review…</main>;
   }
 
   if (query.isError || !service || !reviewRevision) {
     return (
-      <main className="p-6">
+      <main className="p-4 sm:p-6">
         <Alert variant="destructive">
           <AlertTitle>Failed to load custom service</AlertTitle>
-          <AlertDescription>Refresh the page or return to the queue.</AlertDescription>
+          <AlertDescription className="mt-2 space-y-3">
+            <p>The service review could not be loaded.</p>
+            <Button variant="outline" onClick={() => query.refetch()}>
+              Retry
+            </Button>
+          </AlertDescription>
         </Alert>
       </main>
     );
@@ -304,7 +307,7 @@ export function CustomCollectionServiceDetail({ serviceId }: { serviceId: string
     assignedToCurrentAdmin;
   const lockedByAnotherReviewer =
     !service.archivedAt && reviewRevision.status === 'UNDER_REVIEW' && !assignedToCurrentAdmin;
-  const publicServiceUrl = `${USER_MARKETPLACE_URL.replace(/\/$/, '')}/data-request/services/${service.slug}`;
+  const publicServiceUrl = buildUserAppUrl(`/data-request/services/${service.slug}`);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-surface)' }}>
@@ -350,9 +353,9 @@ export function CustomCollectionServiceDetail({ serviceId }: { serviceId: string
                 </Link>
               </Button>
             ) : null}
-            {publishedRevision && service.isPublished ? (
+            {publishedRevision && service.isPublished && publicServiceUrl ? (
               <Button asChild variant="outline">
-                <a href={publicServiceUrl} target="_blank" rel="noreferrer">
+                <a href={publicServiceUrl} target="_blank" rel="noopener noreferrer">
                   Public page <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </Button>
@@ -545,13 +548,17 @@ export function CustomCollectionServiceDetail({ serviceId }: { serviceId: string
                 <DialogDescription>{dialogCopy.description}</DialogDescription>
               </DialogHeader>
               <Textarea
+                aria-label={dialogCopy.noteLabel}
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 placeholder={dialogCopy.noteLabel}
                 rows={6}
+                maxLength={dialogAction === 'archive' ? 1000 : 3000}
               />
               {dialogCopy.requiresNote && !note.trim() ? (
-                <p className="text-xs text-red-500">A note is required for this action.</p>
+                <p className="text-xs text-[var(--status-error)]">
+                  A note is required for this action.
+                </p>
               ) : null}
               <DialogFooter>
                 <Button

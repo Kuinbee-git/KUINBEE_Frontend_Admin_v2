@@ -25,10 +25,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { useMyPermissions } from '@/hooks/api/useAuth';
 import { useCustomCollectionServices } from '@/hooks/api/useCustomCollection';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useAuthStore } from '@/store/auth.store';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/lib/constants/permissions';
 import type {
   CustomCollectionAdminView,
   CustomCollectionAssignmentFilter,
@@ -57,16 +57,20 @@ const ALL_STATUSES: Array<CustomCollectionRevisionStatus | 'ALL'> = [
   'SUPERSEDED',
 ];
 
-const VIEW_OPTIONS: Array<{
+type ViewOption = {
   value: CustomCollectionAdminView;
   label: string;
   description: string;
-}> = [
-  {
-    value: 'REVIEW_QUEUE',
-    label: 'Review queue',
-    description: 'Supplier submissions that are ready for review or already assigned.',
-  },
+};
+
+const DEFAULT_VIEW_OPTION: ViewOption = {
+  value: 'REVIEW_QUEUE',
+  label: 'Review queue',
+  description: 'Supplier submissions that are ready for review or already assigned.',
+};
+
+const VIEW_OPTIONS: ViewOption[] = [
+  DEFAULT_VIEW_OPTION,
   {
     value: 'PUBLISHED',
     label: 'Published',
@@ -156,7 +160,10 @@ function ServiceMobileCard({
           <p className="line-clamp-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
             {revision.shortDescription}
           </p>
-          <div className="grid grid-cols-2 gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <div
+            className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2"
+            style={{ color: 'var(--text-muted)' }}
+          >
             <span>Revision v{revision.version}</span>
             <span className="text-right">
               {service.archivedAt
@@ -172,11 +179,10 @@ function ServiceMobileCard({
 
 export function CustomCollectionServicesView() {
   const searchParams = useSearchParams();
-  const user = useAuthStore((state) => state.user);
-  const permissionsQuery = useMyPermissions();
-  const canManageLeads =
-    user?.userType === 'SUPERADMIN' ||
-    (permissionsQuery.data ?? []).includes('MANAGE_CUSTOM_COLLECTION_LEADS');
+  const { can } = useAuthorization();
+  const canManageLeads = can({
+    anyOf: [PERMISSIONS.CUSTOM_COLLECTION.MANAGE_LEADS],
+  });
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [q, setQ] = useState('');
@@ -187,7 +193,7 @@ export function CustomCollectionServicesView() {
     return isAdminView(requestedView) ? requestedView : 'REVIEW_QUEUE';
   });
   const debouncedQ = useDebounce(q, 400);
-  const viewConfig = VIEW_OPTIONS.find((option) => option.value === view) ?? VIEW_OPTIONS[0];
+  const viewConfig = VIEW_OPTIONS.find((option) => option.value === view) ?? DEFAULT_VIEW_OPTION;
   const showStatusFilter = view !== 'PUBLISHED' && view !== 'PRIVATE';
   const showAssignmentFilter = view === 'REVIEW_QUEUE' || view === 'ALL';
   const statusOptions = view === 'REVIEW_QUEUE' ? REVIEW_STATUSES : ALL_STATUSES;
@@ -278,6 +284,7 @@ export function CustomCollectionServicesView() {
               style={{ color: 'var(--text-muted)' }}
             />
             <Input
+              aria-label="Search custom collection services"
               value={q}
               onChange={(event) => {
                 setQ(event.target.value);
@@ -295,7 +302,7 @@ export function CustomCollectionServicesView() {
                 setPage(1);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Filter custom collection services by status">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -315,7 +322,7 @@ export function CustomCollectionServicesView() {
                 setPage(1);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Filter custom collection services by assignment">
                 <SelectValue placeholder="Assignment" />
               </SelectTrigger>
               <SelectContent>
@@ -348,7 +355,7 @@ export function CustomCollectionServicesView() {
             <TableSkeleton columns={8} rows={6} />
           ) : query.isError ? (
             <div className="p-8 text-center">
-              <p className="text-red-500">Failed to load custom service queue.</p>
+              <p className="text-[var(--status-error)]">Failed to load custom service queue.</p>
               <Button className="mt-4" variant="outline" onClick={() => query.refetch()}>
                 Retry
               </Button>

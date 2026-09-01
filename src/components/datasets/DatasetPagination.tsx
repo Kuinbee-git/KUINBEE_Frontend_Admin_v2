@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 
 interface DatasetPaginationProps {
   page: number;
@@ -10,13 +10,19 @@ interface DatasetPaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export function DatasetPagination({ page, pageSize, total, totalPages, onPageChange }: DatasetPaginationProps) {
+export function DatasetPagination({
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+}: DatasetPaginationProps) {
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
 
   return (
-    <div className="mt-4 flex items-center justify-between">
-      <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
         Showing {start} to {end} of {total} datasets
       </p>
       <div className="flex gap-2">

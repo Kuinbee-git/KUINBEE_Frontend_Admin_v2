@@ -1,81 +1,154 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatStatusLabel } from "@/components/shared/StatusBadge";
-import type { DatasetListParams } from "@/services/datasets.service";
-import type { DatasetStatus, DatasetVisibility, OwnerType } from "@/types/dataset.types";
-import { useDebounce } from "@/hooks/useDebounce";
+import { useCallback, useMemo } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { formatEnumLabel, formatStatusLabel } from '@/components/shared/StatusBadge';
+import type { DatasetListParams } from '@/services/datasets.service';
+import type { DatasetStatus, DatasetVisibility } from '@/types/dataset.types';
+import { useDebounce } from '@/hooks/useDebounce';
 
-export type OwnerTypeFilter = "all" | OwnerType;
+const DATASET_STATUSES: readonly DatasetStatus[] = [
+  'SUBMITTED',
+  'UNDER_REVIEW',
+  'REJECTED',
+  'VERIFIED',
+  'PUBLISHED',
+  'DELISTED',
+  'ARCHIVED',
+];
+const VISIBILITIES: readonly DatasetVisibility[] = ['PUBLIC', 'PRIVATE', 'UNLISTED'];
+
+function enumParam<T extends string>(
+  value: string | null,
+  allowed: readonly T[],
+  fallback: T | 'all'
+): T | 'all' {
+  if (value === 'all') return 'all';
+  return value && allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+function positivePage(value: string | null) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
 
 export function useDatasetFilters() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<DatasetStatus | "all">("PUBLISHED");
-  const [ownerFilter, setOwnerFilter] = useState<OwnerTypeFilter>("all");
-  const [visibilityFilter, setVisibilityFilter] = useState<DatasetVisibility | "all">("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState("all");
-  const [page, setPage] = useState(1);
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
+  const page = positivePage(searchParams.get('page'));
   const pageSize = 10;
+  const searchQuery = searchParams.get('q') ?? '';
+  const statusFilter = enumParam(searchParams.get('status'), DATASET_STATUSES, 'PUBLISHED');
+  const visibilityFilter = enumParam(searchParams.get('visibility'), VISIBILITIES, 'all');
+  const categoryFilter = searchParams.get('category') || 'all';
+  const sourceFilter = searchParams.get('source') || 'all';
   const debouncedSearch = useDebounce(searchQuery, 500);
 
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, statusFilter, ownerFilter, visibilityFilter, categoryFilter, sourceFilter]);
+  const updateQuery = useCallback(
+    (updates: Record<string, string | null>, resetPage = true) => {
+      const next = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([key, value]) => {
+        if (!value) next.delete(key);
+        else next.set(key, value);
+      });
+      if (resetPage) next.delete('page');
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
 
-  const filters: DatasetListParams = useMemo(() => ({
-    page,
-    pageSize,
-    q: debouncedSearch || undefined,
-    status: statusFilter !== "all" ? statusFilter : undefined,
-    visibility: visibilityFilter !== "all" ? visibilityFilter : undefined,
-    ownerType: ownerFilter !== "all" ? ownerFilter : undefined,
-    primaryCategoryId: categoryFilter !== "all" ? categoryFilter : undefined,
-    sourceId: sourceFilter !== "all" ? sourceFilter : undefined,
-  }), [page, pageSize, debouncedSearch, statusFilter, visibilityFilter, ownerFilter, categoryFilter, sourceFilter]);
+  const setPage = useCallback(
+    (value: number) => updateQuery({ page: value > 1 ? String(value) : null }, false),
+    [updateQuery]
+  );
+  const setSearchQuery = useCallback(
+    (value: string) => updateQuery({ q: value.trimStart() || null }),
+    [updateQuery]
+  );
+  const setStatusFilter = useCallback(
+    (value: DatasetStatus | 'all') => updateQuery({ status: value }),
+    [updateQuery]
+  );
+  const setVisibilityFilter = useCallback(
+    (value: DatasetVisibility | 'all') =>
+      updateQuery({ visibility: value === 'all' ? null : value }),
+    [updateQuery]
+  );
+  const setCategoryFilter = useCallback(
+    (value: string) => updateQuery({ category: value === 'all' ? null : value }),
+    [updateQuery]
+  );
+  const setSourceFilter = useCallback(
+    (value: string) => updateQuery({ source: value === 'all' ? null : value }),
+    [updateQuery]
+  );
+
+  const filters: DatasetListParams = useMemo(
+    () => ({
+      page,
+      pageSize,
+      q: debouncedSearch || undefined,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      visibility: visibilityFilter !== 'all' ? visibilityFilter : undefined,
+      primaryCategoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
+      sourceId: sourceFilter !== 'all' ? sourceFilter : undefined,
+    }),
+    [categoryFilter, debouncedSearch, page, sourceFilter, statusFilter, visibilityFilter]
+  );
 
   const clearAllFilters = useCallback(() => {
-    setSearchQuery("");
-    setStatusFilter("PUBLISHED");
-    setOwnerFilter("all");
-    setVisibilityFilter("all");
-    setCategoryFilter("all");
-    setSourceFilter("all");
-    setPage(1);
-  }, []);
+    router.replace(pathname, { scroll: false });
+  }, [pathname, router]);
 
   const activeFilters = useMemo(() => {
     const values: Array<{ key: string; label: string; onRemove: () => void }> = [];
 
-    if (statusFilter !== "all") {
-      values.push({ key: "status", label: `Status: ${formatStatusLabel(statusFilter)}`, onRemove: () => setStatusFilter("all") });
-    }
-
-    if (ownerFilter !== "all") {
+    if (statusFilter !== 'all') {
       values.push({
-        key: "owner",
-        label: `Owner: ${ownerFilter === "PLATFORM" ? "Platform" : "Supplier"}`,
-        onRemove: () => setOwnerFilter("all"),
+        key: 'status',
+        label: `Status: ${formatStatusLabel(statusFilter)}`,
+        onRemove: () => setStatusFilter('all'),
       });
     }
 
-    if (visibilityFilter !== "all") {
-      values.push({ key: "visibility", label: `Visibility: ${visibilityFilter}`, onRemove: () => setVisibilityFilter("all") });
+    if (visibilityFilter !== 'all') {
+      values.push({
+        key: 'visibility',
+        label: `Visibility: ${formatEnumLabel(visibilityFilter)}`,
+        onRemove: () => setVisibilityFilter('all'),
+      });
     }
 
-    if (categoryFilter !== "all") {
-      values.push({ key: "category", label: `Category`, onRemove: () => setCategoryFilter("all") });
+    if (categoryFilter !== 'all') {
+      values.push({
+        key: 'category',
+        label: 'Category selected',
+        onRemove: () => setCategoryFilter('all'),
+      });
     }
 
-    if (sourceFilter !== "all") {
-      values.push({ key: "source", label: `Source`, onRemove: () => setSourceFilter("all") });
+    if (sourceFilter !== 'all') {
+      values.push({
+        key: 'source',
+        label: 'Source selected',
+        onRemove: () => setSourceFilter('all'),
+      });
     }
 
     return values;
-  }, [statusFilter, ownerFilter, visibilityFilter, categoryFilter, sourceFilter]);
-
-  const hasActiveFilters = activeFilters.length > 0 || !!debouncedSearch;
+  }, [
+    categoryFilter,
+    setCategoryFilter,
+    setSourceFilter,
+    setStatusFilter,
+    setVisibilityFilter,
+    sourceFilter,
+    statusFilter,
+    visibilityFilter,
+  ]);
 
   return {
     page,
@@ -85,8 +158,6 @@ export function useDatasetFilters() {
     setSearchQuery,
     statusFilter,
     setStatusFilter,
-    ownerFilter,
-    setOwnerFilter,
     visibilityFilter,
     setVisibilityFilter,
     categoryFilter,
@@ -94,7 +165,7 @@ export function useDatasetFilters() {
     sourceFilter,
     setSourceFilter,
     activeFilters,
-    hasActiveFilters,
+    hasActiveFilters: activeFilters.length > 0 || Boolean(debouncedSearch),
     clearAllFilters,
     filters,
   };

@@ -1,8 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/auth.store';
 import { useCurrentUser } from '@/hooks';
 
 interface LoginRedirectProps {
@@ -15,24 +14,24 @@ interface LoginRedirectProps {
  */
 export function LoginRedirect({ children }: LoginRedirectProps) {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const { data: currentUser, isLoading } = useCurrentUser({ enabled: !!user });
-  const [hasRedirected, setHasRedirected] = useState(false);
+  const { data: currentUser, isLoading } = useCurrentUser();
+  const isAdminIdentity =
+    currentUser?.userType === 'ADMIN' || currentUser?.userType === 'SUPERADMIN';
 
   useEffect(() => {
-    // Only redirect if we're certain the user IS authenticated
-    // and we haven't already redirected
-    if (!hasRedirected && !isLoading) {
-      const authenticated = !!user || !!currentUser;
-      
-      if (authenticated) {
-        console.log('[LoginRedirect] User already authenticated, redirecting to dashboard');
-        setHasRedirected(true);
-        router.replace('/dashboard');
-      }
-    }
-  }, [currentUser, isLoading, user, router, hasRedirected]);
+    if (!isLoading && isAdminIdentity) router.replace('/dashboard');
+  }, [isAdminIdentity, isLoading, router]);
 
-  // Always render children (login form) - redirect happens in background
+  if (isLoading || isAdminIdentity) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[var(--bg-surface)]">
+        <div
+          className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"
+          aria-label="Checking existing session"
+        />
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }

@@ -5,6 +5,7 @@
 
 // Auth
 export * from './useAuth';
+export * from './useAddresses';
 
 // Users
 export * from './useUsers';
@@ -39,3 +40,4 @@ export * from './useReports';
 // Custom collection services
 export * from './useCustomCollection';
 export * from './useDataRequirements';
+export * from './useDashboard';

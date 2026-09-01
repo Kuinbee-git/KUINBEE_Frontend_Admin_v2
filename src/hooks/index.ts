@@ -8,4 +8,4 @@ export * from './api';
 
 // Utility hooks
 export * from './useDebounce';
-export * from './useQueryClient';
+export * from './useAuthorization';

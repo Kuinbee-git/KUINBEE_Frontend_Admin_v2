@@ -23,7 +23,6 @@ export const useSidebarStore = create<SidebarState>()(
     }),
     {
       name: 'kuinbee-sidebar-storage',
-      skipHydration: true,
     }
   )
 );

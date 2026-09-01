@@ -15,6 +15,15 @@ interface ThemeState {
   toggleTheme: () => void;
 }
 
+function applyTheme(theme: Theme) {
+  if (typeof document === 'undefined') return;
+
+  const root = document.documentElement;
+  root.setAttribute('data-theme', theme);
+  root.classList.toggle('dark', theme === 'dark');
+  root.style.colorScheme = theme;
+}
+
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
@@ -23,13 +32,7 @@ export const useThemeStore = create<ThemeState>()(
 
       setTheme: (theme) => {
         set({ theme, isDark: theme === 'dark' });
-
-        // Apply theme to document
-        if (theme === 'dark') {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        } else {
-          document.documentElement.removeAttribute('data-theme');
-        }
+        applyTheme(theme);
       },
 
       toggleTheme: () => {
@@ -39,7 +42,9 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: 'kuinbee-theme-storage',
-      skipHydration: true,
+      onRehydrateStorage: () => (state) => {
+        if (state) applyTheme(state.theme);
+      },
     }
   )
 );

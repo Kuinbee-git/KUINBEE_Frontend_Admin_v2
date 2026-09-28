@@ -15,6 +15,8 @@
     "type-check": "tsc --noEmit",
     "test:claru": "node --test scripts/test-claru-transfer.mjs",
     "test:claru:browser": "node scripts/test-claru-browser.mjs",
+    "test:claru:queue": "node --test scripts/test-claru-queue.mjs",
+    "test:claru:bulk:browser": "node scripts/test-claru-bulk-browser.mjs",
     "test:auth:browser": "node scripts/test-auth-browser.mjs"
   },
   "dependencies": {

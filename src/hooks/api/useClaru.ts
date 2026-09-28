@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import type { ClaruBatchListParams, ClaruSubmissionListParams } from '@/types';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import * as service from '@/services/claru.service';
+import { recordClaruQueueSubmission } from '@/services/claru-queue.service';
 
 export const claruKeys = {
   all: ['claru'] as const,
@@ -69,7 +70,11 @@ export function useClaruSubmissions(params: ClaruSubmissionListParams) {
 export function useClaruSubmission(submissionId: string) {
   return useQuery({
     queryKey: claruKeys.submission(submissionId),
-    queryFn: () => service.getClaruSubmission(submissionId),
+    queryFn: async () => {
+      const submission = await service.getClaruSubmission(submissionId);
+      recordClaruQueueSubmission(submission);
+      return submission;
+    },
     enabled: Boolean(submissionId),
     refetchInterval: (query) => {
       const state = query.state.data?.state;
@@ -117,6 +122,7 @@ export function useSealClaruSubmission() {
   return useMutation({
     mutationFn: service.sealClaruSubmission,
     onSuccess: (submission) => {
+      recordClaruQueueSubmission(submission);
       client.setQueryData(claruKeys.submission(submission.id), submission);
       client.invalidateQueries({ queryKey: claruKeys.submissions() });
       toast.success('Submission sealed and sent to Claru');
@@ -134,6 +140,7 @@ export function useSyncClaruSubmission() {
   return useMutation({
     mutationFn: service.syncClaruSubmission,
     onSuccess: (submission) => {
+      recordClaruQueueSubmission(submission);
       client.setQueryData(claruKeys.submission(submission.id), submission);
       client.invalidateQueries({ queryKey: claruKeys.submissions() });
     },

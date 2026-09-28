@@ -34,6 +34,8 @@ import { useAuthorization } from '@/hooks/useAuthorization';
 import { PERMISSIONS } from '@/lib/constants/permissions';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import { useClaruUploadStore } from '@/store/claru-upload.store';
+import { useClaruQueueStore } from '@/store/claru-queue.store';
+import { ClaruQueuePanel } from './ClaruQueuePanel';
 import type { ClaruSubmission } from '@/types';
 import { formatDateTime } from '@/utils/date.utils';
 import { ClaruResumeUploadDialog } from './ClaruResumeUploadDialog';
@@ -111,6 +113,15 @@ export function ClaruSubmissionDetail({ submissionId }: { submissionId: string }
   const syncMutation = useSyncClaruSubmission();
   const [sealOpen, setSealOpen] = useState(false);
   const staged = useClaruUploadStore((state) => state.pendingBySubmissionId[submissionId]);
+  const queueItem = useClaruQueueStore((state) =>
+    state.items.find(
+      (item) =>
+        (item.submissionId === submissionId ||
+          (item.input.externalRef === submissionQuery.data?.externalRef &&
+            item.input.batchId === submissionQuery.data?.batchId)) &&
+        !['ready', 'submitted'].includes(item.status)
+    )
+  );
 
   const submission = submissionQuery.data;
   const project = projectsQuery.data?.projects.find((item) => item.id === submission?.projectId);
@@ -154,11 +165,12 @@ export function ClaruSubmissionDetail({ submissionId }: { submissionId: string }
   );
   const canSealNow =
     canSeal &&
+    !queueItem &&
     !blocked &&
     !hasStagedUpload &&
     allUploaded &&
     (submission.state === 'draft' || submission.state === 'refused');
-  const canPrepareFiles = editable && !blocked && !sealMutation.isPending;
+  const canPrepareFiles = editable && !blocked && !sealMutation.isPending && !queueItem;
   const refusal = refusalDetails(submission);
 
   return (
@@ -183,7 +195,14 @@ export function ClaruSubmissionDetail({ submissionId }: { submissionId: string }
             {submission.claruSubmissionId ? (
               <Button
                 variant="outline"
-                disabled={syncMutation.isPending || sealMutation.isPending || hasStagedUpload}
+                disabled={
+                  syncMutation.isPending ||
+                  sealMutation.isPending ||
+                  hasStagedUpload ||
+                  Boolean(
+                    queueItem && ['creating', 'uploading', 'pausing'].includes(queueItem.status)
+                  )
+                }
                 onClick={() => syncMutation.mutate(submission.id)}
               >
                 {syncMutation.isPending ? 'Refreshing…' : 'Refresh status'}
@@ -208,6 +227,15 @@ export function ClaruSubmissionDetail({ submissionId }: { submissionId: string }
       />
 
       <div className="space-y-5 p-4 sm:p-6">
+        {queueItem ? (
+          <div className="space-y-3">
+            <p className="text-sm text-[var(--text-secondary)]">
+              This clip is managed by the bulk upload queue. Finish or remove its queue entry before
+              correcting or sealing it.
+            </p>
+            <ClaruQueuePanel batchId={submission.batchId} />
+          </div>
+        ) : null}
         {blocked ? (
           <Card
             role="alert"
@@ -268,7 +296,7 @@ export function ClaruSubmissionDetail({ submissionId }: { submissionId: string }
             </p>
           </CardContent>
         </Card>
-        {canManage && editable && !blocked ? (
+        {canManage && editable && !blocked && !queueItem ? (
           <ClaruTransferPanel key={submission.id} submissionId={submission.id} />
         ) : null}
 

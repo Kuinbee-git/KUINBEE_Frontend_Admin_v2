@@ -33,6 +33,8 @@ import { PERMISSIONS } from '@/lib/constants/permissions';
 import type { ClaruSubmissionState } from '@/types';
 import { formatDateTime } from '@/utils/date.utils';
 import { ClaruCreateSubmissionDialog } from './ClaruCreateSubmissionDialog';
+import { ClaruBulkSubmissionDialog } from './ClaruBulkSubmissionDialog';
+import { ClaruQueuePanel } from './ClaruQueuePanel';
 import {
   claruFileTypeLabel,
   claruStateLabel,
@@ -127,12 +129,16 @@ export function ClaruBatchWorkspace({ batchId }: { batchId: string }) {
         backLabel="Back to Claru deliveries"
         actions={
           canManage && project && !blocked ? (
-            <ClaruCreateSubmissionDialog batch={batch} project={project} />
+            <div className="flex flex-wrap gap-2">
+              <ClaruCreateSubmissionDialog batch={batch} project={project} />
+              <ClaruBulkSubmissionDialog batch={batch} project={project} />
+            </div>
           ) : null
         }
       />
 
       <div className="space-y-5 p-4 sm:p-6">
+        <ClaruQueuePanel batchId={batchId} />
         {blocked ? (
           <Card
             className="border-[var(--status-error-border)] bg-[var(--status-error-bg)] shadow-none"

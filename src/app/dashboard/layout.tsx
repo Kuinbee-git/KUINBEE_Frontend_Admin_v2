@@ -60,6 +60,8 @@ import { PERMISSIONS } from '@/lib/constants/permissions';
 import { useAuthStore } from '@/store/auth.store';
 import { useSidebarStore } from '@/store/sidebar.store';
 import { cn } from '@/lib/utils';
+import { ClaruQueueProvider } from '@/components/claru/ClaruQueueProvider';
+import { ClaruQueueButton } from '@/components/claru/ClaruQueuePanel';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -395,6 +397,7 @@ function DashboardShell({ children }: AdminLayoutProps) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-[var(--bg-surface)] text-[var(--text-primary)]">
+      <ClaruQueueProvider />
       <aside
         className="relative hidden h-dvh shrink-0 flex-col border-r transition-[width] duration-200 lg:flex"
         style={{
@@ -496,6 +499,7 @@ function DashboardShell({ children }: AdminLayoutProps) {
           </div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <ClaruQueueButton />
             <ThemeToggle variant="clean" size="sm" />
 
             <DropdownMenu>

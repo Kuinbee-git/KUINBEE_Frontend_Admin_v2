@@ -11,6 +11,7 @@ import {
   uploadClaruSubmissionFiles,
 } from '@/services/claru-upload.service';
 import { createClaruSubmission } from '@/services/claru.service';
+import { claruQueueTransferKey } from '@/services/claru-queue.service';
 import { activeClaruTransfers, useClaruUploadStore } from '@/store/claru-upload.store';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import { formatBytes } from './claruAdminUtils';
@@ -71,12 +72,17 @@ export function ClaruTransferPanel({ submissionId }: { submissionId: string }) {
 
   const startUpload = async () => {
     if (controllerRef.current) return;
-    if (activeClaruTransfers.has(submissionId)) {
+    const referenceKey = claruQueueTransferKey(
+      staged.result.submission.batchId,
+      staged.result.submission.externalRef
+    );
+    if (activeClaruTransfers.has(submissionId) || activeClaruTransfers.has(referenceKey)) {
       toast.info('The previous transfer is saving its last checkpoint. Try again in a moment.');
       return;
     }
     const controller = new AbortController();
     activeClaruTransfers.set(submissionId, controller);
+    activeClaruTransfers.set(referenceKey, controller);
     controllerRef.current = controller;
     setError(null);
     setPaused(false);
@@ -173,7 +179,10 @@ export function ClaruTransferPanel({ submissionId }: { submissionId: string }) {
         )
       );
     } finally {
-      activeClaruTransfers.delete(submissionId);
+      if (activeClaruTransfers.get(submissionId) === controller)
+        activeClaruTransfers.delete(submissionId);
+      if (activeClaruTransfers.get(referenceKey) === controller)
+        activeClaruTransfers.delete(referenceKey);
       controllerRef.current = null;
       setUploading(false);
     }

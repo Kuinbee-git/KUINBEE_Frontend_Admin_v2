@@ -197,19 +197,8 @@ export function ClaruResumeUploadDialog({ submission, project }: ClaruResumeUplo
         setError('Enter a valid recording date and time.');
         return;
       }
-      if (
-        !Number.isFinite(durationSeconds) ||
-        durationSeconds <= 0 ||
-        durationSeconds > 86_400 ||
-        (project &&
-          (durationSeconds < project.clipLength.minSeconds ||
-            durationSeconds > project.clipLength.maxSeconds))
-      ) {
-        setError(
-          project
-            ? `Duration must be between ${formatClaruDuration(project.clipLength.minSeconds)} and ${formatClaruDuration(project.clipLength.maxSeconds)}.`
-            : 'Enter a valid positive clip duration.'
-        );
+      if (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || durationSeconds > 86_400) {
+        setError('Enter a positive duration of no more than 1,440 minutes.');
         return;
       }
       if (hasInputs && !validClaruAxis(form.axisConvention)) {
@@ -439,12 +428,23 @@ export function ClaruResumeUploadDialog({ submission, project }: ClaruResumeUplo
                   <Input
                     id="claru-correction-duration"
                     type="number"
-                    min={project ? project.clipLength.minSeconds / 60 : 0.01}
-                    max={project ? project.clipLength.maxSeconds / 60 : 1440}
+                    min={0}
+                    max={1440}
                     step="any"
+                    aria-describedby="claru-correction-duration-help"
                     value={form.durationMinutes}
                     onChange={(event) => update('durationMinutes', event.target.value)}
                   />
+                  <p
+                    id="claru-correction-duration-help"
+                    className="text-xs text-[var(--text-muted)]"
+                  >
+                    Declare the duration you measured. Claru checks the actual file
+                    {project
+                      ? ` against this project's ${formatClaruDuration(project.clipLength.minSeconds)}–${formatClaruDuration(project.clipLength.maxSeconds)} range`
+                      : ' against the project length range'}
+                    {' at seal.'}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="claru-correction-country">Country</Label>

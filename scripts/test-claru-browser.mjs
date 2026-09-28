@@ -354,6 +354,64 @@ async function resume(page) {
     );
     await screenshot(page, 'processing-desktop');
   });
+  for (const durationMinutes of [2, 40]) {
+    await scenario(
+      `create preserves ${durationMinutes}-minute declaration outside the project media range`,
+      async (page, model) => {
+        await ready(page, `/dashboard/claru/batches/${batch.id}`);
+        await page.getByRole('button', { name: 'Add clip', exact: true }).click();
+        await page.getByLabel('External reference', { exact: true }).fill('duration-create-review');
+        await page.locator('#claru-category').click();
+        const search = page.getByRole('combobox', { name: 'Search activity categories' });
+        await search.fill('vegetables');
+        await page.getByRole('option', { name: /Preparing vegetables/ }).click();
+        const duration = page.getByLabel('Duration in minutes', { exact: true });
+        await duration.fill(String(durationMinutes));
+        assert.equal(await duration.evaluate((input) => input.validity.valid), true);
+        await visible(page, 'Claru checks the actual file');
+        await page.locator('#claru-file-video').setInputFiles({
+          name: 'capture.mp4',
+          mimeType: 'video/mp4',
+          buffer: Buffer.alloc(12, 1),
+        });
+        for (const checkbox of await page.getByRole('checkbox').all()) await checkbox.check();
+        await page.locator('form button[type=submit]').click();
+        await page.getByRole('button', { name: 'Start upload', exact: true }).waitFor();
+        const request = model.requests.find((entry) =>
+          entry.endpoint.endsWith(`/batches/${batch.id}/submissions`)
+        );
+        assert.equal(request.body.declared.durationSeconds, durationMinutes * 60);
+        assert.equal(model.submission.declared.durationSeconds, durationMinutes * 60);
+        assert.equal(model.submission.state, 'draft');
+        assert.equal(model.submission.sealed, false);
+        assert.equal(model.requests.filter((entry) => entry.endpoint.endsWith('/seal')).length, 0);
+      }
+    );
+    await scenario(
+      `correction preserves ${durationMinutes}-minute declaration outside the project media range`,
+      async (page, model) => {
+        model.submission.parts[0].uploadState = 'uploaded';
+        await ready(page);
+        await page.getByRole('button', { name: 'Correct submission', exact: true }).click();
+        await page.getByRole('radio', { name: /Declaration only/ }).click();
+        const duration = page.getByLabel('Duration in minutes', { exact: true });
+        await duration.fill(String(durationMinutes));
+        assert.equal(await duration.evaluate((input) => input.validity.valid), true);
+        await visible(page, 'Claru checks the actual file');
+        await page.getByRole('button', { name: 'Save declaration', exact: true }).click();
+        await page.getByRole('dialog').waitFor({ state: 'hidden' });
+        const request = model.requests.find((entry) =>
+          entry.endpoint.endsWith(`/batches/${batch.id}/submissions`)
+        );
+        assert.equal(request.body.declared.durationSeconds, durationMinutes * 60);
+        assert.equal(model.submission.declared.durationSeconds, durationMinutes * 60);
+        assert.equal(model.submission.state, 'draft');
+        assert.equal(model.submission.sealed, false);
+        assert.equal(model.storage.length, 0);
+        assert.equal(model.requests.filter((entry) => entry.endpoint.endsWith('/seal')).length, 0);
+      }
+    );
+  }
   await scenario(
     'resume after storage failure retains reference and retries',
     async (page, model) => {

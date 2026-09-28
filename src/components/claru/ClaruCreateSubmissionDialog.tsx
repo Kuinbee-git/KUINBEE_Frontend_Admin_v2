@@ -135,14 +135,8 @@ export function ClaruCreateSubmissionDialog({ batch, project }: ClaruCreateSubmi
     }
     if (!Number.isFinite(recordedTimestamp))
       return setError('Enter a valid recording date and time.');
-    if (
-      !Number.isFinite(durationSeconds) ||
-      durationSeconds < project.clipLength.minSeconds ||
-      durationSeconds > project.clipLength.maxSeconds
-    ) {
-      return setError(
-        `Duration must be between ${formatClaruDuration(project.clipLength.minSeconds)} and ${formatClaruDuration(project.clipLength.maxSeconds)}.`
-      );
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || durationSeconds > 86_400) {
+      return setError('Enter a positive duration of no more than 1,440 minutes.');
     }
     if (missingRole) {
       return setError(`${claruFileTypeLabel(missingRole.fileType)} is required for this project.`);
@@ -286,13 +280,19 @@ export function ClaruCreateSubmissionDialog({ batch, project }: ClaruCreateSubmi
                 <Input
                   id="claru-duration"
                   type="number"
-                  min={project.clipLength.minSeconds / 60}
-                  max={project.clipLength.maxSeconds / 60}
+                  min={0}
+                  max={1440}
                   step="any"
+                  aria-describedby="claru-duration-help"
                   value={durationMinutes}
                   onChange={(event) => setDurationMinutes(event.target.value)}
                   placeholder={`${project.clipLength.minSeconds / 60}–${project.clipLength.maxSeconds / 60}`}
                 />
+                <p id="claru-duration-help" className="text-xs text-[var(--text-muted)]">
+                  Declare the duration you measured. Claru checks the actual file against this
+                  project&apos;s {formatClaruDuration(project.clipLength.minSeconds)}–
+                  {formatClaruDuration(project.clipLength.maxSeconds)} range at seal.
+                </p>
               </div>
             </div>
           </section>

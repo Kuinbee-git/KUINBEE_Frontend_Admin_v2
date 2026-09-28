@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth.store';
 import { useCurrentUser } from '@/hooks';
+import { authKeys } from '@/hooks/api/useAuth';
 import { SESSION_EXPIRED_EVENT } from '@/lib/api/client';
 
 interface AuthGuardProps {
@@ -26,6 +27,22 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const clearAuth = useAuthStore((state) => state.logout);
   const { data: user, isLoading, isError, isFetching, refetch } = useCurrentUser();
   const isAdminIdentity = user?.userType === 'ADMIN' || user?.userType === 'SUPERADMIN';
+  const redirecting = useRef(false);
+
+  const redirectToLogin = useCallback(() => {
+    if (redirecting.current) return;
+    redirecting.current = true;
+    clearAuth();
+    // Retain a settled, signed-out session result while navigation completes.
+    // Clearing the active session query would remount it and restart discovery.
+    void queryClient.cancelQueries().then(() => {
+      queryClient.removeQueries({
+        predicate: (query) => query.queryKey[0] !== 'auth' || query.queryKey[1] !== 'me',
+      });
+      queryClient.setQueryData(authKeys.me(), null);
+      router.replace('/login');
+    });
+  }, [clearAuth, queryClient, router]);
 
   useEffect(() => {
     // Remove identity data persisted by older builds. The session cookie is now
@@ -43,23 +60,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }, [isAdminIdentity, user, isLoading, setUser]);
 
   useEffect(() => {
-    const handleExpiredSession = () => {
-      clearAuth();
-      queryClient.clear();
-      router.replace('/login');
-    };
-
-    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpiredSession);
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpiredSession);
-  }, [clearAuth, queryClient, router]);
+    window.addEventListener(SESSION_EXPIRED_EVENT, redirectToLogin);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, redirectToLogin);
+  }, [redirectToLogin]);
 
   useEffect(() => {
     if (!isLoading && !isError && (!user || !isAdminIdentity)) {
-      clearAuth();
-      queryClient.clear();
-      router.replace('/login');
+      redirectToLogin();
     }
-  }, [clearAuth, isAdminIdentity, isError, isLoading, queryClient, router, user]);
+  }, [isAdminIdentity, isError, isLoading, redirectToLogin, user]);
 
   // Show loading state during initial check
   if (isLoading) {

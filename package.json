@@ -14,7 +14,8 @@
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "type-check": "tsc --noEmit",
     "test:claru": "node --test scripts/test-claru-transfer.mjs",
-    "test:claru:browser": "node scripts/test-claru-browser.mjs"
+    "test:claru:browser": "node scripts/test-claru-browser.mjs",
+    "test:auth:browser": "node scripts/test-auth-browser.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",

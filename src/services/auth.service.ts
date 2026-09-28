@@ -61,6 +61,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     const response = await apiClient.request<ApiSuccessResponse<MeResponse>>(API_ROUTES.AUTH.ME, {
       method: 'GET',
+      skipSessionExpiry: true,
     });
     return response.data.data.user;
   } catch (error) {

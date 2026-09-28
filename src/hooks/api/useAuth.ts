@@ -21,7 +21,7 @@ import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 // Query Keys
 // ============================================
 
-const authKeys = {
+export const authKeys = {
   all: ['auth'] as const,
   me: () => [...authKeys.all, 'me'] as const,
   profile: () => [...authKeys.all, 'profile'] as const,

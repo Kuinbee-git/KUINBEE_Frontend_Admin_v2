@@ -37,6 +37,8 @@ interface RequestConfig extends Omit<RequestInit, 'body'> {
   skipContentType?: boolean;
   /** Override the default for operations such as media validation. */
   timeoutMs?: number;
+  /** Session discovery expects 401 when signed out; it is not an expiry event. */
+  skipSessionExpiry?: boolean;
 }
 
 interface ApiResponse<T> {
@@ -80,7 +82,10 @@ class ApiClient {
    * Handle API response
    * Throws ApiError for non-ok responses
    */
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
+  private async handleResponse<T>(
+    response: Response,
+    skipSessionExpiry = false
+  ): Promise<ApiResponse<T>> {
     const contentType = response.headers.get('content-type');
     const isJson = contentType?.includes('application/json');
 
@@ -124,7 +129,7 @@ class ApiClient {
         details: errorDetails,
       };
 
-      if (response.status === 401 && typeof window !== 'undefined') {
+      if (response.status === 401 && !skipSessionExpiry && typeof window !== 'undefined') {
         window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
       }
 
@@ -159,6 +164,7 @@ class ApiClient {
       headers,
       skipContentType,
       timeoutMs = REQUEST_TIMEOUT_MS,
+      skipSessionExpiry = false,
       ...rest
     } = config;
     const url = this.buildUrl(endpoint, params);
@@ -200,7 +206,7 @@ class ApiClient {
               : JSON.stringify(body),
       });
 
-      return await this.handleResponse<T>(response);
+      return await this.handleResponse<T>(response, skipSessionExpiry);
     } catch (error) {
       if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
         const apiError: ApiError = {

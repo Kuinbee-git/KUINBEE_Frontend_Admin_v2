@@ -41,3 +41,4 @@ export * from './useReports';
 export * from './useCustomCollection';
 export * from './useDataRequirements';
 export * from './useDashboard';
+export * from './useClaru';

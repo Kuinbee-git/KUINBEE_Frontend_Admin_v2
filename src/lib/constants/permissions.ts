@@ -44,6 +44,9 @@ const PERMISSION_VALUES = [
   'VIEW_DATA_REQUIREMENTS',
   'MANAGE_DATA_REQUIREMENTS',
   'PUBLISH_DATA_REQUIREMENTS',
+  'VIEW_CLARU_DELIVERIES',
+  'MANAGE_CLARU_DELIVERIES',
+  'SEAL_CLARU_DELIVERIES',
   'MANAGE_PERMISSIONS',
 ] as const;
 
@@ -119,6 +122,11 @@ export const PERMISSIONS = {
     MANAGE: 'MANAGE_DATA_REQUIREMENTS',
     PUBLISH: 'PUBLISH_DATA_REQUIREMENTS',
   },
+  CLARU: {
+    VIEW: 'VIEW_CLARU_DELIVERIES',
+    MANAGE: 'MANAGE_CLARU_DELIVERIES',
+    SEAL: 'SEAL_CLARU_DELIVERIES',
+  },
 } as const satisfies Record<string, Record<string, Permission>>;
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
@@ -162,6 +170,9 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   VIEW_DATA_REQUIREMENTS: 'View data requirements',
   MANAGE_DATA_REQUIREMENTS: 'Manage data requirements',
   PUBLISH_DATA_REQUIREMENTS: 'Publish data requirements',
+  VIEW_CLARU_DELIVERIES: 'View Claru deliveries',
+  MANAGE_CLARU_DELIVERIES: 'Manage Claru deliveries',
+  SEAL_CLARU_DELIVERIES: 'Seal Claru deliveries',
   MANAGE_PERMISSIONS: 'Manage roles and permissions',
 };
 
@@ -183,5 +194,10 @@ export const PERMISSION_GROUPS = [
     id: 'data-requirements',
     label: 'Data requirements',
     permissions: Object.values(PERMISSIONS.DATA_REQUIREMENTS),
+  },
+  {
+    id: 'claru-deliveries',
+    label: 'Claru deliveries',
+    permissions: Object.values(PERMISSIONS.CLARU),
   },
 ] as const;

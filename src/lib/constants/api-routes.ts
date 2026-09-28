@@ -219,6 +219,21 @@ export const API_ROUTES = {
     REPORTS: {
       RUN_DAILY_DATASET: '/v1/admin/reports/daily-dataset/run',
     },
+
+    CLARU: {
+      PROJECTS: '/v1/admin/claru/projects',
+      BATCHES: '/v1/admin/claru/batches',
+      BATCH: (batchId: string) => `/v1/admin/claru/batches/${batchId}`,
+      CREATE_SUBMISSION: (batchId: string) => `/v1/admin/claru/batches/${batchId}/submissions`,
+      SUBMISSIONS: '/v1/admin/claru/submissions',
+      SUBMISSION: (submissionId: string) => `/v1/admin/claru/submissions/${submissionId}`,
+      CHECKPOINT_PART: (submissionId: string, partId: string) =>
+        `/v1/admin/claru/submissions/${submissionId}/parts/${partId}/checkpoint`,
+      COMPLETE_PART: (submissionId: string, partId: string) =>
+        `/v1/admin/claru/submissions/${submissionId}/parts/${partId}/complete`,
+      SEAL: (submissionId: string) => `/v1/admin/claru/submissions/${submissionId}/seal`,
+      SYNC: (submissionId: string) => `/v1/admin/claru/submissions/${submissionId}/sync`,
+    },
   },
 
   // ============================================

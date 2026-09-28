@@ -12,10 +12,22 @@ const getApiOrigin = (): string | null => {
   }
 };
 
+const getClaruUploadSources = (): string[] => {
+  const configured =
+    process.env.ADMIN_CLARU_UPLOAD_CONNECT_SRC?.trim() || 'https://*.amazonaws.com';
+  const sources = configured.split(/\s+/).filter(Boolean);
+  const allowedSource = /^https:\/\/(?:\*\.)?[a-z0-9.-]+(?::\d+)?$/i;
+  if (sources.some((source) => !allowedSource.test(source))) {
+    throw new Error('ADMIN_CLARU_UPLOAD_CONNECT_SRC contains an invalid CSP source');
+  }
+  return sources;
+};
+
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const isDevelopment = process.env.NODE_ENV === 'development';
   const apiOrigin = getApiOrigin();
+  const claruUploadSources = getClaruUploadSources();
   const contentSecurityPolicy = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDevelopment ? " 'unsafe-eval'" : ''}`,
@@ -23,7 +35,7 @@ export function proxy(request: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    `connect-src 'self'${apiOrigin ? ` ${apiOrigin}` : ''}${isDevelopment ? ' ws: wss:' : ''}`,
+    `connect-src 'self'${apiOrigin ? ` ${apiOrigin}` : ''} ${claruUploadSources.join(' ')}${isDevelopment ? ' ws: wss:' : ''}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

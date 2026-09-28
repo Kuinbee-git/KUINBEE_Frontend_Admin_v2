@@ -12,7 +12,9 @@
     "check:ui": "node scripts/check-ui-contract.mjs",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:claru": "node --test scripts/test-claru-transfer.mjs",
+    "test:claru:browser": "node scripts/test-claru-browser.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
@@ -50,6 +52,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.3.3",
     "eslint-config-prettier": "^10.1.8",
+    "playwright": "1.63.0",
     "prettier": "^3.7.4",
     "tailwindcss": "^4",
     "typescript": "^5"

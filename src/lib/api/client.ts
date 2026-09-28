@@ -35,6 +35,8 @@ interface RequestConfig extends Omit<RequestInit, 'body'> {
   body?: unknown;
   /** Skip JSON content-type header (for file uploads) */
   skipContentType?: boolean;
+  /** Override the default for operations such as media validation. */
+  timeoutMs?: number;
 }
 
 interface ApiResponse<T> {
@@ -151,7 +153,14 @@ class ApiClient {
    * Automatically includes credentials (cookies) for auth
    */
   async request<T>(endpoint: string, config: RequestConfig = {}): Promise<ApiResponse<T>> {
-    const { params, body, headers, skipContentType, ...rest } = config;
+    const {
+      params,
+      body,
+      headers,
+      skipContentType,
+      timeoutMs = REQUEST_TIMEOUT_MS,
+      ...rest
+    } = config;
     const url = this.buildUrl(endpoint, params);
 
     // Default headers
@@ -170,7 +179,7 @@ class ApiClient {
     const timeoutId = globalThis.setTimeout(() => {
       didTimeout = true;
       controller.abort();
-    }, REQUEST_TIMEOUT_MS);
+    }, timeoutMs);
 
     try {
       const response = await fetch(url, {

@@ -18,3 +18,4 @@ export * from './kdts.types';
 export * from './custom-collection.types';
 export * from './data-requirement.types';
 export * from './dashboard.types';
+export * from './claru.types';

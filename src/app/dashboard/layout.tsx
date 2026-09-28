@@ -9,6 +9,7 @@ import {
   BarChart3,
   ClipboardList,
   ClipboardPenLine,
+  CloudUpload,
   Database,
   FileText,
   FolderTree,
@@ -47,6 +48,7 @@ import { canAccess, type AccessRequirement } from '@/lib/authorization/authoriza
 import {
   ADMIN_DIRECTORY_ACCESS,
   CATEGORY_CATALOG_ACCESS,
+  CLARU_DELIVERY_ACCESS,
   DATA_REQUIREMENT_ACCESS,
   DATASET_REVIEW_ACCESS,
   PLATFORM_DATASET_ACCESS,
@@ -144,6 +146,14 @@ const NAV_ITEMS: AdminNavItem[] = [
     href: '/dashboard/data-requirements',
     group: 'marketplace',
     access: DATA_REQUIREMENT_ACCESS,
+  },
+  {
+    id: 'claru-deliveries',
+    label: 'Claru Deliveries',
+    icon: CloudUpload,
+    href: '/dashboard/claru',
+    group: 'marketplace',
+    access: CLARU_DELIVERY_ACCESS,
   },
   {
     id: 'custom-collection-services',

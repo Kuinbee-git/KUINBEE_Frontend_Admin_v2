@@ -92,6 +92,10 @@ export const DATA_REQUIREMENT_ACCESS: AccessRequirement = {
   ],
 };
 
+export const CLARU_DELIVERY_ACCESS: AccessRequirement = {
+  anyOf: [PERMISSIONS.CLARU.VIEW, PERMISSIONS.CLARU.MANAGE, PERMISSIONS.CLARU.SEAL],
+};
+
 const ROUTE_ACCESS_RULES: readonly RouteAccessRule[] = [
   {
     matches: (pathname) => /^\/dashboard\/suppliers\/[^/]+\/analytics(?:\/|$)/.test(pathname),
@@ -130,6 +134,10 @@ const ROUTE_ACCESS_RULES: readonly RouteAccessRule[] = [
   {
     matches: startsWith('/dashboard/data-requirements'),
     requirement: DATA_REQUIREMENT_ACCESS,
+  },
+  {
+    matches: startsWith('/dashboard/claru'),
+    requirement: CLARU_DELIVERY_ACCESS,
   },
   {
     matches: startsWith('/dashboard/platform-datasets'),

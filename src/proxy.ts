@@ -34,6 +34,7 @@ export function proxy(request: NextRequest) {
     "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
+    "media-src 'self' blob:",
     "font-src 'self' data:",
     `connect-src 'self'${apiOrigin ? ` ${apiOrigin}` : ''} ${claruUploadSources.join(' ')}${isDevelopment ? ' ws: wss:' : ''}`,
     "object-src 'none'",

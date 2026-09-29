@@ -5,6 +5,8 @@ import type {
   ClaruSubmissionCreateResult,
 } from '@/types';
 import { checkpointClaruPart, completeClaruPart } from './claru.service';
+import { API_ROUTES } from '@/lib/constants/api-routes';
+import { SESSION_EXPIRED_EVENT } from '@/lib/api/client';
 
 const configuredTimeout = Number(process.env.NEXT_PUBLIC_UPLOAD_TIMEOUT_MS);
 const UPLOAD_TIMEOUT_MS =
@@ -45,6 +47,21 @@ interface PutObjectArgs {
   signal: AbortSignal;
   onProgress: (uploadedBytes: number) => void;
   requireEtag?: boolean;
+  relay?: {
+    generation: string;
+    submissionId: string;
+    partId: string;
+    partNumber?: number;
+  };
+}
+
+function relayUrl(relay: NonNullable<PutObjectArgs['relay']>): string {
+  const base = (process.env.NEXT_PUBLIC_API_URL || '/api').replace(/\/+$/, '');
+  const endpoint = API_ROUTES.ADMIN.CLARU.UPLOAD_PART(relay.submissionId, relay.partId);
+  const url = new URL(`${base}${endpoint}`, window.location.origin);
+  url.searchParams.set('generation', relay.generation);
+  if (relay.partNumber !== undefined) url.searchParams.set('partNumber', String(relay.partNumber));
+  return url.toString();
 }
 
 function putObject({
@@ -54,6 +71,7 @@ function putObject({
   signal,
   onProgress,
   requireEtag = false,
+  relay,
 }: PutObjectArgs): Promise<string | null> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -61,29 +79,56 @@ function putObject({
     const abort = () => xhr.abort();
     const cleanup = () => signal.removeEventListener('abort', abort);
 
-    xhr.open('PUT', url);
+    xhr.open('PUT', relay ? relayUrl(relay) : url);
     xhr.timeout = UPLOAD_TIMEOUT_MS;
-    Object.entries(headers).forEach(([name, value]) => xhr.setRequestHeader(name, value));
+    if (relay) {
+      xhr.withCredentials = true;
+      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    } else {
+      Object.entries(headers).forEach(([name, value]) => xhr.setRequestHeader(name, value));
+    }
     xhr.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable) onProgress(event.loaded);
     });
     xhr.addEventListener('load', () => {
       cleanup();
       if (xhr.status < 200 || xhr.status >= 300) {
-        reject(
-          new ClaruUploadError(
-            `Storage rejected ${body.size.toLocaleString()} bytes with status ${xhr.status}. Resume the upload to retry.`,
-            xhr.status
-          )
-        );
+        let message = `Storage rejected ${body.size.toLocaleString()} bytes with status ${xhr.status}. Resume the upload to retry.`;
+        if (relay) {
+          message = 'The upload could not be confirmed. Retry this clip to resume it.';
+          try {
+            const response = JSON.parse(xhr.responseText);
+            message = response.error?.message || response.message || message;
+          } catch {
+            // A proxy may return HTML instead of the API's JSON error.
+          }
+          if (xhr.status === 401) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+        }
+        reject(new ClaruUploadError(message, xhr.status));
         return;
       }
       onProgress(body.size);
-      const etag = xhr.getResponseHeader('ETag');
+      let etag: string | null;
+      if (relay) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          if (response.success !== true || !response.data || !('etag' in response.data)) {
+            throw new Error('Invalid upload confirmation');
+          }
+          etag = typeof response.data.etag === 'string' ? response.data.etag : null;
+        } catch {
+          reject(new ClaruUploadError('The upload confirmation was invalid. Retry this clip.'));
+          return;
+        }
+      } else {
+        etag = xhr.getResponseHeader('ETag');
+      }
       if (requireEtag && !etag) {
         reject(
           new ClaruUploadError(
-            'Storage completed the slice but did not expose its ETag. Claru storage CORS must expose the ETag response header.'
+            relay
+              ? 'Storage did not confirm this slice. Retry this clip to resume it.'
+              : 'Storage completed the slice but did not expose its ETag. Claru storage CORS must expose the ETag response header.'
           )
         );
         return;
@@ -94,7 +139,9 @@ function putObject({
       cleanup();
       reject(
         new ClaruUploadError(
-          'The browser could not reach Claru storage. Check storage CORS and the network connection.'
+          relay
+            ? 'The upload connection was interrupted. Check your network and retry this clip.'
+            : 'The browser could not reach Claru storage. Check storage CORS and the network connection.'
         )
       );
     });
@@ -116,7 +163,7 @@ function putObject({
     const hasDeclaredContentType = Object.keys(headers).some(
       (name) => name.toLowerCase() === 'content-type'
     );
-    xhr.send(hasDeclaredContentType || !body.type ? body : body.slice(0, body.size, ''));
+    xhr.send(!relay && hasDeclaredContentType ? body : body.slice(0, body.size, ''));
   });
 }
 
@@ -127,6 +174,7 @@ async function uploadMultipart(args: {
   submissionId: string;
   storedPart: ClaruStoredPart;
   instruction: Extract<ClaruPartUploadInstruction['upload'], { kind: 'multipart' }>;
+  relay?: ClaruPartUploadInstruction['relay'];
   file: File;
   signal: AbortSignal;
   onProgress: (uploadedBytes: number, detail: string) => void;
@@ -171,6 +219,14 @@ async function uploadMultipart(args: {
         headers: instruction.headers,
         signal,
         requireEtag: true,
+        relay: args.relay
+          ? {
+              generation: args.relay.generation,
+              submissionId,
+              partId: storedPart.id,
+              partNumber: item.partNumber,
+            }
+          : undefined,
         onProgress: (loaded) => {
           progressByPart.set(item.partNumber, loaded);
           emit();
@@ -265,6 +321,13 @@ export async function uploadClaruSubmissionFiles(args: {
         body: file,
         headers: instruction.upload.headers,
         signal,
+        relay: instruction.relay
+          ? {
+              generation: instruction.relay.generation,
+              submissionId: latest.id,
+              partId: storedPart.id,
+            }
+          : undefined,
         onProgress: (loaded) => report(loaded, 'uploading'),
       });
     } else {
@@ -272,6 +335,7 @@ export async function uploadClaruSubmissionFiles(args: {
         submissionId: latest.id,
         storedPart,
         instruction: instruction.upload,
+        relay: instruction.relay,
         file,
         signal,
         onProgress: (loaded, detail) => report(loaded, 'uploading', detail),

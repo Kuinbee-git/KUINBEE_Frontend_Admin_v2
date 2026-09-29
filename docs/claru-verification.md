@@ -19,24 +19,6 @@ sidecars without an invented Content-Type, missing ETags, sibling cancellation,
 draining outstanding checkpoints before retry, pause, file mismatch, and skipping
 files already confirmed by Claru.
 
-The transfer tests also cover authenticated relay uploads, exact slice boundaries,
-JSON ETag confirmations, expired-instruction errors, and cancellation without
-checkpointing unconfirmed bytes. Storage headers and credentials never cross
-between the direct and relay transports.
-
-Start the built admin server on port 3018 as described below, then run:
-
-```bash
-node scripts/test-claru-relay-browser.mjs
-CLARU_CSP_TEST_BASE_URL=http://localhost:3018 node scripts/test-claru-csp-browser.mjs
-```
-
-The relay browser test uses actual HTTP servers: storage rejects the browser's
-preflight, while an authenticated API transport streams the same slices and
-returns ETags. It checks resume, cancellation, and credentials. Its API and
-storage fixtures are local; it does not prove hosted media acceptance. The CSP
-test runs against a built admin server and verifies real local video metadata.
-
 ## Browser acceptance
 
 Install the test browser once:
@@ -101,20 +83,9 @@ Superadmins retain all Claru access; manage and seal are independent for admins.
 
 Use the backend guide at `backend/docs/claru-backend-testing.md` from the workspace
 root for the live checklist. From the deployed admin origin, verify real PUT and
-multipart uploads, readable ETags, interruption/resume, and completion using
+multipart upload CORS, readable ETags, interruption/resume, and completion using
 approved test footage. Then seal and follow the real processing/review state.
 Mocked browser success and production compilation do not replace that test.
-
-On 2026-09-29, the live Claru storage endpoint rejected the admin origin's PUT
-preflight with 403 `AccessForbidden`; the same endpoint allowed `app.claru.ai`.
-New create/resume responses advertise an authenticated backend relay for that
-storage host. The admin prefers this transport, retaining Claru's supplied part
-sizes, ETags, and checkpoints. The relay streams directly to Claru, with expiring
-server-issued instructions, permissions, exact size checks, and a storage host
-allowlist. The EC2 proxy must install the scoped configuration in
-`backend/docker/staging/nginx`; other API routes retain their existing body limit.
-Claru can subsequently add the admin origin to its bucket CORS policy to allow
-direct browser uploads.
 
 The supplied integration guide has no vendor sandbox or automated test suite.
 Do not seal synthetic files used by these local tests into the real Claru team.

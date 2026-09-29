@@ -200,8 +200,6 @@ export interface ClaruPartUploadInstruction {
   byteSize: string;
   uploadState: 'pending' | 'uploaded';
   upload: ClaruUploadInstruction | null;
-  /** Authenticated backend transport for storage that does not allow our browser origin. */
-  relay?: { generation: string; expiresAt: string };
 }
 
 export interface ClaruSubmissionCreateResult {

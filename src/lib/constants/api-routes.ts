@@ -231,8 +231,6 @@ export const API_ROUTES = {
         `/v1/admin/claru/submissions/${submissionId}/parts/${partId}/checkpoint`,
       COMPLETE_PART: (submissionId: string, partId: string) =>
         `/v1/admin/claru/submissions/${submissionId}/parts/${partId}/complete`,
-      UPLOAD_PART: (submissionId: string, partId: string) =>
-        `/v1/admin/claru/submissions/${submissionId}/parts/${partId}/upload`,
       SEAL: (submissionId: string) => `/v1/admin/claru/submissions/${submissionId}/seal`,
       SYNC: (submissionId: string) => `/v1/admin/claru/submissions/${submissionId}/sync`,
     },

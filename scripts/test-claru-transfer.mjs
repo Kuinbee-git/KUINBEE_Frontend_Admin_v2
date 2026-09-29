@@ -60,26 +60,8 @@ function harness({ onPut, onCheckpoint } = {}) {
   const exports = {};
   vm.runInNewContext(code, {
     exports,
-    require: (module) => {
-      if (module.includes('api-routes')) {
-        return {
-          API_ROUTES: {
-            ADMIN: {
-              CLARU: {
-                UPLOAD_PART: (submissionId, partId) =>
-                  `/v1/admin/claru/submissions/${submissionId}/parts/${partId}/upload`,
-              },
-            },
-          },
-        };
-      }
-      if (module.includes('api/client')) return { SESSION_EXPIRED_EVENT: 'session-expired' };
-      return services;
-    },
+    require: () => services,
     process,
-    URL,
-    Event,
-    window: { location: { origin: 'https://admin.invalid' }, dispatchEvent: () => {} },
     XMLHttpRequest: Xhr,
     AbortController,
   });
@@ -215,95 +197,5 @@ test('already uploaded parts are skipped without requiring local files', async (
   h.instruction.uploadState = 'uploaded';
   await h.run({ filesByPartId: {} });
   assert.equal(h.puts.length, 0);
-  assert.equal(h.completes.length, 0);
-});
-
-test('server-issued relay preserves slices and checkpoints without forwarding storage headers', async () => {
-  const h = harness({
-    onPut: (put) => {
-      put.responseText = JSON.stringify({ success: true, data: { etag: '"relay-etag"' } });
-    },
-  });
-  h.instruction.relay = {
-    generation: 'server-issued-generation',
-    expiresAt: '2099-01-01T00:00:00Z',
-  };
-  h.instruction.upload.headers = { 'x-amz-meta-source': 'supplier_upload' };
-  h.part.uploadedParts = [{ partNumber: 2, etag: '"saved"' }];
-  await h.run();
-  assert.deepEqual(await Promise.all(h.puts.map((put) => put.body.text())), ['ABC', 'GHI', 'J']);
-  for (const put of h.puts) {
-    const url = new URL(put.url);
-    assert.equal(url.pathname, '/api/v1/admin/claru/submissions/submission/parts/part/upload');
-    assert.equal(url.searchParams.get('generation'), 'server-issued-generation');
-    assert.equal(put.withCredentials, true);
-    assert.deepEqual(put.headers, { 'Content-Type': 'application/octet-stream' });
-    assert.equal(put.body.type, '');
-  }
-  assert.deepEqual(
-    h.puts.map((put) => Number(new URL(put.url).searchParams.get('partNumber'))),
-    [1, 3, 4]
-  );
-  assert.ok(h.checkpoints.every((checkpoint) => checkpoint.etag === '"relay-etag"'));
-  assert.equal(h.completes.length, 1);
-});
-
-test('single PUT can use authenticated relay without a multipart number', async () => {
-  const h = harness({
-    onPut: (put) => {
-      put.responseText = JSON.stringify({ success: true, data: { etag: null } });
-    },
-  });
-  h.instruction.upload = { kind: 'put', url: 'https://storage.invalid/file', headers: {} };
-  h.instruction.relay = { generation: 'generation', expiresAt: '2099-01-01T00:00:00Z' };
-  await h.run();
-  assert.equal(h.puts.length, 1);
-  assert.equal(new URL(h.puts[0].url).searchParams.has('partNumber'), false);
-  assert.equal(h.checkpoints.length, 0);
-  assert.equal(h.completes.length, 1);
-});
-
-test('invalid or missing relay confirmation never checkpoints or completes', async () => {
-  for (const responseText of [
-    '<html>proxy error</html>',
-    '{}',
-    '{"success":true,"data":{"etag":null}}',
-  ]) {
-    const h = harness({
-      onPut: (put) => {
-        put.responseText = responseText;
-      },
-    });
-    h.instruction.relay = { generation: 'generation', expiresAt: '2099-01-01T00:00:00Z' };
-    await assert.rejects(h.run(), /confirmation was invalid|did not confirm/);
-    assert.equal(h.checkpoints.length, 0);
-    assert.equal(h.completes.length, 0);
-  }
-});
-
-test('relay errors preserve API remedy and abort other slices', async () => {
-  const h = harness({
-    onPut: async (put) => {
-      if (new URL(put.url).searchParams.get('partNumber') !== '1') {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      put.status = 409;
-      put.responseText = JSON.stringify({
-        error: { message: 'Upload instructions expired. Resume this clip.' },
-      });
-    },
-  });
-  h.instruction.relay = { generation: 'generation', expiresAt: '2099-01-01T00:00:00Z' };
-  await assert.rejects(h.run(), /Upload instructions expired/);
-  assert.equal(h.checkpoints.length, 0);
-  assert.equal(h.completes.length, 0);
-  assert.ok(h.puts.slice(1).every((put) => put.aborted));
-});
-
-test('pause cancels relay without checkpoint or completion', async () => {
-  const h = harness({ onPut: () => h.controller.abort() });
-  h.instruction.relay = { generation: 'generation', expiresAt: '2099-01-01T00:00:00Z' };
-  await assert.rejects(h.run(), /paused/);
-  assert.equal(h.checkpoints.length, 0);
   assert.equal(h.completes.length, 0);
 });

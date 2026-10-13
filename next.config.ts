@@ -1,4 +1,7 @@
+import { deploymentEnvironment } from './scripts/deployment-environment.mjs';
 import type { NextConfig } from 'next';
+
+const deployment = deploymentEnvironment();
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
@@ -16,6 +19,7 @@ const getApiProxyTarget = () => {
 const apiProxyTarget = getApiProxyTarget();
 
 const securityHeaders = [
+  ...(deployment.isStaging ? [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] : []),
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
@@ -35,6 +39,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['lucide-react'],
   experimental: {
+    ...(process.env.CI ? { cpus: 2 } : {}),
     optimizePackageImports: ['lucide-react', 'motion', '@tanstack/react-query'],
   },
   async rewrites() {

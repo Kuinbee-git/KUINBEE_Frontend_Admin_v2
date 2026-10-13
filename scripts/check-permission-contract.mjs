@@ -4,10 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const adminRoot = resolve(scriptDirectory, '..');
-const backendContractPath = resolve(
-  adminRoot,
-  '../../backend/packages/api-contracts/src/common.schema.ts'
-);
+// The standalone frontend checkout verifies the contract of the qualified backend release.
+// Pass BACKEND_PERMISSION_CONTRACT_PATH when qualifying a newer backend contract.
+const backendContractPath = process.env.BACKEND_PERMISSION_CONTRACT_PATH
+  ? resolve(process.env.BACKEND_PERMISSION_CONTRACT_PATH)
+  : resolve(scriptDirectory, 'fixtures/backend-permissions.schema.txt');
 const frontendContractPath = resolve(adminRoot, 'src/lib/constants/permissions.ts');
 
 const extractArrayValues = (source, startPattern, endPattern, sourceName) => {

@@ -5,6 +5,8 @@ import { QueryProvider } from '@/lib/providers/query-provider';
 import { Toaster } from 'sonner';
 import { headers } from 'next/headers';
 
+const isStaging = process.env.NEXT_PUBLIC_APP_ENV === 'staging';
+
 const inter = Inter({ subsets: ['latin'] });
 
 const themeInitializationScript = `
@@ -46,6 +48,11 @@ export default async function RootLayout({
           {children}
           <Toaster richColors position="top-right" />
         </QueryProvider>
+        {isStaging && (
+          <div role="status" data-environment="staging" className="pointer-events-none fixed bottom-2 right-2 z-[9999] rounded bg-[var(--status-warning-bg)] px-3 py-1 text-xs font-semibold text-[var(--status-warning)] shadow">
+            Staging · Test environment
+          </div>
+        )}
       </body>
     </html>
   );

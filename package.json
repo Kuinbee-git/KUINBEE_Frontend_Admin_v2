@@ -20,10 +20,11 @@
     "test:auth:browser": "node scripts/test-auth-browser.mjs",
     "check:environment": "node scripts/deployment-environment.mjs",
     "test:environment": "node --test scripts/deployment-environment.test.mjs",
-    "prebuild": "npm run check:environment",
+    "prebuild": "npm run check:environment && node scripts/check-github-release.mjs",
     "test:release": "node scripts/check-release.mjs",
-    "test:contracts": "npm run test:environment && npm run check:ui && npm run check:permissions && npm run test:claru && npm run test:claru:queue",
-    "audit:runtime": "npm audit --omit=dev --audit-level=high"
+    "test:contracts": "npm run test:release-gate && npm run test:environment && npm run check:ui && npm run check:permissions && npm run test:claru && npm run test:claru:queue",
+    "audit:runtime": "npm audit --omit=dev --audit-level=high",
+    "test:release-gate": "node --test scripts/check-github-release.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",

@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useComponentRequest } from '@/hooks/useComponentRequest';
+
+import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Edit2, Save, X, Loader2, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,9 +60,7 @@ export function KdtsScorePanel({ datasetId, canEdit = false }: KdtsScorePanelPro
     }
   }, [datasetId]);
 
-  useEffect(() => {
-    void loadKdts();
-  }, [loadKdts]);
+  useComponentRequest(loadKdts, [datasetId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

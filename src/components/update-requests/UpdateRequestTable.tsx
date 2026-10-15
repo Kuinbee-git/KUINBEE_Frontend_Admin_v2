@@ -17,7 +17,7 @@ interface UpdateRequestListItem {
   supplierEmail: string | null;
   category: string;
   status: DatasetStatus;
-  verificationStatus: VerificationStatus;
+  verificationStatus: VerificationStatus | null;
   assignedTo: string | null;
   submittedAt: string;
 }
@@ -35,7 +35,8 @@ export function UpdateRequestTable({
   onPickProposal,
   pickingDatasetId,
 }: UpdateRequestTableProps) {
-  const formatStatus = (status: string) => {
+  const formatStatus = (status: string | null) => {
+    if (status === null) return 'Not recorded';
     return status
       .split('_')
       .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
@@ -121,7 +122,9 @@ export function UpdateRequestTable({
               <td className="p-4">
                 <StatusBadge
                   status={formatStatus(proposal.verificationStatus)}
-                  semanticType={getVerificationStatusSemantic(proposal.verificationStatus)}
+                  semanticType={getVerificationStatusSemantic(
+                    proposal.verificationStatus ?? 'UNKNOWN'
+                  )}
                 />
               </td>
               <td className="p-4">
@@ -131,7 +134,7 @@ export function UpdateRequestTable({
               </td>
               <td className="p-4">
                 {!proposal.assignedTo &&
-                  ['SUBMITTED', 'RESUBMITTED'].includes(proposal.verificationStatus) &&
+                  ['SUBMITTED', 'RESUBMITTED'].includes(proposal.verificationStatus ?? '') &&
                   onPickProposal && (
                     <Button
                       variant="outline"

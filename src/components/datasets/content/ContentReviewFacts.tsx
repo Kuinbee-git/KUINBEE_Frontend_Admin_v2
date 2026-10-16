@@ -1,4 +1,47 @@
 import type { ReactNode } from 'react';
+import {
+  isDatasetPreparationProfileFieldApplicable,
+  type DatasetContentMetadata,
+  type DatasetPreparationProfiles,
+} from '@kuinbee/dataset-preparation-contracts';
+
+// Read-only presentation from this frozen snapshot. Retained inactive answers
+// are left in the underlying response, never turned into current active claims.
+export function ReviewContentMetadata({ metadata }: { metadata: DatasetContentMetadata }) {
+  const enabled: Record<keyof DatasetPreparationProfiles, boolean> = {
+    tabular: metadata.modalities?.includes('TABULAR') ?? false,
+    audio: metadata.modalities?.includes('AUDIO') ?? false,
+    images: metadata.modalities?.includes('IMAGE') ?? false,
+    video: metadata.modalities?.includes('VIDEO') ?? false,
+    text: metadata.modalities?.includes('TEXT') ?? false,
+    sensors: metadata.modalities?.includes('SENSOR') ?? false,
+    egocentric: metadata.contexts?.includes('EGOCENTRIC') ?? false,
+    healthcare: metadata.contexts?.includes('HEALTHCARE') ?? false,
+  };
+  const profiles = Object.fromEntries(
+    Object.entries(metadata.profiles ?? {})
+      .filter(([key]) => enabled[key as keyof DatasetPreparationProfiles])
+      .map(([key, value]) => [
+        key,
+        value
+          ? Object.fromEntries(
+              Object.entries(value).filter(([field]) =>
+                isDatasetPreparationProfileFieldApplicable(
+                  key as keyof DatasetPreparationProfiles,
+                  field,
+                  value
+                )
+              )
+            )
+          : value,
+      ])
+  );
+  return (
+    <div data-applicable-metadata>
+      <ReviewFactTree value={{ ...metadata, ...(metadata.profiles ? { profiles } : {}) }} />
+    </div>
+  );
+}
 
 export const reviewLabel = (value: string) =>
   (/^[A-Z][A-Z_]+$/.test(value) ? value.toLowerCase() : value)

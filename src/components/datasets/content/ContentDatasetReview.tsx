@@ -21,7 +21,12 @@ import type { AdminDatasetReview } from '@/services/dataset-content.service';
 import { ContentAssessment } from './ContentAssessment';
 import { ContentPublishedReview } from './ContentPublishedReview';
 import { ContentReviewInventory } from './ContentReviewInventory';
-import { ReviewFacts, ReviewFactTree, ReviewSection, reviewLabel } from './ContentReviewFacts';
+import {
+  ReviewFacts,
+  ReviewContentMetadata,
+  ReviewSection,
+  reviewLabel,
+} from './ContentReviewFacts';
 
 type Decision = 'APPROVE' | 'REJECT' | 'CHANGES';
 type Execute = (command: DatasetReviewCommand, replay?: boolean) => Promise<void>;
@@ -217,7 +222,7 @@ export function ContentDatasetReview({
                     These are supplier declarations. Sample inspection does not establish that
                     unseen full material has been inspected. Unknown quantities remain unknown.
                   </p>
-                  <ReviewFactTree value={frozen.metadata} />
+                  <ReviewContentMetadata metadata={frozen.metadata} />
                 </div>
               </details>
             </ReviewSection>

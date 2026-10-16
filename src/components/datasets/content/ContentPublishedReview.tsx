@@ -14,7 +14,7 @@ import type { DatasetReviewCommand } from '@/lib/datasets/dataset-review-command
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import { ContentAssessment } from './ContentAssessment';
 import { ContentReviewInventory } from './ContentReviewInventory';
-import { ReviewFacts, ReviewFactTree } from './ContentReviewFacts';
+import { ReviewFacts, ReviewContentMetadata } from './ContentReviewFacts';
 
 type Props = {
   review: AdminDatasetReview;
@@ -163,7 +163,7 @@ function PublishedContent({ review, actorId, locked, canAssess, execute }: Props
           Published collection and modality declarations
         </summary>
         <div className="mt-3">
-          <ReviewFactTree value={frozen.metadata} />
+          <ReviewContentMetadata metadata={frozen.metadata} />
         </div>
       </details>
       <div className="border-t pt-4" style={{ borderColor: 'var(--border-default)' }}>

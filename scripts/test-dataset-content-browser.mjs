@@ -643,6 +643,16 @@ try {
     await page
       .getByRole('heading', { name: model.submittedContent.common.title, exact: true })
       .waitFor();
+    await page.getByText('Scoped collection, sample and modality details', { exact: true }).click();
+    assert.equal(
+      await page.getByText('Retained inactive transcript meaning', { exact: true }).count(),
+      0
+    );
+    assert.equal(
+      await page.getByText('Retained inactive timing reference', { exact: true }).count(),
+      0
+    );
+    assert.equal(await page.getByText('English', { exact: true }).count(), 0);
     await page.getByText('Inspect current published material', { exact: true }).click();
     const published = page.locator('[data-published-content="' + exactA + '"]');
     await published.getByText('CC-BY-4.0', { exact: true }).waitFor();
@@ -651,6 +661,13 @@ try {
       .filter({ hasText: /^Published A declared region$/ })
       .waitFor();
     await published.getByText('2019 (year) to 2020-04 (month)', { exact: true }).waitFor();
+    await published
+      .getByText('Published collection and modality declarations', { exact: true })
+      .click();
+    await published
+      .locator('[data-applicable-metadata]')
+      .getByText('English', { exact: true })
+      .waitFor();
     assert.equal(await published.getByText('Unknown', { exact: true }).count(), 0);
     assert.equal(await published.getByText('New reviewed B overview', { exact: true }).count(), 0);
     await enabled(

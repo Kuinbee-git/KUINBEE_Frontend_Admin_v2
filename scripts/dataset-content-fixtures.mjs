@@ -196,6 +196,14 @@ export function attachPublished(model) {
   };
   model.submittedContent.metadata.geographicCoverage = { state: 'UNKNOWN' };
   model.submittedContent.metadata.collectionPeriod = { state: 'NOT_APPLICABLE' };
+  model.submittedContent.metadata.profiles.audio = {
+    ...model.submittedContent.metadata.profiles.audio,
+    content: 'NON_SPEECH',
+    transcriptAvailability: 'ABSENT',
+    transcriptMeaning: 'Retained inactive transcript meaning',
+    transcriptTiming: 'TIMED',
+    alignmentNotes: 'Retained inactive timing reference',
+  };
   const rating = {
     id: id(sequence++),
     datasetId: model.state.datasetId,

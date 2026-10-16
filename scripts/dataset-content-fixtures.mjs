@@ -185,6 +185,17 @@ export function inventory(model, query) {
 export function attachPublished(model) {
   const content = structuredClone(model.submittedContent),
     members = structuredClone(model.members);
+  content.metadata.geographicCoverage = {
+    state: 'KNOWN',
+    description: 'Published A declared region',
+  };
+  content.metadata.collectionPeriod = {
+    state: 'KNOWN',
+    start: { precision: 'YEAR', value: '2019' },
+    end: { precision: 'MONTH', value: '2020-04' },
+  };
+  model.submittedContent.metadata.geographicCoverage = { state: 'UNKNOWN' };
+  model.submittedContent.metadata.collectionPeriod = { state: 'NOT_APPLICABLE' };
   const rating = {
     id: id(sequence++),
     datasetId: model.state.datasetId,

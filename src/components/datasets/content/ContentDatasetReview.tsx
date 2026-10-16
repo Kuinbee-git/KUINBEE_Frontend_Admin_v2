@@ -2,7 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DATASET_UPLOAD_CHOICES, DATASET_MODALITIES } from '@kuinbee/dataset-preparation-contracts';
+import {
+  DATASET_UPLOAD_CHOICES,
+  DATASET_MODALITIES,
+  formatDatasetGeographicCoverage,
+  formatDatasetCollectionPeriod,
+} from '@kuinbee/dataset-preparation-contracts';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useDatasetContentReview } from '@/hooks/api/useDatasetContentReview';
@@ -157,6 +162,14 @@ export function ContentDatasetReview({
                       .join(', '),
                   ],
                   ['Collection boundary', frozen.metadata.collectionBoundary],
+                  [
+                    'Geographic coverage at submission · supplier declared',
+                    formatDatasetGeographicCoverage(frozen.metadata.geographicCoverage),
+                  ],
+                  [
+                    'Collection or capture period at submission · supplier declared',
+                    formatDatasetCollectionPeriod(frozen.metadata.collectionPeriod),
+                  ],
                   ['License', frozen.common.license],
                   ['Overview', frozen.common.overview],
                   ['Description', frozen.common.description],

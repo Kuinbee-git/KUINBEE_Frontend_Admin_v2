@@ -54,7 +54,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "zustand": "^5.0.9",
-    "@kuinbee/dataset-preparation-contracts": "file:vendor/kuinbee-dataset-preparation-contracts-0.22.0.tgz",
+    "@kuinbee/dataset-preparation-contracts": "file:vendor/kuinbee-dataset-preparation-contracts-0.25.0.tgz",
     "zod": "^4.3.5"
   },
   "devDependencies": {

@@ -3,7 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { DATASET_UPLOAD_CHOICES, DATASET_MODALITIES } from '@kuinbee/dataset-preparation-contracts';
+import {
+  DATASET_UPLOAD_CHOICES,
+  DATASET_MODALITIES,
+  formatDatasetGeographicCoverage,
+  formatDatasetCollectionPeriod,
+} from '@kuinbee/dataset-preparation-contracts';
 import { datasetContentApi, type AdminDatasetReview } from '@/services/dataset-content.service';
 import type { DatasetReviewCommand } from '@/lib/datasets/dataset-review-commands';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
@@ -119,6 +124,14 @@ function PublishedContent({ review, actorId, locked, canAssess, execute }: Props
           ],
           ['Published at', new Date(publication.publishedAt).toLocaleString()],
           ['Published content reference', frozen.id],
+          [
+            'Geographic coverage captured for published content · supplier declared',
+            formatDatasetGeographicCoverage(frozen.metadata.geographicCoverage),
+          ],
+          [
+            'Collection or capture period captured for published content · supplier declared',
+            formatDatasetCollectionPeriod(frozen.metadata.collectionPeriod),
+          ],
           ['License captured for published content', frozen.common.license],
           ['Overview captured for published content', frozen.common.overview],
           ['Description captured for published content', frozen.common.description],

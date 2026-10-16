@@ -646,6 +646,12 @@ try {
     await page.getByText('Inspect current published material', { exact: true }).click();
     const published = page.locator('[data-published-content="' + exactA + '"]');
     await published.getByText('CC-BY-4.0', { exact: true }).waitFor();
+    await published
+      .getByRole('definition')
+      .filter({ hasText: /^Published A declared region$/ })
+      .waitFor();
+    await published.getByText('2019 (year) to 2020-04 (month)', { exact: true }).waitFor();
+    assert.equal(await published.getByText('Unknown', { exact: true }).count(), 0);
     assert.equal(await published.getByText('New reviewed B overview', { exact: true }).count(), 0);
     await enabled(
       published.getByRole('button', { name: 'Download published file', exact: true }).first()

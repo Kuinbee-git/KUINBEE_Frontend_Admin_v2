@@ -16,6 +16,7 @@ import {
   DatasetContentAssessmentBodySchema,
   DatasetContentAssessmentResponseSchema,
   DatasetPublicationResponseSchema,
+  DatasetPublishedReviewResponseSchema,
   DatasetFileAccessContextQuerySchema,
   DatasetFileAccessContextSchema,
   DatasetFileAccessPageQuerySchema,
@@ -51,6 +52,9 @@ export type AdminDatasetFrozenInventory = ReturnType<
 >;
 export type AdminDatasetAssessment = ReturnType<
   typeof DatasetContentAssessmentResponseSchema.parse
+>;
+export type AdminDatasetPublishedReview = ReturnType<
+  typeof DatasetPublishedReviewResponseSchema.parse
 >;
 export type AdminDatasetPublication = ReturnType<typeof DatasetPublicationResponseSchema.parse>;
 export type AdminDatasetFileInventory = ReturnType<
@@ -172,8 +176,9 @@ function matchesFileContext(
 ) {
   if (
     context.datasetId !== datasetId ||
-    context.scope !== 'REVIEWED' ||
-    query.scope !== 'REVIEWED' ||
+    context.scope !== query.scope ||
+    !['REVIEWED', 'PUBLISHED'].includes(query.scope) ||
+    (query.scope === 'PUBLISHED' && !context.publicationId) ||
     context.component !== query.component ||
     context.contentId !== query.contentId ||
     context.contentGeneration !== query.contentGeneration ||
@@ -183,18 +188,18 @@ function matchesFileContext(
   )
     incompatible();
 }
-function assertReviewedQuery(query: {
+function assertReviewFileQuery(query: {
   scope: string;
   expectedWorkflowRevision?: number;
   editOperation?: string;
 }) {
   if (
-    query.scope !== 'REVIEWED' ||
+    !['REVIEWED', 'PUBLISHED'].includes(query.scope) ||
     query.expectedWorkflowRevision === undefined ||
     query.editOperation !== undefined
   )
     throw new DatasetContentApiError(
-      'Select the exact reviewed content before requesting its files.',
+      'Select the exact submitted or published content before requesting its files.',
       'INVALID_FILE_SCOPE',
       400
     );
@@ -301,11 +306,13 @@ export const datasetContentApi = {
   async frozenInventory(
     datasetId: string,
     input: DatasetFrozenInventoryQuery,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    target: 'REVIEWED' | 'PUBLISHED' = 'REVIEWED'
   ) {
+    if (target !== 'REVIEWED' && target !== 'PUBLISHED') incompatible();
     const query = DatasetFrozenInventoryQuerySchema.parse(input);
     const result = await request(
-      `${base(datasetId)}/inventory`,
+      `${base(datasetId)}/${target === 'PUBLISHED' ? 'published/' : ''}inventory`,
       DatasetFrozenInventoryResponseSchema,
       { params: query, signal }
     );
@@ -325,6 +332,15 @@ export const datasetContentApi = {
       )
     )
       incompatible();
+    return result;
+  },
+  async publishedReview(datasetId: string, signal?: AbortSignal) {
+    const result = await request(
+      `${base(datasetId)}/published`,
+      DatasetPublishedReviewResponseSchema,
+      { signal }
+    );
+    if (result.state.datasetId !== datasetId) incompatible();
     return result;
   },
   async assessment(datasetId: string, target: 'REVIEWED' | 'PUBLISHED', signal?: AbortSignal) {
@@ -360,9 +376,9 @@ export const datasetContentApi = {
   },
   async fileContext(datasetId: string, input: DatasetFileAccessSelection, signal?: AbortSignal) {
     const query = DatasetFileAccessContextQuerySchema.parse(input);
-    if (query.scope !== 'REVIEWED' || query.editOperation !== undefined)
+    if (!['REVIEWED', 'PUBLISHED'].includes(query.scope) || query.editOperation !== undefined)
       throw new DatasetContentApiError(
-        'Choose exact reviewed files for admin review.',
+        'Choose exact submitted or published files for admin review.',
         'INVALID_FILE_SCOPE',
         400
       );
@@ -372,7 +388,8 @@ export const datasetContentApi = {
     });
     if (
       result.datasetId !== datasetId ||
-      result.scope !== 'REVIEWED' ||
+      result.scope !== query.scope ||
+      (query.scope === 'PUBLISHED' && !result.publicationId) ||
       result.component !== query.component ||
       !result.frozen ||
       result.editOperation !== null
@@ -382,7 +399,7 @@ export const datasetContentApi = {
   },
   async files(datasetId: string, input: DatasetFileAccessPageQuery, signal?: AbortSignal) {
     const query = DatasetFileAccessPageQuerySchema.parse(input);
-    assertReviewedQuery(query);
+    assertReviewFileQuery(query);
     const result = await request(
       `${fileBase(datasetId)}/inventory`,
       DatasetFileAccessPageResponseSchema,
@@ -410,7 +427,7 @@ export const datasetContentApi = {
   },
   async observations(datasetId: string, input: DatasetFileObservationQuery, signal?: AbortSignal) {
     const query = DatasetFileObservationQuerySchema.parse(input);
-    assertReviewedQuery(query);
+    assertReviewFileQuery(query);
     const result = await request(
       `${fileBase(datasetId)}/observations`,
       DatasetFileObservationResponseSchema,
@@ -443,7 +460,7 @@ export const datasetContentApi = {
   },
   async download(datasetId: string, supplied: DatasetFileDownloadBody, signal?: AbortSignal) {
     const body = DatasetFileDownloadBodySchema.parse(supplied);
-    assertReviewedQuery(body);
+    assertReviewFileQuery(body);
     const result = await request(
       `${fileBase(datasetId)}/download-url`,
       DatasetFileDownloadResponseSchema,

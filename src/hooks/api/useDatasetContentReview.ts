@@ -10,6 +10,7 @@ import {
   type AdminDatasetAssessment,
 } from '@/services/dataset-content.service';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
+import { datasetsKeys } from './useDatasets';
 import { datasetContentKeys } from './useDatasetContentQueue';
 import {
   ambiguousDatasetReviewFailure,
@@ -116,6 +117,7 @@ export function useDatasetContentReview(datasetId: string, actorId: string) {
         flight.current = false;
         setBusy(false);
         void client.invalidateQueries({ queryKey: datasetContentKeys });
+        void client.invalidateQueries({ queryKey: datasetsKeys.all });
       }
     },
     [actorId, client, currentActor, datasetId, pending, readCurrent, ready, snapshot]

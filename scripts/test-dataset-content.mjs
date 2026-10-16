@@ -14,6 +14,8 @@ import {
   assessment,
   inventory,
   now,
+  attachPublished,
+  publishedReview,
 } from './dataset-content-fixtures.mjs';
 
 const directory = await mkdtemp(join(tmpdir(), 'kuinbee-admin-content-protocol-'));
@@ -212,9 +214,9 @@ test('pricing acknowledgment increments its own revision and can retain an indep
     matches('INCOMPATIBLE_DATASET_RESPONSE')
   );
 });
-test('admin file access cannot ask for working, published, granted or unpinned files', async () => {
+test('admin file access cannot ask for working, granted or unpinned files', async () => {
   const before = requests.length;
-  for (const scope of ['WORKING', 'PUBLISHED', 'GRANTED', 'EDIT_BASE'])
+  for (const scope of ['WORKING', 'GRANTED', 'EDIT_BASE'])
     await assert.rejects(
       api.fileContext(model.state.datasetId, { scope, component: 'FULL' }),
       matches('INVALID_FILE_SCOPE')
@@ -398,4 +400,38 @@ test('mismatched assessment receipt cannot establish a score for another content
       matches('INCOMPATIBLE_DATASET_RESPONSE')
     );
   }
+});
+
+test('private published view and inventory preserve published A independently of reviewed B and reject pointer substitution', async () => {
+  const value = attachPublished(seed());
+  answer = publishedReview(value);
+  const selected = await api.publishedReview(value.state.datasetId);
+  assert.notEqual(selected.state.reviewedContentId, selected.publishedContent.id);
+  assert.equal(selected.publishedContent.common.license, 'CC-BY-4.0');
+  assert(requests.at(-1).url.pathname.endsWith('/published'));
+  const query = {
+    expectedWorkflowRevision: value.state.workflowRevision,
+    contentId: selected.publishedContent.id,
+    contentGeneration: selected.publishedContent.generation,
+    inventory: 'FILES',
+    limit: 20,
+  };
+  answer = inventory(
+    { ...value, submittedContent: value.published.content, members: value.published.members },
+    query
+  );
+  await api.frozenInventory(value.state.datasetId, query, undefined, 'PUBLISHED');
+  assert(requests.at(-1).url.pathname.endsWith('/published/inventory'));
+  answer = publishedReview(value);
+  answer.state.publishedContentId = value.state.reviewedContentId;
+  await assert.rejects(
+    api.publishedReview(value.state.datasetId),
+    matches('INCOMPATIBLE_DATASET_RESPONSE')
+  );
+  answer = publishedReview(value);
+  answer.publication = null;
+  await assert.rejects(
+    api.publishedReview(value.state.datasetId),
+    matches('INCOMPATIBLE_DATASET_RESPONSE')
+  );
 });

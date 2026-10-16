@@ -2,11 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  DATASET_UPLOAD_CHOICES,
-  DATASET_MODALITIES,
-  type DatasetContentAssessmentBody,
-} from '@kuinbee/dataset-preparation-contracts';
+import { DATASET_UPLOAD_CHOICES, DATASET_MODALITIES } from '@kuinbee/dataset-preparation-contracts';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useDatasetContentReview } from '@/hooks/api/useDatasetContentReview';
@@ -16,11 +12,9 @@ import {
   DatasetReviewCommandSchema,
   type DatasetReviewCommand,
 } from '@/lib/datasets/dataset-review-commands';
-import type {
-  AdminDatasetReview,
-  AdminDatasetAssessment,
-} from '@/services/dataset-content.service';
-import { KDTS_LABELS } from '@/services/kdts.service';
+import type { AdminDatasetReview } from '@/services/dataset-content.service';
+import { ContentAssessment } from './ContentAssessment';
+import { ContentPublishedReview } from './ContentPublishedReview';
 import { ContentReviewInventory } from './ContentReviewInventory';
 import { ReviewFacts, ReviewFactTree, ReviewSection, reviewLabel } from './ContentReviewFacts';
 
@@ -320,11 +314,23 @@ export function ContentDatasetReview({
               />
             </ReviewSection>
           </div>
-          <ReviewSection title="KDTS assessment of submitted material" className="border-t">
-            <ContentReviewAssessment
-              key={'assessment:' + signature}
+          <ReviewSection title="Published material and assessment" className="border-t">
+            <ContentPublishedReview
+              key={'published:' + signature}
               review={review}
-              assessment={snapshot.assessment}
+              actorId={actorId}
+              locked={locked}
+              canAssess={can({ anyOf: [PERMISSIONS.DATASETS.EDIT_METADATA] })}
+              execute={execute}
+            />
+          </ReviewSection>
+          <ReviewSection title="KDTS assessment of submitted material" className="border-t">
+            <ContentAssessment
+              key={'assessment:' + signature}
+              state={review.state}
+              contentId={review.submittedContent.id}
+              target="REVIEWED"
+              current={snapshot.assessment.assessment}
               actorId={actorId}
               disabled={locked || !can({ anyOf: [PERMISSIONS.DATASETS.EDIT_METADATA] })}
               execute={execute}
@@ -445,138 +451,6 @@ function ReviewDecisionForm({
               onClick={() => setChoice(null)}
             >
               Cancel decision
-            </Button>
-          </div>
-        </form>
-      )}
-    </div>
-  );
-}
-
-function ContentReviewAssessment({
-  review,
-  assessment,
-  actorId,
-  disabled,
-  execute,
-}: {
-  review: AdminDatasetReview;
-  assessment: AdminDatasetAssessment;
-  actorId: string;
-  disabled: boolean;
-  execute: Execute;
-}) {
-  const current = assessment.assessment;
-  const [editing, setEditing] = useState(false),
-    [note, setNote] = useState('');
-  const keys = ['Q', 'L', 'P', 'U', 'F'] as const;
-  const [scores, setScores] = useState<Record<(typeof keys)[number], string>>({
-    Q: current ? String(current.Q) : '',
-    L: current ? String(current.L) : '',
-    P: current ? String(current.P) : '',
-    U: current ? String(current.U) : '',
-    F: current ? String(current.F) : '',
-  });
-  const valid = keys.every((key) => /^(100|[0-9]{1,2})$/.test(scores[key]));
-  const publishedToo = review.state.publishedContentId === review.submittedContent.id;
-  async function save() {
-    if (disabled || !valid) return;
-    const body: DatasetContentAssessmentBody = {
-      requestId: crypto.randomUUID(),
-      expectedWorkflowRevision: review.state.workflowRevision,
-      expectedContentId: review.submittedContent.id,
-      target: 'REVIEWED',
-      Q: Number(scores.Q),
-      L: Number(scores.L),
-      P: Number(scores.P),
-      U: Number(scores.U),
-      F: Number(scores.F),
-      ...(note.trim() ? { note: note.trim() } : {}),
-    };
-    await execute({ kind: 'ASSESS', datasetId: review.state.datasetId, actorId, body });
-    setEditing(false);
-  }
-  return (
-    <div className="space-y-4">
-      <p className="text-sm">
-        Assessment covers{' '}
-        {current?.scope.uploadedComponents
-          .map((value) => (value === 'FULL' ? 'uploaded full material' : 'uploaded sample'))
-          .join(' and ') ?? 'the uploaded components of this submission'}
-        . The represented collection remains supplier declared. A sample assessment does not inspect
-        unseen full material.
-      </p>
-      <ReviewFacts
-        rows={[
-          ['Current submitted assessment', current ? current.finalScore : 'Not assessed'],
-          ['Assessed at', current ? new Date(current.createdAt).toLocaleString() : null],
-          ...keys.map((key) => [KDTS_LABELS[key].name, current?.[key]] as const),
-          ['Assessment note', current?.note],
-        ]}
-      />
-      {publishedToo && (
-        <p className="text-sm">
-          This submitted content is also published. Saving a Legal &amp; Compliance score below 60
-          withdraws its current publication.
-        </p>
-      )}
-      {!editing ? (
-        <Button variant="outline" disabled={disabled} onClick={() => setEditing(true)}>
-          Assess submitted material
-        </Button>
-      ) : (
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void save().catch(() => {});
-          }}
-        >
-          <div className="grid gap-3 sm:grid-cols-5">
-            {keys.map((key) => (
-              <label htmlFor={'review-score-' + key} className="text-sm" key={key}>
-                {KDTS_LABELS[key].name}
-                <input
-                  id={'review-score-' + key}
-                  aria-label={KDTS_LABELS[key].name + ' score'}
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  required
-                  disabled={disabled}
-                  value={scores[key]}
-                  onChange={(event) =>
-                    setScores((previous) => ({ ...previous, [key]: event.target.value }))
-                  }
-                  className="w-full mt-1 p-2 rounded border"
-                  style={box}
-                />
-              </label>
-            ))}
-          </div>
-          <label htmlFor="submitted-assessment-note" className="block text-sm">
-            Assessment note
-            <Textarea
-              id="submitted-assessment-note"
-              aria-label="Submitted assessment note"
-              maxLength={4000}
-              disabled={disabled}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </label>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={disabled || !valid}>
-              Save submitted assessment
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={disabled}
-              onClick={() => setEditing(false)}
-            >
-              Cancel assessment
             </Button>
           </div>
         </form>

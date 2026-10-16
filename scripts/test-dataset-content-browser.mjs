@@ -30,6 +30,8 @@ import {
   review,
   assessment,
   inventory,
+  attachPublished,
+  publishedReview,
 } from './dataset-content-fixtures.mjs';
 
 // Actual React review boundary, queue, forms, command storage, HTTP and native
@@ -46,7 +48,7 @@ const css = (
 ).css;
 const bundle = await build({
   stdin: {
-    contents: `import React from 'react';import{createRoot}from'react-dom/client';import{QueryClient,QueryClientProvider}from'@tanstack/react-query';import{ContentReviewBoundary}from'./src/components/datasets/content/ContentReviewBoundary';import{ProposalsView}from'./src/components/proposals/ProposalsView';import{useAuthStore}from'./src/store/auth.store';const root=createRoot(document.getElementById('root'));let sequence=0;window.mount=(id,mode='review',actor=${JSON.stringify(actorId)},type='SUPERADMIN')=>{useAuthStore.getState().setUser({id:actor,email:'review@example.test',userType:type,status:'ACTIVE',emailVerified:true});const client=new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}});root.render(<React.StrictMode><QueryClientProvider client={client} key={++sequence}>{mode==='queue'?<ProposalsView/>:<ContentReviewBoundary datasetId={id} queueType='proposals' legacy={<p data-legacy-review>Existing legacy review route</p>}/>}</QueryClientProvider></React.StrictMode>)};window.switchActor=(id)=>useAuthStore.getState().setUser({id,email:'other@example.test',userType:'ADMIN',status:'ACTIVE',emailVerified:true});window.mount(location.pathname.split('/').at(-1));`,
+    contents: `import React from 'react';import{createRoot}from'react-dom/client';import{QueryClient,QueryClientProvider}from'@tanstack/react-query';import{ContentReviewBoundary}from'./src/components/datasets/content/ContentReviewBoundary';import{ProposalsView}from'./src/components/proposals/ProposalsView';import{UpdateRequestsView}from'./src/components/update-requests/UpdateRequestsView';import AdminQuestionsPage from './src/app/dashboard/questions/page';import{useAuthStore}from'./src/store/auth.store';const root=createRoot(document.getElementById('root'));let sequence=0;window.mount=(id,mode='review',actor=${JSON.stringify(actorId)},type='SUPERADMIN')=>{useAuthStore.getState().setUser({id:actor,email:'review@example.test',userType:type,status:'ACTIVE',emailVerified:true});const client=new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}});root.render(<React.StrictMode><QueryClientProvider client={client} key={++sequence}>{mode==='questions'?<AdminQuestionsPage/>:mode==='updates'?<UpdateRequestsView/>:mode==='queue'?<ProposalsView/>:<ContentReviewBoundary datasetId={id} queueType='proposals' legacy={<p data-legacy-review>Existing legacy review route</p>}/>}</QueryClientProvider></React.StrictMode>)};window.switchActor=(id)=>useAuthStore.getState().setUser({id,email:'other@example.test',userType:'ADMIN',status:'ACTIVE',emailVerified:true});window.mount(location.pathname.split('/').at(-1));`,
     loader: 'jsx',
     resolveDir: process.cwd(),
   },
@@ -55,11 +57,13 @@ const bundle = await build({
   format: 'iife',
   jsx: 'automatic',
   define: {
-    'process.env.NODE_ENV': '"development"',
-    'process.env.NEXT_PUBLIC_APP_ENV': '"local"',
-    'process.env.NEXT_PUBLIC_API_URL': '"/api"',
-    'process.env.NEXT_PUBLIC_API_TIMEOUT_MS': '"20000"',
-    'process.env.NEXT_PUBLIC_UPLOAD_TIMEOUT_MS': '"600000"',
+    'process.env': JSON.stringify({
+      NODE_ENV: 'development',
+      NEXT_PUBLIC_APP_ENV: 'local',
+      NEXT_PUBLIC_API_URL: '/api',
+      NEXT_PUBLIC_API_TIMEOUT_MS: '20000',
+      NEXT_PUBLIC_UPLOAD_TIMEOUT_MS: '600000',
+    }),
   },
   plugins: [
     {
@@ -78,6 +82,8 @@ const bundle = await build({
     },
   ],
 });
+const questionFixtures = new Map();
+let questionInventoryRows = [];
 const models = new Map(),
   receipts = new Map(),
   requests = [],
@@ -130,6 +136,42 @@ const server = createServer(async (req, res) => {
     requests.push({ path: url.pathname, method: req.method, body, query: queryObject(url) });
     if (url.pathname.endsWith('/permissions/me')) return ok(res, { permissions: permissionList });
     if (/permissions/.test(url.pathname)) return ok(res, { permissions: permissionList });
+    if (url.pathname === '/api/v1/marketplace/questions/datasets')
+      return ok(res, {
+        items: questionInventoryRows,
+        page: 1,
+        pageSize: 10,
+        total: questionInventoryRows.length,
+      });
+    const questionList = url.pathname.match(
+      /^\/api\/v1\/marketplace\/datasets\/([^/]+)\/questions$/
+    );
+    if (questionList) {
+      const items = questionFixtures.get(questionList[1]) ?? [];
+      return ok(res, { items, page: 1, pageSize: 20, total: items.length });
+    }
+    const questionAction = url.pathname.match(
+      /^\/api\/v1\/marketplace\/questions\/([^/]+)(\/answers)?$/
+    );
+    if (questionAction) {
+      const entry = [...questionFixtures.entries()].find(([, items]) =>
+        items.some((item) => item.id === questionAction[1])
+      );
+      assert(entry);
+      const selected = entry[1].find((item) => item.id === questionAction[1]);
+      if (req.method === 'POST') {
+        assert(body.answer.length > 0 && body.answer.length <= 5000);
+        selected.answers.push({ id: id(99104), answer: body.answer, createdAt: now });
+      } else {
+        assert.equal(req.method, 'DELETE');
+        assert(body.reason.length >= 3);
+        questionFixtures.set(
+          entry[0],
+          entry[1].filter((item) => item.id !== selected.id)
+        );
+      }
+      return ok(res, { success: true });
+    }
     if (url.pathname === '/api/v2/admin/dataset-proposals') {
       const query = DatasetAdminProposalsQuerySchema.parse(queryObject(url));
       const rows = [...models.values()].map((m, index) => ({
@@ -181,35 +223,49 @@ const server = createServer(async (req, res) => {
       if (flags.mismatch) data.state.reviewedContentId = id(99999);
       return ok(res, data);
     }
-    if (req.method === 'GET' && tail === 'assessment') return ok(res, assessment(m));
-    if (namespace === 'dataset-proposals' && tail === 'inventory') {
+    if (req.method === 'GET' && tail === 'assessment')
+      return ok(res, assessment(m, url.searchParams.get('target') ?? 'REVIEWED'));
+    if (req.method === 'GET' && tail === 'published') return ok(res, publishedReview(m));
+    if (
+      namespace === 'dataset-proposals' &&
+      (tail === 'inventory' || tail === 'published/inventory')
+    ) {
       const query = DatasetFrozenInventoryQuerySchema.parse(queryObject(url));
       assert.equal(query.expectedWorkflowRevision, m.state.workflowRevision);
-      assert.equal(query.contentId, m.submittedContent.id);
-      return ok(res, inventory(m, query));
+      const selected =
+        tail === 'published/inventory'
+          ? { ...m, submittedContent: m.published.content, members: m.published.members }
+          : m;
+      assert.equal(query.contentId, selected.submittedContent.id);
+      return ok(res, inventory(selected, query));
     }
     if (namespace === 'dataset-files') {
       const input =
         tail === 'download-url'
           ? DatasetFileDownloadBodySchema.parse(body)
           : DatasetFileObservationQuerySchema.parse(queryObject(url));
-      assert.equal(input.scope, 'REVIEWED');
-      assert.equal(input.contentId, m.submittedContent.id);
+      assert(['REVIEWED', 'PUBLISHED'].includes(input.scope));
+      const selected =
+        input.scope === 'PUBLISHED'
+          ? m.published
+          : { content: m.submittedContent, members: m.members };
+      assert.equal(input.contentId, selected.content.id);
+      assert.equal(input.contentGeneration, selected.content.generation);
       assert.equal(input.expectedWorkflowRevision, m.state.workflowRevision);
-      const member = m.members.find((item) => item.id === input.memberId);
+      const member = selected.members.find((item) => item.id === input.memberId);
       assert(member);
       assert.equal(input.component, member.component);
       if (flags.security) return deny(res, 'OBJECT_NOT_ACCEPTED');
       const context = {
         datasetId,
-        scope: 'REVIEWED',
+        scope: input.scope,
         component: input.component,
         contentId: input.contentId,
         contentGeneration: input.contentGeneration,
         workflowRevision: m.state.workflowRevision,
         editOperation: null,
         frozen: true,
-        publicationId: null,
+        publicationId: input.scope === 'PUBLISHED' ? selected.publication.id : null,
       };
       if (tail === 'download-url')
         return ok(
@@ -259,12 +315,16 @@ const server = createServer(async (req, res) => {
       return deny(res, 'DRAFT_CHANGED');
     if (tail === 'assessment') {
       const parsed = DatasetContentAssessmentBodySchema.parse(body);
-      assert.equal(parsed.expectedContentId, m.submittedContent.id);
+      const selected =
+        parsed.target === 'PUBLISHED'
+          ? m.published
+          : { content: m.submittedContent, members: m.members };
+      assert.equal(parsed.expectedContentId, selected.content.id);
       m.state.workflowRevision++;
-      m.assessment = {
+      const rating = {
         id: id(9100),
         datasetId,
-        contentId: m.submittedContent.id,
+        contentId: selected.content.id,
         Q: parsed.Q,
         L: parsed.L,
         P: parsed.P,
@@ -275,21 +335,25 @@ const server = createServer(async (req, res) => {
         createdAt: now,
         note: parsed.note ?? null,
         scope: {
-          uploadedComponents: [...new Set(m.members.map((item) => item.component))],
+          uploadedComponents: [...new Set(selected.members.map((item) => item.component))],
           representedCollection: 'SUPPLIER_DECLARATION',
         },
       };
-      const publicAssessment = Object.fromEntries(
-        Object.entries(m.assessment).filter(([key]) => key !== 'note')
-      );
+      if (parsed.target === 'PUBLISHED') {
+        m.published.assessment = rating;
+        m.published.publication.currentAssessmentId = rating.id;
+        if (parsed.L < 60) m.state.publishedContentId = null;
+      } else m.assessment = rating;
+      const summary = (value) =>
+        value ? Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'note')) : null;
       const value = DatasetPublicationResponseSchema.parse({
         state: assessment(m).state,
         requestId: parsed.requestId,
         visibility: 'PRIVATE',
-        publication: null,
-        reviewedAssessment: publicAssessment,
-        publishedAssessment: null,
-        assessmentChange: { target: 'REVIEWED', assessment: m.assessment },
+        publication: m.state.publishedContentId ? m.published.publication : null,
+        reviewedAssessment: summary(m.assessment),
+        publishedAssessment: m.state.publishedContentId ? summary(m.published.assessment) : null,
+        assessmentChange: { target: parsed.target, assessment: rating },
       });
       receipts.set(receiptKey, value);
       if (flags.lose === tail) return deny(res, 'SUCCESS_ACK_UNAVAILABLE', 503);
@@ -569,6 +633,143 @@ try {
   assert.equal(paged.assessment.contentId, paged.submittedContent.id);
   console.log(
     'PASS assessment uses exact submitted content and explicit scores, retaining the supplier declaration scope'
+  );
+
+  for (const choice of ['SAMPLE_ONLY', 'FULL_ONLY', 'FULL_AND_SAMPLE']) {
+    const model = attachPublished(add(choice));
+    const exactA = model.published.content.id,
+      exactB = model.submittedContent.id;
+    await page.goto(origin + '/review/' + model.state.datasetId);
+    await page
+      .getByRole('heading', { name: model.submittedContent.common.title, exact: true })
+      .waitFor();
+    await page.getByText('Inspect current published material', { exact: true }).click();
+    const published = page.locator('[data-published-content="' + exactA + '"]');
+    await published.getByText('CC-BY-4.0', { exact: true }).waitFor();
+    assert.equal(await published.getByText('New reviewed B overview', { exact: true }).count(), 0);
+    await enabled(
+      published.getByRole('button', { name: 'Download published file', exact: true }).first()
+    );
+    await published
+      .getByRole('button', { name: 'Download published file', exact: true })
+      .first()
+      .click();
+    await assertEventually(() =>
+      requests.some(
+        (request) => request.path.endsWith('/download-url') && request.body.contentId === exactA
+      )
+    );
+    const downloaded = requests.findLast((request) => request.path.endsWith('/download-url'));
+    assert.equal(downloaded.body.scope, 'PUBLISHED');
+    assert.equal(downloaded.body.contentId, exactA);
+    await published.getByRole('button', { name: 'Assess published material', exact: true }).click();
+    await published.getByLabel('Legal & Compliance score', { exact: true }).fill('59');
+    await published
+      .getByLabel('Published assessment note', { exact: true })
+      .fill('Withdraw published A, preserve correction B');
+    flags.lose = 'assessment';
+    await published.getByRole('button', { name: 'Save published assessment', exact: true }).click();
+    await page.getByRole('region', { name: 'Unconfirmed review request' }).waitFor();
+    const sent = requests.findLast(
+      (request) => request.method === 'POST' && request.path.endsWith('/assessment')
+    );
+    assert.equal(sent.body.target, 'PUBLISHED');
+    assert.equal(sent.body.expectedContentId, exactA);
+    assert.equal(model.state.reviewedContentId, exactB);
+    assert.equal(model.assessment, null);
+    flags.lose = null;
+    await page.reload();
+    await page.getByRole('button', { name: 'Confirm previous request', exact: true }).click();
+    await page.getByText('No current publication is selected.', { exact: false }).waitFor();
+    const replay = requests.findLast(
+      (request) => request.method === 'POST' && request.path.endsWith('/assessment')
+    );
+    assert.deepEqual(replay.body, sent.body);
+    assert.equal(model.state.reviewedContentId, exactB);
+  }
+  console.log(
+    'PASS all choices keep published A metadata/files/assessment separate from reviewed B; legal withdrawal and lost-ACK reload replay preserve the exact target and staged correction'
+  );
+
+  await page.goto(origin + '/dashboard/update-requests');
+  await page.evaluate(() => window.mount('queue', 'updates'));
+  const statusSelect = page.getByRole('combobox').filter({ hasText: 'All Statuses' });
+  await statusSelect.click();
+  await page.getByRole('option', { name: 'Published', exact: true }).click();
+  await assertEventually(() =>
+    requests.some(
+      (request) =>
+        request.path === '/api/v2/admin/dataset-proposals' &&
+        request.query.reviewQueue === 'UPDATES' &&
+        request.query.status === 'PUBLISHED'
+    )
+  );
+  console.log(
+    'PASS the existing managed Dataset queue exposes published records through its current status filter without changing default queue or action ownership'
+  );
+
+  const selectedQuestionDataset = id(99100),
+    otherQuestionDataset = id(99101),
+    selectedQuestion = id(99102);
+  questionInventoryRows = [
+    {
+      datasetId: otherQuestionDataset,
+      datasetTitle: 'Other Dataset on this page',
+      questionCount: 1,
+    },
+  ];
+  questionFixtures.set(selectedQuestionDataset, [
+    {
+      id: selectedQuestion,
+      question: 'Question for the exact selected Dataset',
+      createdAt: now,
+      answers: [],
+    },
+  ]);
+  await page.goto(origin + '/dashboard/questions?dataset=' + selectedQuestionDataset);
+  await page.evaluate((dataset) => window.mount(dataset, 'questions'), selectedQuestionDataset);
+  await page.getByText('Question for the exact selected Dataset', { exact: true }).waitFor();
+  assert.equal(
+    requests.some(
+      (request) =>
+        request.path === '/api/v1/marketplace/datasets/' + otherQuestionDataset + '/questions'
+    ),
+    false
+  );
+  await page
+    .getByLabel('Answer question: Question for the exact selected Dataset', { exact: true })
+    .fill('Answer belongs to the selected Dataset');
+  await button(page, 'Answer').click();
+  await page.getByText('Answer belongs to the selected Dataset', { exact: true }).waitFor();
+  assert.equal(
+    requests.findLast((request) => request.method === 'POST' && request.path.endsWith('/answers'))
+      .path,
+    '/api/v1/marketplace/questions/' + selectedQuestion + '/answers'
+  );
+  await page.getByRole('button', { name: 'Delete question', exact: true }).click();
+  await page.getByLabel('Reason', { exact: true }).fill('Recorded moderation reason');
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Delete question', exact: true })
+    .click();
+  await assertEventually(() =>
+    requests.some(
+      (request) =>
+        request.method === 'DELETE' && request.path.endsWith('/questions/' + selectedQuestion)
+    )
+  );
+  const priorQuestionReads = requests.filter((request) =>
+    /\/datasets\/[^/]+\/questions$/.test(request.path)
+  ).length;
+  await page.goto(origin + '/dashboard/questions?dataset=..');
+  await page.evaluate(() => window.mount('invalid', 'questions'));
+  await page.getByRole('heading', { name: 'Questions', exact: true }).waitFor();
+  assert.equal(
+    requests.filter((request) => /\/datasets\/[^/]+\/questions$/.test(request.path)).length,
+    priorQuestionReads
+  );
+  console.log(
+    'PASS existing question moderation deep links target the requested Dataset outside the current inventory page; answer/delete keep exact question identity and invalid targets cannot select another Dataset'
   );
 
   const legacy = add('FULL_ONLY');

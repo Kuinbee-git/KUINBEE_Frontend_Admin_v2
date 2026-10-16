@@ -1,6 +1,7 @@
 'use client';
 
 import { FilterBar, FilterConfig, ActiveFilter } from '@/components/shared/FilterBar';
+import { DATASET_CONTENT_ADMIN_ENABLED } from '@/lib/dataset-content-environment';
 import { formatStatusLabel } from '@/components/shared/StatusBadge';
 import type { DatasetStatus, VerificationStatus } from '@/types/dataset.types';
 import type { AssignmentFilter } from '@/hooks/useReviewQueueFilters';
@@ -51,6 +52,7 @@ export function UpdateRequestFilters({
         { value: 'UNDER_REVIEW', label: 'Under Review' },
         { value: 'VERIFIED', label: 'Verified' },
         { value: 'DELISTED', label: 'Delisted' },
+        ...(DATASET_CONTENT_ADMIN_ENABLED ? [{ value: 'PUBLISHED', label: 'Published' }] : []),
         { value: 'REJECTED', label: 'Rejected' },
       ],
       showInPrimary: true,

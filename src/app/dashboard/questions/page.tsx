@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { DatasetWorkflowIdParamsSchema } from '@kuinbee/dataset-preparation-contracts';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, MessageSquare, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -49,9 +50,18 @@ export default function AdminQuestionsPage() {
     q: debouncedSearch || undefined,
   });
   const datasets = useMemo(() => listQuery.data?.items ?? [], [listQuery.data?.items]);
-  const selectedDataset =
-    datasets.find((item) => item.datasetId === selectedFromUrl) ?? datasets[0] ?? null;
-  const selectedDatasetId = selectedDataset?.datasetId ?? '';
+  // A deep link can target a Dataset outside this inventory page. Never
+  // silently answer another Dataset merely because its row is visible first.
+  const validSelection =
+    selectedFromUrl !== null &&
+    DatasetWorkflowIdParamsSchema.safeParse({ datasetId: selectedFromUrl }).success;
+  const selectedDatasetId =
+    selectedFromUrl === null
+      ? (datasets[0]?.datasetId ?? '')
+      : validSelection
+        ? selectedFromUrl
+        : '';
+  const selectedDataset = datasets.find((item) => item.datasetId === selectedDatasetId) ?? null;
   const questionsQuery = useDatasetQuestions(selectedDatasetId, {
     page: questionPage,
     pageSize: questionPageSize,
@@ -251,10 +261,13 @@ export default function AdminQuestionsPage() {
 
         <Card style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}>
           <CardHeader>
-            <CardTitle>{selectedDataset?.datasetTitle ?? 'Question inbox'}</CardTitle>
+            <CardTitle>
+              {selectedDataset?.datasetTitle ??
+                (selectedDatasetId ? 'Selected Dataset questions' : 'Question inbox')}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {!selectedDataset ? (
+            {!selectedDatasetId ? (
               <div className="py-12 text-center">
                 <MessageSquare
                   className="mx-auto h-8 w-8"

@@ -17,16 +17,24 @@ import { Button } from '@/components/ui/button';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import { ReviewFacts, ReviewFactTree, reviewLabel } from './ContentReviewFacts';
 
+export type FrozenAdminInventoryView = {
+  state: Pick<AdminDatasetReview['state'], 'datasetId' | 'workflowRevision'>;
+  submittedContent: AdminDatasetReview['submittedContent'];
+};
 type FileMember = Extract<AdminDatasetFrozenInventory, { inventory: 'FILES' }>['items'][number];
 
 export function ContentReviewInventory({
   review,
   actorId,
   locked,
+  target = 'REVIEWED',
+  publicationId,
 }: {
-  review: AdminDatasetReview;
+  review: FrozenAdminInventoryView;
   actorId: string;
   locked: boolean;
+  target?: 'REVIEWED' | 'PUBLISHED';
+  publicationId?: string;
 }) {
   const { state, submittedContent: frozen } = review;
   const [kind, setKind] = useState<DatasetFrozenInventoryQuery['inventory']>('FILES');
@@ -42,14 +50,19 @@ export function ContentReviewInventory({
     limit: 20,
   };
   const page = useQuery({
-    queryKey: ['dataset-admin-frozen-inventory', actorId, state.datasetId, input],
+    queryKey: ['dataset-admin-frozen-inventory', target, actorId, state.datasetId, input],
     enabled: !locked,
     retry: false,
     gcTime: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async ({ signal }) => {
-      const result = await datasetContentApi.frozenInventory(state.datasetId, input, signal);
+      const result = await datasetContentApi.frozenInventory(
+        state.datasetId,
+        input,
+        signal,
+        target
+      );
       if (result.frozenAt !== frozen.frozenAt)
         throw new Error('The frozen submission changed. Refresh before continuing.');
       return result;
@@ -62,11 +75,11 @@ export function ContentReviewInventory({
         security records are separate. Downloads recheck current backend authorization and security.
       </p>
       <div className="flex flex-wrap gap-3">
-        <label htmlFor="review-inventory-kind" className="text-sm">
+        <label htmlFor={target + '-inventory-kind'} className="text-sm">
           Inventory{' '}
           <select
-            id="review-inventory-kind"
-            aria-label="Review inventory"
+            id={target + '-inventory-kind'}
+            aria-label={target === 'PUBLISHED' ? 'Published inventory' : 'Review inventory'}
             value={kind}
             disabled={locked}
             onChange={(event) => {
@@ -81,11 +94,11 @@ export function ContentReviewInventory({
             <option value="RELATIONSHIPS">Relationships</option>
           </select>
         </label>
-        <label htmlFor="review-inventory-material" className="text-sm">
+        <label htmlFor={target + '-inventory-material'} className="text-sm">
           Material{' '}
           <select
-            id="review-inventory-material"
-            aria-label="Review material"
+            id={target + '-inventory-material'}
+            aria-label={target === 'PUBLISHED' ? 'Published material' : 'Review material'}
             value={component}
             disabled={locked}
             onChange={(event) => {
@@ -122,6 +135,8 @@ export function ContentReviewInventory({
                       actorId={actorId}
                       member={member}
                       locked={locked}
+                      target={target}
+                      publicationId={publicationId}
                     />
                   </li>
                 ))
@@ -163,11 +178,15 @@ function ReviewFile({
   actorId,
   member,
   locked,
+  target,
+  publicationId,
 }: {
-  review: AdminDatasetReview;
+  review: FrozenAdminInventoryView;
   actorId: string;
   member: FileMember;
   locked: boolean;
+  target: 'REVIEWED' | 'PUBLISHED';
+  publicationId?: string;
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
@@ -185,7 +204,7 @@ function ReviewFile({
     };
   }, [locked, actorId]);
   const context = {
-    scope: 'REVIEWED' as const,
+    scope: target,
     component: member.component,
     contentId: review.submittedContent.id,
     contentGeneration: review.submittedContent.generation,
@@ -218,6 +237,8 @@ function ReviewFile({
     run(async () => {
       const page = await datasetContentApi.observations(review.state.datasetId, query);
       assertCurrent();
+      if (target === 'PUBLISHED' && page.context.publicationId !== publicationId)
+        throw new Error('The exact publication changed. Refresh before continuing.');
       setObserved({ page, query });
     });
   const download = () =>
@@ -230,6 +251,8 @@ function ReviewFile({
       assertCurrent();
       if (Date.parse(result.expiresAt) <= Date.now())
         throw new Error('The download link expired. Request a fresh download.');
+      if (target === 'PUBLISHED' && result.context.publicationId !== publicationId)
+        throw new Error('The exact publication changed. Refresh before continuing.');
       const link = document.createElement('a');
       link.href = result.url;
       link.download = result.fileName;
@@ -251,7 +274,7 @@ function ReviewFile({
           </p>
         </div>
         <Button variant="outline" disabled={locked || busy} onClick={download}>
-          Download reviewed file
+          Download {target === 'PUBLISHED' ? 'published' : 'reviewed'} file
         </Button>
       </div>
       {error && <p role="alert">{error}</p>}

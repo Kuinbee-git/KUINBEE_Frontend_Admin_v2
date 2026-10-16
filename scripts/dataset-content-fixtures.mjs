@@ -2,6 +2,7 @@
 // scanning, storage, access control, recovery or a hosted deployment.
 import {
   DatasetReviewResponseSchema,
+  DatasetPublishedReviewResponseSchema,
   DatasetContentAssessmentResponseSchema,
   DatasetFrozenInventoryResponseSchema,
 } from '@kuinbee/dataset-preparation-contracts';
@@ -138,7 +139,7 @@ export const review = (model) =>
     submittedContent: model.submittedContent,
     reviewFeedback: model.reviewFeedback,
   });
-export function assessment(model) {
+export function assessment(model, target = 'REVIEWED') {
   const pricing = Object.fromEntries(
     Object.entries(model.state.pricing).filter(
       ([key]) =>
@@ -147,8 +148,13 @@ export function assessment(model) {
   );
   return DatasetContentAssessmentResponseSchema.parse({
     state: { ...model.state, pricing },
-    target: 'REVIEWED',
-    assessment: model.assessment,
+    target,
+    assessment:
+      target === 'PUBLISHED'
+        ? model.state.publishedContentId
+          ? (model.published?.assessment ?? null)
+          : null
+        : model.assessment,
   });
 }
 export function inventory(model, query) {
@@ -173,5 +179,64 @@ export function inventory(model, query) {
     total: items.length,
     items: page,
     nextCursor: selected.length > page.length ? { ...cursor, afterId: page.at(-1).id } : null,
+  });
+}
+
+export function attachPublished(model) {
+  const content = structuredClone(model.submittedContent),
+    members = structuredClone(model.members);
+  const rating = {
+    id: id(sequence++),
+    datasetId: model.state.datasetId,
+    contentId: content.id,
+    Q: 80,
+    L: 80,
+    P: 80,
+    U: 80,
+    F: 80,
+    finalScore: '80.00',
+    adminId: actorId,
+    createdAt: now,
+    note: 'Published A assessment',
+    scope: {
+      uploadedComponents: [...new Set(members.map((member) => member.component))],
+      representedCollection: 'SUPPLIER_DECLARATION',
+    },
+  };
+  model.published = {
+    content,
+    members,
+    assessment: rating,
+    publication: {
+      id: id(sequence++),
+      contentId: content.id,
+      publishedAt: now,
+      pricingReference: structuredClone(content.pricingReference),
+      pricingAtPublication: structuredClone(content.pricingAtSubmission),
+      assessmentAtPublicationId: rating.id,
+      currentAssessmentId: rating.id,
+    },
+  };
+  model.state.publishedContentId = content.id;
+  model.state.datasetStatus = 'UNDER_REVIEW';
+  model.state.verificationStatus = 'UNDER_REVIEW';
+  model.assignment = { id: id(sequence++), adminId: actorId, status: 'ACTIVE', assignedAt: now };
+  model.submittedContent.id = id(sequence++);
+  model.state.reviewedContentId = model.submittedContent.id;
+  model.submittedContent.common.overview = 'New reviewed B overview';
+  model.members = model.members.map((member) => ({
+    ...member,
+    id: id(sequence++),
+    contentId: model.submittedContent.id,
+  }));
+  return model;
+}
+export function publishedReview(model) {
+  const current = model.state.publishedContentId ? model.published : null;
+  return DatasetPublishedReviewResponseSchema.parse({
+    state: assessment(model).state,
+    visibility: 'PRIVATE',
+    publishedContent: current?.content ?? null,
+    publication: current?.publication ?? null,
   });
 }

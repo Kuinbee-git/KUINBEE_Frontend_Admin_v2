@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import { ReviewFacts, ReviewFactTree, reviewLabel } from './ContentReviewFacts';
 import { TableMetadataPanel } from './ContentTableMetadataPanel';
+import { ReferenceViews } from './ContentReferenceViews';
 
 export type FrozenAdminInventoryView = {
   state: Pick<AdminDatasetReview['state'], 'datasetId' | 'workflowRevision'>;
@@ -291,6 +292,22 @@ function ReviewFile({
           if (target === 'PUBLISHED' && result.context.publicationId !== publicationId)
             throw new Error(
               'The exact published table context changed. Refresh before continuing.'
+            );
+          return result;
+        }}
+      />
+      <ReferenceViews
+        sourceKey={JSON.stringify([actorId, review.state.datasetId, context, member.id])}
+        enabled={!locked && currentActorId === actorId}
+        load={async (filters, signal) => {
+          const result = await datasetContentApi.tableReferences(
+            review.state.datasetId,
+            { ...filters, ...context, memberId: member.id, limit: filters.limit },
+            signal
+          );
+          if (target === 'PUBLISHED' && result.context.publicationId !== publicationId)
+            throw new Error(
+              'The exact published reference context changed. Refresh before continuing.'
             );
           return result;
         }}

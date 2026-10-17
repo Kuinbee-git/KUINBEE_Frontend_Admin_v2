@@ -3,6 +3,9 @@ import {
   DatasetPrivateTableMetadataQuerySchema,
   DatasetPrivateTableMetadataResponseSchema,
   type DatasetPrivateTableMetadataQuery,
+  DatasetPrivateTableReferenceViewsQuerySchema,
+  DatasetPrivateTableReferenceViewsResponseSchema,
+  type DatasetPrivateTableReferenceViewsQuery,
   DatasetAdminProposalsQuerySchema,
   DatasetAdminProposalsResponseSchema,
   DatasetAdminAssignmentsQuerySchema,
@@ -211,6 +214,29 @@ function assertReviewFileQuery(query: {
 // Writes return only their immutable receipt. Callers explicitly retain/replay
 // the command and refresh current authority; no method retries or publishes.
 export const datasetContentApi = {
+  async tableReferences(
+    datasetId: string,
+    input: DatasetPrivateTableReferenceViewsQuery,
+    signal?: AbortSignal
+  ) {
+    const query = DatasetPrivateTableReferenceViewsQuerySchema.parse(input);
+    assertReviewFileQuery(query);
+    const result = await request(
+      `${fileBase(datasetId)}/table-references`,
+      DatasetPrivateTableReferenceViewsResponseSchema,
+      { params: query, signal }
+    );
+    matchesFileContext(result.context, datasetId, query);
+    if (
+      result.memberId !== (query.memberId ?? null) ||
+      result.page.tableId !== (query.tableId ?? null) ||
+      result.page.items.length > query.limit ||
+      (result.page.nextCursor && result.page.nextCursor.limit !== query.limit) ||
+      result.page.items.some((row) => row.id === query.afterId)
+    )
+      incompatible();
+    return result;
+  },
   async tableMetadata(
     datasetId: string,
     input: DatasetPrivateTableMetadataQuery,

@@ -29,6 +29,7 @@
     "test:dataset-content:browser": "node scripts/test-dataset-content-browser.mjs"
   },
   "dependencies": {
+    "@kuinbee/dataset-preparation-contracts": "file:vendor/kuinbee-dataset-preparation-contracts-0.36.0.tgz",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -53,9 +54,8 @@
     "react-hook-form": "^7.69.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "zustand": "^5.0.9",
-    "@kuinbee/dataset-preparation-contracts": "file:vendor/kuinbee-dataset-preparation-contracts-0.35.0.tgz",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -63,13 +63,13 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "eslint-config-prettier": "^10.1.8",
     "playwright": "1.63.0",
     "prettier": "^3.7.4",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "esbuild": "0.28.2"
+    "typescript": "^5"
   }
 }

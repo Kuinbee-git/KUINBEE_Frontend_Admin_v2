@@ -4,7 +4,7 @@ import { useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
-import { useDatasetUpdateRequests, usePickUpdateRequest } from '@/hooks/api/useDatasets';
+import { useDatasetReviewQueue, useDatasetContentPick } from '@/hooks/api/useDatasetContentQueue';
 import { useReviewQueueFilters } from '@/hooks/useReviewQueueFilters';
 import { useAuthorization } from '@/hooks/useAuthorization';
 import { DATASET_REVIEW_ACCESS } from '@/lib/authorization/route-access';
@@ -30,7 +30,7 @@ export function UpdateRequestsView() {
   } = useReviewQueueFilters();
   const limit = 10;
 
-  const { data, isLoading, error, refetch } = useDatasetUpdateRequests({
+  const { data, isLoading, error, refetch } = useDatasetReviewQueue('UPDATES', {
     page,
     pageSize: limit,
     q: debouncedSearch || undefined,
@@ -39,7 +39,7 @@ export function UpdateRequestsView() {
     assignedTo: assignmentFilter !== 'all' ? assignmentFilter : undefined,
   });
 
-  const pickUpdateRequestMutation = usePickUpdateRequest();
+  const pickUpdateRequestMutation = useDatasetContentPick('UPDATES');
 
   const { can } = useAuthorization();
   const canPickProposal = can(DATASET_REVIEW_ACCESS);
@@ -47,24 +47,16 @@ export function UpdateRequestsView() {
   const proposals = useMemo(() => {
     if (!data?.items) return [];
     return data.items.map((item) => ({
-      id: item.dataset.id,
-      datasetUniqueId: item.dataset.datasetUniqueId,
-      title: item.dataset.title,
-      supplierName: item.supplier?.name || 'Supplier unavailable',
-      supplierEmail: item.supplier?.email || null,
-      category: item.primaryCategory?.name || 'Uncategorised',
-      status: item.dataset.status,
-      verificationStatus: item.verification?.status || 'PENDING',
-      assignedTo: item.activeAssignment?.adminId || null,
-      submittedAt: new Date(
-        item.verification?.submittedAt || item.dataset.createdAt
-      ).toLocaleDateString(),
+      ...item,
+      submittedAt: item.submittedAt
+        ? new Date(item.submittedAt).toLocaleDateString()
+        : 'Not recorded',
     }));
   }, [data]);
 
   const totalPages = useMemo(() => {
-    if (!data?.pagination) return 0;
-    return Math.ceil(data.pagination.total / data.pagination.pageSize);
+    if (!data) return 0;
+    return Math.ceil(data.total / data.pageSize);
   }, [data]);
 
   const handleRowClick = useCallback(
@@ -78,13 +70,15 @@ export function UpdateRequestsView() {
     async (datasetId: string, e: React.MouseEvent) => {
       e.stopPropagation();
       try {
-        await pickUpdateRequestMutation.mutateAsync(datasetId);
+        const row = proposals.find((item) => item.id === datasetId);
+        if (!row) return;
+        await pickUpdateRequestMutation.mutateAsync(row);
         refetch();
       } catch {
         // The mutation hook displays the backend error.
       }
     },
-    [pickUpdateRequestMutation, refetch]
+    [pickUpdateRequestMutation, proposals, refetch]
   );
 
   return (
@@ -166,18 +160,18 @@ export function UpdateRequestsView() {
               onPickProposal={canPickProposal ? handlePickProposal : undefined}
               pickingDatasetId={
                 pickUpdateRequestMutation.isPending
-                  ? pickUpdateRequestMutation.variables
+                  ? pickUpdateRequestMutation.variables?.id
                   : undefined
               }
             />
           )}
         </div>
 
-        {!isLoading && proposals.length > 0 && data?.pagination && (
+        {!isLoading && proposals.length > 0 && data && (
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data.pagination.total)} of{' '}
-              {data.pagination.total} update requests
+              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data.total)} of{' '}
+              {data.total} update requests
             </p>
             <div className="flex gap-2">
               <Button

@@ -22,8 +22,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { getSemanticStatusStyle, type SemanticStatus } from '@/components/shared/StatusBadge';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
-import { useAssignedDatasets } from '@/hooks';
-import type { AssignedDatasetListItem, AssignmentStatus, DatasetStatus } from '@/types';
+import { useDatasetContentAssignments } from '@/hooks/api/useDatasetContentQueue';
+import type { AssignmentStatus, DatasetStatus } from '@/types';
 
 type StatusFilterType = AssignmentStatus | 'all';
 
@@ -166,17 +166,21 @@ export function AssignedDatasetsView() {
   );
 
   // Fetch assigned datasets
-  const { data, isLoading, isError, refetch } = useAssignedDatasets(params);
+  const { data, isLoading, isError, refetch } = useDatasetContentAssignments(params);
   const assignments = data?.items || [];
-  const totalPages = data?.pagination
-    ? Math.ceil(data.pagination.total / data.pagination.pageSize)
-    : 0;
+  const totalPages = data ? Math.ceil(data.total / data.pageSize) : 0;
 
   // Handlers
   const handleRowClick = useCallback(
-    (item: AssignedDatasetListItem) => {
+    (item: {
+      dataset: { id: string };
+      representation?: string;
+      managementContext?: string | null;
+    }) => {
       // Navigate to dataset detail view using the internal database ID
-      router.push(`/dashboard/datasets/${item.dataset.id}`);
+      router.push(
+        `${item.representation === 'CONTENT' && item.managementContext === 'MANAGED' ? '/dashboard/update-requests' : '/dashboard/datasets'}/${item.dataset.id}`
+      );
     },
     [router]
   );
@@ -363,11 +367,11 @@ export function AssignedDatasetsView() {
         </div>
 
         {/* Pagination */}
-        {!isLoading && assignments.length > 0 && data?.pagination && (
+        {!isLoading && assignments.length > 0 && data && (
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data.pagination.total)} of{' '}
-              {data.pagination.total} assignments
+              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data.total)} of{' '}
+              {data.total} assignments
             </p>
             <div className="flex gap-2">
               <Button

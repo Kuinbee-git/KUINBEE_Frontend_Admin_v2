@@ -51,6 +51,7 @@ import { useAuthorization } from '@/hooks/useAuthorization';
 import { PERMISSIONS } from '@/lib/constants/permissions';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import { toast } from 'sonner';
+import { ContentReviewBoundary } from './content/ContentReviewBoundary';
 
 interface DatasetDetailReviewProps {
   datasetId: string;
@@ -58,6 +59,19 @@ interface DatasetDetailReviewProps {
 }
 
 export function DatasetDetailReview({
+  datasetId,
+  queueType = 'proposals',
+}: DatasetDetailReviewProps) {
+  return (
+    <ContentReviewBoundary
+      datasetId={datasetId}
+      queueType={queueType}
+      legacy={<LegacyDatasetDetailReview datasetId={datasetId} queueType={queueType} />}
+    />
+  );
+}
+
+function LegacyDatasetDetailReview({
   datasetId,
   queueType = 'proposals',
 }: DatasetDetailReviewProps) {

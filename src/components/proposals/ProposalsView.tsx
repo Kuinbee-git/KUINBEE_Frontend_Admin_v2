@@ -6,24 +6,16 @@ import { Button } from '@/components/ui/button';
 import { ProposalFilters } from '@/components/proposals/ProposalFilters';
 import { ProposalTable } from '@/components/proposals/ProposalTable';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
-import { useDatasetProposals, usePickProposal } from '@/hooks/api/useDatasets';
+import {
+  useDatasetReviewQueue,
+  useDatasetContentPick,
+  type DatasetReviewQueueRow,
+} from '@/hooks/api/useDatasetContentQueue';
 import { useReviewQueueFilters } from '@/hooks/useReviewQueueFilters';
 import { useAuthorization } from '@/hooks/useAuthorization';
 import { DATASET_REVIEW_ACCESS } from '@/lib/authorization/route-access';
-import type { VerificationStatus, DatasetStatus } from '@/types/dataset.types';
 
-export interface ProposalListItem {
-  id: string;
-  datasetUniqueId: string;
-  title: string;
-  supplierName: string;
-  supplierEmail: string;
-  category: string;
-  status: DatasetStatus;
-  verificationStatus: VerificationStatus;
-  assignedTo: string | null;
-  submittedAt: string;
-}
+export type ProposalListItem = Omit<DatasetReviewQueueRow, 'submittedAt'> & { submittedAt: string };
 
 export function ProposalsView() {
   const router = useRouter();
@@ -45,7 +37,7 @@ export function ProposalsView() {
   const limit = 10;
 
   // Fetch proposals with filters
-  const { data, isLoading, error, refetch } = useDatasetProposals({
+  const { data, isLoading, error, refetch } = useDatasetReviewQueue('PROPOSALS', {
     page,
     pageSize: limit,
     q: debouncedSearch || undefined,
@@ -55,7 +47,7 @@ export function ProposalsView() {
   });
 
   // Pick proposal mutation
-  const pickProposalMutation = usePickProposal();
+  const pickProposalMutation = useDatasetContentPick('PROPOSALS');
 
   // Permissions
   const { can } = useAuthorization();
@@ -65,24 +57,16 @@ export function ProposalsView() {
   const proposals = useMemo(() => {
     if (!data?.items) return [];
     return data.items.map((item) => ({
-      id: item.dataset.id,
-      datasetUniqueId: item.dataset.datasetUniqueId,
-      title: item.dataset.title,
-      supplierName: item.supplier?.name ?? 'Supplier',
-      supplierEmail: item.supplier?.email ?? '',
-      category: item.primaryCategory?.name ?? 'N/A',
-      status: item.dataset.status,
-      verificationStatus: item.verification?.status || 'PENDING',
-      assignedTo: item.activeAssignment?.adminId || null,
-      submittedAt: new Date(
-        item.verification?.submittedAt || item.dataset.createdAt
-      ).toLocaleDateString(),
+      ...item,
+      submittedAt: item.submittedAt
+        ? new Date(item.submittedAt).toLocaleDateString()
+        : 'Not recorded',
     }));
   }, [data]);
 
   const totalPages = useMemo(() => {
-    if (!data?.pagination) return 0;
-    return Math.ceil(data.pagination.total / data.pagination.pageSize);
+    if (!data) return 0;
+    return Math.ceil(data.total / data.pageSize);
   }, [data]);
 
   const handleRowClick = useCallback(
@@ -96,13 +80,15 @@ export function ProposalsView() {
     async (datasetId: string, e: React.MouseEvent) => {
       e.stopPropagation();
       try {
-        await pickProposalMutation.mutateAsync(datasetId);
+        const row = proposals.find((item) => item.id === datasetId);
+        if (!row) return;
+        await pickProposalMutation.mutateAsync(row);
         refetch();
       } catch {
         // The mutation hook displays the backend error.
       }
     },
-    [pickProposalMutation, refetch]
+    [pickProposalMutation, proposals, refetch]
   );
 
   return (
@@ -186,18 +172,18 @@ export function ProposalsView() {
               onRowClick={handleRowClick}
               onPickProposal={canPickProposal ? handlePickProposal : undefined}
               pickingDatasetId={
-                pickProposalMutation.isPending ? pickProposalMutation.variables : undefined
+                pickProposalMutation.isPending ? pickProposalMutation.variables?.id : undefined
               }
             />
           )}
         </div>
 
         {/* Pagination */}
-        {!isLoading && proposals.length > 0 && data?.pagination && (
+        {!isLoading && proposals.length > 0 && data && (
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data.pagination.total)} of{' '}
-              {data.pagination.total} proposals
+              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data.total)} of{' '}
+              {data.total} proposals
             </p>
             <div className="flex gap-2">
               <Button

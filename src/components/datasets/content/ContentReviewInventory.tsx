@@ -16,6 +16,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { Button } from '@/components/ui/button';
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import { ReviewFacts, ReviewFactTree, reviewLabel } from './ContentReviewFacts';
+import { TableMetadataPanel } from './ContentTableMetadataPanel';
 
 export type FrozenAdminInventoryView = {
   state: Pick<AdminDatasetReview['state'], 'datasetId' | 'workflowRevision'>;
@@ -203,6 +204,7 @@ function ReviewFile({
       live.current = { locked: true, actorId };
     };
   }, [locked, actorId]);
+  const currentActorId = useAuthStore((state) => state.user?.id);
   const context = {
     scope: target,
     component: member.component,
@@ -277,6 +279,22 @@ function ReviewFile({
           Download {target === 'PUBLISHED' ? 'published' : 'reviewed'} file
         </Button>
       </div>
+      <TableMetadataPanel
+        sourceKey={JSON.stringify([actorId, review.state.datasetId, context, member.id])}
+        enabled={!locked && currentActorId === actorId}
+        load={async (filters, signal) => {
+          const result = await datasetContentApi.tableMetadata(
+            review.state.datasetId,
+            { ...filters, ...context, memberId: member.id, limit: filters.limit },
+            signal
+          );
+          if (target === 'PUBLISHED' && result.context.publicationId !== publicationId)
+            throw new Error(
+              'The exact published table context changed. Refresh before continuing.'
+            );
+          return result;
+        }}
+      />
       {error && <p role="alert">{error}</p>}
       <details>
         <summary className="cursor-pointer text-sm font-medium">File references and checks</summary>

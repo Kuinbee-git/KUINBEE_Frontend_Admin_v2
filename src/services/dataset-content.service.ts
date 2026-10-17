@@ -1,5 +1,8 @@
 import {
   DatasetWorkflowIdParamsSchema,
+  DatasetPrivateTableMetadataQuerySchema,
+  DatasetPrivateTableMetadataResponseSchema,
+  type DatasetPrivateTableMetadataQuery,
   DatasetAdminProposalsQuerySchema,
   DatasetAdminProposalsResponseSchema,
   DatasetAdminAssignmentsQuerySchema,
@@ -208,6 +211,28 @@ function assertReviewFileQuery(query: {
 // Writes return only their immutable receipt. Callers explicitly retain/replay
 // the command and refresh current authority; no method retries or publishes.
 export const datasetContentApi = {
+  async tableMetadata(
+    datasetId: string,
+    input: DatasetPrivateTableMetadataQuery,
+    signal?: AbortSignal
+  ) {
+    const query = DatasetPrivateTableMetadataQuerySchema.parse(input);
+    assertReviewFileQuery(query);
+    const result = await request(
+      `${fileBase(datasetId)}/tables`,
+      DatasetPrivateTableMetadataResponseSchema,
+      { params: query, signal }
+    );
+    matchesFileContext(result.context, datasetId, query);
+    if (
+      result.memberId !== (query.memberId ?? null) ||
+      result.page.tableId !== (query.tableId ?? null) ||
+      result.page.items.length > query.limit ||
+      (result.page.nextCursor && result.page.nextCursor.limit !== query.limit)
+    )
+      incompatible();
+    return result;
+  },
   async inbox(input: Partial<DatasetAdminProposalsQuery>, signal?: AbortSignal) {
     const query = DatasetAdminProposalsQuerySchema.parse(input);
     const result = await request(

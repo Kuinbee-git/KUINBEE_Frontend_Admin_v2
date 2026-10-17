@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
+import { tableMetadataFixture, captureTableMetadataViews } from './table-metadata-fixtures.mjs';
 import {
   DatasetReviewPickBodySchema,
   DatasetReviewApproveBodySchema,
@@ -20,6 +21,8 @@ import {
   DatasetFileDownloadResponseSchema,
   DatasetFileObservationQuerySchema,
   DatasetFileObservationResponseSchema,
+  DatasetPrivateTableMetadataQuerySchema,
+  DatasetPrivateTableMetadataResponseSchema,
 } from '@kuinbee/dataset-preparation-contracts';
 import {
   actorId,
@@ -243,7 +246,9 @@ const server = createServer(async (req, res) => {
       const input =
         tail === 'download-url'
           ? DatasetFileDownloadBodySchema.parse(body)
-          : DatasetFileObservationQuerySchema.parse(queryObject(url));
+          : tail === 'tables'
+            ? DatasetPrivateTableMetadataQuerySchema.parse(queryObject(url))
+            : DatasetFileObservationQuerySchema.parse(queryObject(url));
       assert(['REVIEWED', 'PUBLISHED'].includes(input.scope));
       const selected =
         input.scope === 'PUBLISHED'
@@ -267,6 +272,13 @@ const server = createServer(async (req, res) => {
         frozen: true,
         publicationId: input.scope === 'PUBLISHED' ? selected.publication.id : null,
       };
+      if (tail === 'tables')
+        return ok(
+          res,
+          DatasetPrivateTableMetadataResponseSchema.parse(
+            tableMetadataFixture(context, member.id, Boolean(input.tableId))
+          )
+        );
       if (tail === 'download-url')
         return ok(
           res,
@@ -588,6 +600,17 @@ try {
   await page.getByRole('heading', { name: 'selected-1.wav', exact: true }).waitFor();
   await button(page, 'Next inventory page').click();
   await page.getByRole('heading', { name: 'selected-21.wav', exact: true }).waitFor();
+  await button(page, 'View table definitions').click();
+  await button(page, 'View columns').click();
+  await page.getByText('Column 1: No header', { exact: true }).waitFor();
+  await page.getByText('Column 2: Blank header', { exact: true }).waitFor();
+  await page.getByText('In this file: private-session/events.csv', { exact: true }).waitFor();
+  await captureTableMetadataViews(
+    page,
+    artifacts,
+    'admin-table',
+    page.getByText('Column 1: No header', { exact: true })
+  );
   assert.equal(await page.getByRole('heading', { name: 'selected-1.wav', exact: true }).count(), 0);
   await page.getByText('File references and checks', { exact: true }).click();
   await button(page, 'Captured format observations').click();
@@ -661,6 +684,20 @@ try {
       .filter({ hasText: /^Published A declared region$/ })
       .waitFor();
     await published.getByText('2019 (year) to 2020-04 (month)', { exact: true }).waitFor();
+    await published
+      .getByRole('button', { name: 'View table definitions', exact: true })
+      .first()
+      .click();
+    await published.getByRole('button', { name: 'View columns', exact: true }).click();
+    await published.getByText('Column 1: No header', { exact: true }).waitFor();
+    assert(
+      requests.some(
+        (request) =>
+          request.path.endsWith('/tables') &&
+          request.query.contentId === exactA &&
+          request.query.scope === 'PUBLISHED'
+      )
+    );
     await published
       .getByText('Published collection and modality declarations', { exact: true })
       .click();

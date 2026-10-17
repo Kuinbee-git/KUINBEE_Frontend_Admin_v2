@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { tableMetadataFixture } from './table-metadata-fixtures.mjs';
 import { after, test } from 'node:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -434,4 +435,75 @@ test('private published view and inventory preserve published A independently of
     api.publishedReview(value.state.datasetId),
     matches('INCOMPATIBLE_DATASET_RESPONSE')
   );
+});
+
+test('review table metadata stays private and bound to the exact submitted context', async () => {
+  const context = {
+    datasetId: model.state.datasetId,
+    scope: 'REVIEWED',
+    component: 'FULL',
+    contentId: model.submittedContent.id,
+    contentGeneration: model.submittedContent.generation,
+    workflowRevision: model.state.workflowRevision,
+    frozen: true,
+    publicationId: null,
+    editOperation: null,
+  };
+  const value = tableMetadataFixture(context),
+    query = {
+      scope: context.scope,
+      component: context.component,
+      contentId: context.contentId,
+      contentGeneration: context.contentGeneration,
+      expectedWorkflowRevision: context.workflowRevision,
+      memberId: value.memberId,
+      limit: 20,
+    };
+  answer = value;
+  assert.deepEqual(await api.tableMetadata(context.datasetId, query), value);
+  assert(requests.at(-1).url.pathname.endsWith('/dataset-files/' + context.datasetId + '/tables'));
+  assert.equal(requests.at(-1).credentials, 'include');
+  assert.equal(requests.at(-1).cache, 'no-store');
+  for (const mutate of [
+    (v) => v.context.workflowRevision++,
+    (v) => v.page.contentGeneration++,
+    (v) => (v.memberId = id(999)),
+    (v) => (v.targets[0].id = id(999)),
+    (v) => (v.page.items[0].missingValues.value = 'inactive private claim'),
+    (v) => (v.page.items[0].storageKey = 'secret'),
+  ]) {
+    answer = structuredClone(value);
+    mutate(answer);
+    await assert.rejects(
+      api.tableMetadata(context.datasetId, query),
+      matches('INCOMPATIBLE_DATASET_RESPONSE')
+    );
+  }
+});
+test('admin table readers reject supplier edit bases, grants and missing review revisions without requests', async () => {
+  const before = requests.length,
+    query = {
+      scope: 'REVIEWED',
+      component: 'FULL',
+      contentId: model.submittedContent.id,
+      contentGeneration: 1,
+      limit: 20,
+    };
+  for (const scope of ['WORKING', 'EDIT_BASE', 'GRANTED'])
+    await assert.rejects(
+      api.tableMetadata(model.state.datasetId, { ...query, scope }),
+      matches('INVALID_FILE_SCOPE')
+    );
+  await assert.rejects(
+    api.tableMetadata(model.state.datasetId, query),
+    matches('INVALID_FILE_SCOPE')
+  );
+  await assert.rejects(
+    production.datasetContentApi.tableMetadata(model.state.datasetId, {
+      ...query,
+      expectedWorkflowRevision: 1,
+    }),
+    matches('NOT_ENABLED')
+  );
+  assert.equal(requests.length, before);
 });

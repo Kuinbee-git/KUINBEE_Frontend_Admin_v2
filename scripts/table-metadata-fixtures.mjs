@@ -63,6 +63,12 @@ const id = (n) => 'c' + String(n).padStart(24, '0');
 export function tableMetadataFixture(context, memberId = id(8000), columns = false) {
   const table = {
     kind: 'TABLE',
+    applicability: {
+      purpose: 'PRIMARY',
+      origin: 'SUPPLIER_DECLARED',
+      basis: 'SELECTED_FILE_PURPOSE',
+      definitionsRequired: true,
+    },
     id: id(8001),
     component: context.component,
     displayName: 'Event measurements',

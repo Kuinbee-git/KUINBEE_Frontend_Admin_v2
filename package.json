@@ -22,7 +22,7 @@
     "test:environment": "node --test scripts/deployment-environment.test.mjs",
     "prebuild": "npm run check:environment && node scripts/check-github-release.mjs",
     "test:release": "npm run test:dataset-content:browser && node scripts/check-release.mjs",
-    "test:contracts": "npm run test:dataset-production && npm run test:release-gate && npm run test:environment && npm run check:ui && npm run check:permissions && npm run test:claru && npm run test:claru:queue && node scripts/check-dataset-preparation-contracts.mjs && npm run test:dataset-content",
+    "test:contracts": "npm run test:dataset-production && npm run test:release-gate && npm run test:environment && npm run check:ui && npm run check:permissions && npm run test:claru && npm run test:claru:queue && node scripts/check-dataset-preparation-contracts.mjs && npm run test:dataset-content && node scripts/check-supplier-onboarding-contract.mjs",
     "audit:runtime": "npm audit --omit=dev --audit-level=high",
     "test:release-gate": "node --test scripts/check-github-release.test.mjs",
     "test:dataset-content": "node --test scripts/test-dataset-content.mjs",

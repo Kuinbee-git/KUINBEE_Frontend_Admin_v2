@@ -184,7 +184,7 @@ const ROUTE_ACCESS_RULES: readonly RouteAccessRule[] = [
     requirement: SOURCE_CATALOG_ACCESS,
   },
   {
-    matches: startsWith('/dashboard/supplier-kyc'),
+    matches: (pathname) => pathname.startsWith('/dashboard/supplier-kyc') || pathname.startsWith('/dashboard/supplier-applications'),
     requirement: { anyOf: [PERMISSIONS.SUPPLIERS.MANAGE_VERIFICATION] },
   },
   {

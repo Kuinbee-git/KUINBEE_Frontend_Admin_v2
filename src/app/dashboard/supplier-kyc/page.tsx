@@ -1,7 +1,2 @@
-'use client';
-
-import { SupplierKycQueueView } from '@/components/suppliers/SupplierKycQueueView';
-
-export default function SupplierKycQueuePage() {
-  return <SupplierKycQueueView />;
-}
+import {redirect} from "next/navigation";
+export default function Page() {redirect("/dashboard/supplier-applications");}

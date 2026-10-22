@@ -103,9 +103,9 @@ const NAV_ITEMS: AdminNavItem[] = [
   },
   {
     id: 'supplier-kyc',
-    label: 'Supplier Queue',
+    label: 'Supplier Applications',
     icon: ClipboardList,
-    href: '/dashboard/supplier-kyc',
+    href: '/dashboard/supplier-applications',
     group: 'review',
     access: { anyOf: [PERMISSIONS.SUPPLIERS.MANAGE_VERIFICATION] },
   },

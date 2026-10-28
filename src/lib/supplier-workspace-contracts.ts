@@ -63,7 +63,7 @@ export const SupplierEvidenceMetadataSchema = z.object({
   sourceUrl: z
     .string()
     .trim()
-    .max(1000)
+    .max(500)
     .refine(
       (v) => !v || /^https?:\/\//i.test(v),
       "Use an http or https reference",

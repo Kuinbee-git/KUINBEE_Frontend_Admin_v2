@@ -946,7 +946,7 @@ export function SupplierWorkspaceView({ recordId }: { recordId: string }) {
                       id="supplier-evidence-source"
                       value={sourceUrl}
                       onChange={(e) => setSourceUrl(e.target.value)}
-                      maxLength={1000}
+                      maxLength={500}
                       placeholder="https://…"
                     />
                   </div>

@@ -440,7 +440,7 @@ export function SupplierWorkspaceView({ recordId }: { recordId: string }) {
                 items={{
                   'Ownership and licensing': data.capabilities.rights,
                   Compliance: data.capabilities.compliance,
-                  'Additional supplier notes': data.capabilities.notes,
+                  ...(data.permissions.review ? {'Additional supplier notes': data.capabilities.notes} : {}),
                 }}
               />
             </Section>

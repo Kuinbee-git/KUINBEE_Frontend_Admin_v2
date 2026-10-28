@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-const digest = '005f2b5989288dd5d8419af5e425a5045a6ff3c93149881ce0f473f8d1cdf0a4';
+const digest = '196705f13ec61e63e8ea57562d2cb4796e5b4c4c6e99a1e06b286b93dd039596';
 assert.equal(
   createHash('sha256')
     .update(readFileSync(new URL('../src/lib/supplier-workspace-contracts.ts', import.meta.url)))

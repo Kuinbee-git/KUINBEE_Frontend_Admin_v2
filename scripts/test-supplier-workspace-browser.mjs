@@ -17,7 +17,7 @@ const css = (
 ).css;
 const bundle = await build({
   stdin: {
-    contents: `import React from 'react';import{createRoot}from'react-dom/client';import{QueryClient,QueryClientProvider}from'@tanstack/react-query';import{SuppliersView}from'./src/components/suppliers/SuppliersView';import{SupplierWorkspaceView}from'./src/components/suppliers/SupplierWorkspaceView';import{useAuthStore}from'./src/store/auth.store';import{usePathname}from'next/navigation';const root=createRoot(document.getElementById('root'));const viewer=document.cookie.includes('fixture-role=viewer');useAuthStore.getState().setUser({id:'synthetic-admin',email:'admin@example.test',userType:viewer?'ADMIN':'SUPERADMIN',status:'ACTIVE',emailVerified:true});useAuthStore.getState().setPermissions(viewer?['VIEW_SUPPLIER']:[]);const client=new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}});function Route(){const p=usePathname();return p==='/dashboard/suppliers'?<SuppliersView/>:<SupplierWorkspaceView key={p} recordId={'application:'+p.split('/').at(-1)}/>};root.render(<QueryClientProvider client={client}><Route/></QueryClientProvider>);`,
+    contents: `import React from 'react';import{createRoot}from'react-dom/client';import{QueryClient,QueryClientProvider}from'@tanstack/react-query';import{SuppliersView}from'./src/components/suppliers/SuppliersView';import{SupplierDetailView}from'./src/components/suppliers/SupplierDetailView';import{SupplierApplicationReview}from'./src/components/suppliers/SupplierApplicationReview';import{SupplierApplicationsView}from'./src/components/suppliers/SupplierApplicationsView';import{canAccess}from'./src/lib/authorization/authorization';import{getRouteAccessRequirement}from'./src/lib/authorization/route-access';import{useAuthStore}from'./src/store/auth.store';import{usePathname}from'next/navigation';const root=createRoot(document.getElementById('root'));const viewer=document.cookie.includes('fixture-role=viewer');const type=viewer?'ADMIN':'SUPERADMIN',permissions=viewer?['VIEW_SUPPLIER']:[];useAuthStore.getState().setUser({id:'synthetic-admin',email:'admin@example.test',userType:type,status:'ACTIVE',emailVerified:true});useAuthStore.getState().setPermissions(permissions);const client=new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}});function Route(){const p=usePathname();if(!canAccess(type,permissions,getRouteAccessRequirement(p)))return <p>Access denied by route permissions</p>;if(p==='/dashboard/suppliers')return <SuppliersView/>;if(p==='/dashboard/supplier-applications')return <SupplierApplicationsView/>;return p.startsWith('/dashboard/supplier-applications/')?<SupplierApplicationReview key={p} id={p.split('/').at(-1)}/>:<SupplierDetailView key={p} supplierId={p.split('/').at(-1)}/>};root.render(<QueryClientProvider client={client}><Route/></QueryClientProvider>);`,
     loader: 'jsx',
     resolveDir: process.cwd(),
   },
@@ -103,7 +103,7 @@ const details = {
 const record = {
   recordId: 'application:synthetic-app',
   applicationId: 'synthetic-app',
-  supplierId: null,
+  supplierId: 'synthetic-supplier',
   name: identity.name,
   email: 'cad-supplier@example.test',
   supplierType: 'INDIVIDUAL',
@@ -111,7 +111,7 @@ const record = {
   logoUrl: null,
   domains: capabilities.domains,
   offerings: capabilities.offerings,
-  stage: 'INVITED',
+  stage: 'VERIFICATION_DRAFT',
   accountStatus: null,
   verificationStatus: 'DRAFT',
   contractComplete: null,
@@ -123,13 +123,25 @@ let model,
   notes,
   evidence,
   actions = [],
-  errors = [];
+  errors = [],
+  requests = [];
+let pending;
 const reset = () => {
   model = {
     record: { ...record },
     identity,
     capabilities,
-    account: null,
+    account: {
+      id: 'synthetic-supplier',
+      email: record.email,
+      phone: null,
+      emailVerified: true,
+      contactEmail: record.email,
+      contactEmailVerified: true,
+      emergencyContact: null,
+      lastLoginAt: now,
+      onboardingCompletedAt: null,
+    },
     source: {
       source: 'REVIEWED_ENQUIRY',
       requirementRef: 'REQ-SYNTHETIC',
@@ -140,7 +152,7 @@ const reset = () => {
       id: 'synthetic-app',
       email: record.email,
       version: 2,
-      userId: null,
+      userId: 'synthetic-supplier',
       emailVerified: false,
       applicationStatus: 'INVITED',
       verificationStatus: 'DRAFT',
@@ -202,10 +214,47 @@ const reset = () => {
   evidence = [];
 };
 reset();
+pending = structuredClone(model.review);
+pending.id = 'pending-app';
+pending.email = 'pending@example.test';
+pending.identity = { ...identity, name: 'Synthetic pending applicant' };
+pending.userId = null;
+pending.applicationStatus = 'SUBMITTED';
+pending.reviews[0].id = 'pending-review';
+pending.reviews[0].decision = null;
+pending.reviews[0].pickedByAdminId = null;
+pending.reviews[0].snapshot.identity = pending.identity;
+const supplierListItem = {
+  supplier: {
+    id: 'synthetic-supplier',
+    email: record.email,
+    phone: null,
+    status: 'ACTIVE',
+    createdAt: now,
+    updatedAt: now,
+  },
+  supplierProfile: {
+    supplierType: 'INDIVIDUAL',
+    companyName: null,
+    individualName: identity.name,
+    contactPersonName: identity.contactName,
+    designation: identity.role,
+    websiteUrl: null,
+    contactEmail: record.email,
+    contactEmailVerified: true,
+    businessDomains: ['TECHNOLOGY'],
+    primaryDomain: null,
+    naturesOfDataProvided: capabilities.description,
+    createdAt: now,
+    updatedAt: now,
+  },
+  kyc: null,
+};
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://fixture.test');
     const viewer = (req.headers.cookie ?? '').includes('fixture-role=viewer');
+    requests.push({ path: url.pathname, method: req.method, viewer });
     if (url.pathname === '/style.css') {
       res.writeHead(200, { 'content-type': 'text/css' });
       return res.end(css);
@@ -223,7 +272,32 @@ const server = createServer(async (req, res) => {
     let data;
     if (url.pathname.endsWith('/my-permissions'))
       data = { permissions: viewer ? ['VIEW_SUPPLIER'] : [] };
-    else if (url.pathname === '/api/v1/admin/suppliers/directory') {
+    else if (url.pathname === '/api/v1/admin/suppliers') {
+      data = { items: [supplierListItem], total: 1, page: 1, pageSize: 20 };
+    } else if (url.pathname === '/api/v1/admin/supplier-applications') {
+      data = {
+        items: [
+          {
+            id: pending.id,
+            email: pending.email,
+            identity: pending.identity,
+            capabilities,
+            applicationStatus: pending.applicationStatus,
+            verificationStatus: 'DRAFT',
+            userId: null,
+            updatedAt: now,
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      };
+    } else if (
+      url.pathname === '/api/v1/admin/supplier-applications/pending-app' &&
+      req.method === 'GET'
+    ) {
+      data = pending;
+    } else if (url.pathname === '/api/v1/admin/suppliers/directory') {
       let items = [model.record];
       const stage = url.searchParams.get('stage');
       if (stage === 'NEEDS_REVIEW' && !model.record.stage.includes('SUBMITTED')) items = [];
@@ -303,16 +377,15 @@ const server = createServer(async (req, res) => {
         });
         data = { id: 'evidence1' };
       } else if (url.pathname.endsWith('/pick')) {
-        model.review.reviews[0].pickedByAdminId = 'synthetic-admin';
-        data = model.review;
+        pending.reviews[0].pickedByAdminId = 'synthetic-admin';
+        data = pending;
       } else if (url.pathname.endsWith('/decision')) {
-        assert.equal(body.reviewId, 'synthetic-review');
-        assert.equal(body.version, model.review.version);
-        model.review.reviews[0].decision = body.decision;
-        model.review.version++;
-        model.review.applicationStatus = 'INVITED';
-        model.record.stage = 'INVITED';
-        data = model.review;
+        assert.equal(body.reviewId, 'pending-review');
+        assert.equal(body.version, pending.version);
+        pending.reviews[0].decision = body.decision;
+        pending.version++;
+        pending.applicationStatus = 'INVITED';
+        data = pending;
       } else data = model.review;
     } else if (url.pathname.includes('/evidence/'))
       data = { url: 'https://private.example.test/download' };
@@ -343,29 +416,68 @@ page.setDefaultTimeout(10000);
 const browserErrors = [];
 page.on('pageerror', (e) => browserErrors.push(e.message));
 try {
+  // Exercise the actual route components, not a test-only shared route. Only
+  // account rows belong in Suppliers; applications keep their original UI.
+  await page.goto(base + '/dashboard/supplier-applications');
+  await page.getByRole('heading', { name: 'Review queue', exact: true }).waitFor();
+  await page.getByRole('link', { name: 'Synthetic pending applicant', exact: true }).waitFor();
+  assert.equal(await page.getByRole('tab', { name: 'Capabilities', exact: true }).count(), 0);
+  await page.getByRole('link', { name: 'Synthetic pending applicant', exact: true }).click();
+  await page.getByRole('heading', { name: 'Exact submitted information', exact: true }).waitFor();
+  await page.getByRole('link', { name: 'Back to applications', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Application qualification', exact: true }).waitFor();
+  assert.equal(await page.getByRole('tab', { name: 'Capabilities', exact: true }).count(), 0);
+  assert.equal(await page.getByRole('tab', { name: 'Source evidence', exact: true }).count(), 0);
+  assert(
+    !requests.some((r) => r.path.includes('/suppliers/directory')),
+    'Application screens must use the original application API'
+  );
+  await page.getByRole('button', { name: 'Pick submission', exact: true }).click();
+  await page.getByRole('button', { name: 'INVITE', exact: true }).click();
+  await page.getByRole('group', { name: 'Confirm supplier decision', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Confirm decision', exact: true }).click();
+  await page.getByRole('heading', { name: 'Invitation', exact: true }).waitFor();
+  assert(
+    actions.some(
+      (a) =>
+        a.path === '/api/v1/admin/supplier-applications/pending-app/decision' &&
+        a.body.reviewId === 'pending-review' &&
+        a.body.version === 2
+    )
+  );
+  await page.screenshot({
+    path: resolve(artifacts, 'restored-application-review.png'),
+    fullPage: true,
+  });
   await page.goto(base + '/dashboard/suppliers');
-  await page.getByRole('link', { name: identity.name, exact: true }).waitFor();
-  await page.getByRole('textbox', { name: 'Search suppliers', exact: true }).fill('CAD');
-  await page.waitForTimeout(400);
-  await page.getByRole('button', { name: 'Filters', exact: true }).click();
-  await page.getByRole('textbox', { name: 'country', exact: true }).fill('India');
-  await page.getByRole('link', { name: identity.name, exact: true }).click();
+  await page.getByRole('tab', { name: 'All suppliers', exact: true }).waitFor();
+  const account = page.getByRole('link', { name: 'Open supplier ' + record.email, exact: true });
+  await account.waitFor();
+  assert.equal(await page.getByText('Synthetic pending applicant', { exact: true }).count(), 0);
+  assert(
+    !requests.some((r) => r.path === '/api/v1/admin/suppliers/directory'),
+    'Supplier list must use the account directory API'
+  );
+  for (const theme of ['light', 'dark'])
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1050 });
+      await page.evaluate(
+        (theme) => document.documentElement.classList.toggle('dark', theme === 'dark'),
+        theme
+      );
+      await page.screenshot({
+        path: resolve(artifacts, `directory-${theme}-${width}.png`),
+        fullPage: true,
+      });
+      assert(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        'Directory viewport overflow'
+      );
+    }
+  await account.click();
+  assert(new URL(page.url()).pathname === '/dashboard/suppliers/synthetic-supplier');
   await page.getByRole('tab', { name: 'Capabilities', exact: true }).click();
   await page.getByText(capabilities.capacity, { exact: true }).waitFor();
-  await page.getByRole('tab', { name: 'Verification', exact: true }).click();
-  assert.equal(
-    await page.getByRole('button', { name: 'Approve verification', exact: true }).count(),
-    0
-  );
-  await page
-    .getByText('Waiting for the supplier to accept their invitation and set up their account.', {
-      exact: true,
-    })
-    .waitFor();
-  await page.getByRole('button', { name: 'Replace and resend invitation', exact: true }).click();
-  await page.getByRole('dialog').waitFor();
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  assert.equal(actions.length, 0, 'opening/cancelling a confirmation sends no mutation');
   await page.getByRole('tab', { name: 'Reviews & activity', exact: true }).click();
   await page
     .getByLabel('Add a private note', { exact: true })
@@ -383,29 +495,7 @@ try {
   await page.getByRole('button', { name: 'Store private evidence', exact: true }).click();
   await page.getByRole('button', { name: 'review.json', exact: true }).waitFor();
   assert.equal(actions.find((a) => a.path.endsWith('/evidence')).body.length, payload.length);
-  await page.getByRole('link', { name: 'Back to suppliers', exact: true }).click();
-  await page.getByRole('link', { name: identity.name, exact: true }).waitFor();
-  assert(new URL(page.url()).searchParams.get('country') === 'India');
-  assert(new URL(page.url()).searchParams.get('q') === 'CAD');
-  for (const theme of ['light', 'dark'])
-    for (const width of [1440, 390]) {
-      await page.setViewportSize({ width, height: 1050 });
-      await page.evaluate(
-        (theme) => document.documentElement.classList.toggle('dark', theme === 'dark'),
-        theme
-      );
-      await page.screenshot({
-        path: resolve(artifacts, `directory-${theme}-${width}.png`),
-        fullPage: true,
-      });
-      assert(
-        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
-        'directory must not overflow the viewport'
-      );
-    }
-  await page.getByRole('link', { name: identity.name, exact: true }).click();
   await page.getByRole('tab', { name: 'Capabilities', exact: true }).click();
-  await page.getByText(capabilities.capacity, { exact: true }).waitFor();
   for (const theme of ['light', 'dark'])
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 1050 });
@@ -419,30 +509,16 @@ try {
       });
       assert(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
-        'detail must not overflow the viewport'
+        'Detail viewport overflow'
       );
     }
-  // Current submission: a reviewer must pick before the invite decision, and
-  // every mutation uses the frozen review id/current version.
-  reset();
-  model.record.stage = 'APPLICATION_SUBMITTED';
-  model.review.applicationStatus = 'SUBMITTED';
-  model.review.invitation = null;
-  model.review.reviews[0].decision = null;
-  model.review.reviews[0].pickedByAdminId = null;
-  await page.goto(base + '/dashboard/supplier-applications/synthetic-app');
-  await page.getByRole('tab', { name: 'Verification', exact: true }).click();
-  assert(await page.getByRole('button', { name: 'Invite supplier', exact: true }).isDisabled());
-  await page.getByRole('button', { name: 'Pick submission', exact: true }).click();
-  await page.getByRole('button', { name: 'Invite supplier', exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Invite supplier', exact: true }).click();
-  await page.getByRole('button', { name: 'Confirm action', exact: true }).click();
-  await page.getByRole('button', { name: 'Replace and resend invitation', exact: true }).waitFor();
+  await page.getByRole('link', { name: 'Back to suppliers', exact: true }).click();
+  await page.getByRole('tab', { name: 'All suppliers', exact: true }).waitFor();
   const viewer = await browser.newContext();
   await viewer.addCookies([{ name: 'fixture-role', value: 'viewer', url: base }]);
   const restricted = await viewer.newPage();
   restricted.on('pageerror', (e) => browserErrors.push(e.message));
-  await restricted.goto(base + '/dashboard/supplier-applications/synthetic-app');
+  await restricted.goto(base + '/dashboard/suppliers/synthetic-supplier');
   await restricted.getByRole('tab', { name: 'Capabilities', exact: true }).waitFor();
   assert.equal(
     await restricted.getByRole('tab', { name: 'Source evidence', exact: true }).count(),
@@ -464,6 +540,11 @@ try {
       .innerText()
       .then((t) => t.includes('PRIVATE RIGHTS FOLLOW-UP')))
   );
+  await restricted.goto(base + '/dashboard/supplier-applications/pending-app');
+  await restricted.getByText('Access denied by route permissions', { exact: true }).waitFor();
+  assert(
+    !requests.some((r) => r.viewer && r.path.startsWith('/api/v1/admin/supplier-applications'))
+  );
   await viewer.close();
   assert.deepEqual(errors, []);
   assert.deepEqual(browserErrors, []);
@@ -471,10 +552,11 @@ try {
     resolve(artifacts, 'verification.json'),
     JSON.stringify(
       {
-        directorySearchAndReturnFilters: true,
+        accountDirectoryRestored: true,
+        applicationScreensSeparated: true,
         privateNoteSaved: true,
         sourceUploadBytes: payload.length,
-        reviewPickAndDecision: true,
+        originalApplicationReviewPickAndDecision: true,
         restrictedRoleRedaction: true,
         responsiveThemes: ['light', 'dark'],
         viewports: [1440, 390],
@@ -485,7 +567,7 @@ try {
     )
   );
   console.log(
-    'Supplier workspace browser checks passed: directory filters, persisted navigation, notes, private evidence, exact-version review, restricted access, light/dark and mobile/desktop.'
+    'Supplier separation browser checks passed: original account directory, original application queue/review, enhanced supplier detail only, private notes/evidence, restricted access and responsive themes.'
   );
 } catch (error) {
   await page.screenshot({ path: resolve(artifacts, 'failure.png'), fullPage: true });

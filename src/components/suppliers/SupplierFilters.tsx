@@ -2,6 +2,8 @@
 
 import { FilterBar, FilterConfig, ActiveFilter } from '@/components/shared/FilterBar';
 import { formatEnumLabel } from '@/components/shared/StatusBadge';
+import { SUPPLIER_VERIFICATION } from '@/lib/supplier-verification';
+import type { SupplierVerificationStatus } from '@/types/supplier.types';
 import type { BusinessDomain } from '@/types/supplier.types';
 
 type SupplierType = 'ALL' | 'INDIVIDUAL' | 'COMPANY';
@@ -22,6 +24,10 @@ interface SupplierFiltersProps {
   setStatusFilter: (value: SupplierStatus) => void;
   selectedDomains: BusinessDomain[];
   setSelectedDomains: (value: BusinessDomain[]) => void;
+  verificationFilter: SupplierVerificationStatus | 'ALL';
+  setVerificationFilter: (value: SupplierVerificationStatus | 'ALL') => void;
+  contractFilter: string;
+  setContractFilter: (value: string) => void;
   emailVerifiedFilter: string;
   setEmailVerifiedFilter: (value: string) => void;
   domainList: Array<{ value: BusinessDomain; label: string }>;
@@ -37,6 +43,10 @@ export function SupplierFilters({
   setStatusFilter,
   selectedDomains,
   setSelectedDomains,
+  verificationFilter,
+  setVerificationFilter,
+  contractFilter,
+  setContractFilter,
   emailVerifiedFilter,
   setEmailVerifiedFilter,
   domainList,
@@ -49,7 +59,7 @@ export function SupplierFilters({
       type: 'search',
       value: searchQuery,
       onChange: (value) => setSearchQuery(value as string),
-      placeholder: 'Search by name, ID, email, or domain...',
+      placeholder: 'Search name, email, contact, or ID...',
     },
     {
       id: 'type',
@@ -65,7 +75,7 @@ export function SupplierFilters({
     },
     {
       id: 'status',
-      label: 'Status',
+      label: 'Account status',
       type: 'select',
       value: statusFilter,
       onChange: (value) => setStatusFilter(value as SupplierStatus),
@@ -79,7 +89,34 @@ export function SupplierFilters({
       ],
     },
     {
+      id: 'verification',
+      label: 'Verification status',
+      type: 'select',
+      value: verificationFilter,
+      onChange: (value) => setVerificationFilter(value as SupplierVerificationStatus | 'ALL'),
+      options: [
+        { value: 'ALL', label: 'All verification states' },
+        ...Object.entries(SUPPLIER_VERIFICATION).map(([value, state]) => ({
+          value,
+          label: state.label,
+        })),
+      ],
+    },
+    {
+      id: 'contract',
+      label: 'Contract',
+      type: 'select',
+      value: contractFilter,
+      onChange: (value) => setContractFilter(value as string),
+      options: [
+        { value: 'all', label: 'All contracts' },
+        { value: 'completed', label: 'Completed' },
+        { value: 'pending', label: 'Pending' },
+      ],
+    },
+    {
       id: 'email-verified',
+      showInPrimary: false,
       label: 'Email Verified',
       type: 'select',
       value: emailVerifiedFilter,
@@ -92,6 +129,7 @@ export function SupplierFilters({
     },
     {
       id: 'domains',
+      showInPrimary: false,
       label: 'Business Domains',
       type: 'popover',
       value: selectedDomains,
@@ -118,6 +156,19 @@ export function SupplierFilters({
     });
   }
 
+  if (verificationFilter !== 'ALL')
+    activeFilters.push({
+      key: 'verification',
+      label: `Verification: ${SUPPLIER_VERIFICATION[verificationFilter].label}`,
+      onRemove: () => setVerificationFilter('ALL'),
+    });
+  if (contractFilter !== 'all')
+    activeFilters.push({
+      key: 'contract',
+      label: `Contract: ${contractFilter === 'completed' ? 'Completed' : 'Pending'}`,
+      onRemove: () => setContractFilter('all'),
+    });
+
   if (emailVerifiedFilter !== 'all') {
     activeFilters.push({
       key: 'emailVerified',
@@ -135,5 +186,12 @@ export function SupplierFilters({
     });
   });
 
-  return <FilterBar filters={filters} activeFilters={activeFilters} onClearAll={clearAllFilters} />;
+  return (
+    <FilterBar
+      showAdvancedFilters
+      filters={filters}
+      activeFilters={activeFilters}
+      onClearAll={clearAllFilters}
+    />
+  );
 }

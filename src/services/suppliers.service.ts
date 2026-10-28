@@ -20,7 +20,7 @@ import type {
   PaginatedResponse,
   ApiSuccessResponse,
 } from '@/types';
-import type { BusinessDomain } from '@/types/supplier.types';
+import type { BusinessDomain, SupplierVerificationStatus } from '@/types/supplier.types';
 
 // ============================================
 // Types
@@ -32,6 +32,8 @@ export interface SupplierListParams {
   q?: string;
   supplierType?: 'INDIVIDUAL' | 'COMPANY' | 'ALL';
   status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION' | 'DELETED' | 'ALL';
+  verificationStatus?: SupplierVerificationStatus;
+  offlineContractDone?: boolean;
   contactEmailVerified?: boolean;
   businessDomains?: BusinessDomain[];
   sort?: 'createdAt:desc' | 'createdAt:asc';

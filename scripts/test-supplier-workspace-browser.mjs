@@ -203,7 +203,13 @@ const reset = () => {
     },
     reviewActors: { 'synthetic-review': { id: 'synthetic-admin', name: 'Review admin' } },
     contract: null,
-    legacyKyc: null,
+    legacyKyc: {
+      provider: 'SIGNZY',
+      status: 'VERIFIED',
+      failureReason: null,
+      updatedAt: now,
+      checks: [],
+    },
     entries: [],
     entriesTotal: 0,
     activity: [],
@@ -245,16 +251,19 @@ const supplierListItem = {
     businessDomains: ['TECHNOLOGY'],
     primaryDomain: null,
     naturesOfDataProvided: capabilities.description,
+    isOfflineContractDone: false,
     createdAt: now,
     updatedAt: now,
   },
-  kyc: null,
+  verification: { status: 'DRAFT', source: 'ONBOARDING' },
+  country: 'India',
+  capabilities,
 };
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://fixture.test');
     const viewer = (req.headers.cookie ?? '').includes('fixture-role=viewer');
-    requests.push({ path: url.pathname, method: req.method, viewer });
+    requests.push({ path: url.pathname, query: url.search, method: req.method, viewer });
     if (url.pathname === '/style.css') {
       res.writeHead(200, { 'content-type': 'text/css' });
       return res.end(css);
@@ -273,7 +282,36 @@ const server = createServer(async (req, res) => {
     if (url.pathname.endsWith('/my-permissions'))
       data = { permissions: viewer ? ['VIEW_SUPPLIER'] : [] };
     else if (url.pathname === '/api/v1/admin/suppliers') {
-      data = { items: [supplierListItem], total: 1, page: 1, pageSize: 20 };
+      let items = [
+        supplierListItem,
+        ...['SUBMITTED', 'CHANGES_REQUESTED', 'APPROVED', 'REJECTED', 'NOT_RECORDED'].map(
+          (status) => ({
+            ...supplierListItem,
+            supplier: {
+              ...supplierListItem.supplier,
+              id: status,
+              email: status.toLowerCase() + '@example.test',
+            },
+            supplierProfile: {
+              ...supplierListItem.supplierProfile,
+              individualName: 'Synthetic ' + status,
+              isOfflineContractDone: status === 'APPROVED',
+            },
+            verification: { status, source: status === 'NOT_RECORDED' ? 'UNKNOWN' : 'ONBOARDING' },
+          })
+        ),
+      ];
+      if (url.searchParams.has('verificationStatus'))
+        items = items.filter(
+          (item) => item.verification.status === url.searchParams.get('verificationStatus')
+        );
+      if (url.searchParams.has('offlineContractDone'))
+        items = items.filter(
+          (item) =>
+            item.supplierProfile.isOfflineContractDone ===
+            (url.searchParams.get('offlineContractDone') === 'true')
+        );
+      data = { items, total: items.length, page: 1, pageSize: 20 };
     } else if (url.pathname === '/api/v1/admin/supplier-applications') {
       data = {
         items: [
@@ -454,6 +492,41 @@ try {
   const account = page.getByRole('link', { name: 'Open supplier ' + record.email, exact: true });
   await account.waitFor();
   assert.equal(await page.getByText('Synthetic pending applicant', { exact: true }).count(), 0);
+  await page.getByRole('columnheader', { name: 'Verification status', exact: true }).waitFor();
+  for (const label of [
+    'Not submitted',
+    'Under review',
+    'Changes requested',
+    'Approved',
+    'Rejected',
+    'Not recorded',
+  ])
+    await page.getByText(label, { exact: true }).waitFor();
+  assert(!/Signzy|KYC Status|Not Started/i.test(await page.locator('body').innerText()));
+  await page.getByRole('combobox', { name: 'Verification status', exact: true }).click();
+  await page.getByRole('option', { name: 'Rejected', exact: true }).click();
+  await page.getByText('1 supplier account', { exact: true }).waitFor();
+  assert.equal(await account.count(), 0);
+  await page.getByRole('combobox', { name: 'Verification status', exact: true }).click();
+  await page.getByRole('option', { name: 'All verification states', exact: true }).click();
+  await account.waitFor();
+  await page.getByRole('combobox', { name: 'Contract', exact: true }).click();
+  await page.getByRole('option', { name: 'Completed', exact: true }).click();
+  await page.getByText('1 supplier account', { exact: true }).waitFor();
+  await page.getByRole('combobox', { name: 'Contract', exact: true }).click();
+  await page.getByRole('option', { name: 'All contracts', exact: true }).click();
+  await account.waitFor();
+  assert(
+    requests.some(
+      (r) => r.path === '/api/v1/admin/suppliers' && r.query.includes('verificationStatus=REJECTED')
+    )
+  );
+  assert(
+    requests.some(
+      (r) => r.path === '/api/v1/admin/suppliers' && r.query.includes('offlineContractDone=true')
+    )
+  );
+
   assert(
     !requests.some((r) => r.path === '/api/v1/admin/suppliers/directory'),
     'Supplier list must use the account directory API'
@@ -476,6 +549,8 @@ try {
     }
   await account.click();
   assert(new URL(page.url()).pathname === '/dashboard/suppliers/synthetic-supplier');
+  await page.getByRole('tab', { name: 'Verification', exact: true }).click();
+  assert(!/Signzy|Historical provider verification/i.test(await page.locator('body').innerText()));
   await page.getByRole('tab', { name: 'Capabilities', exact: true }).click();
   await page.getByText(capabilities.capacity, { exact: true }).waitFor();
   await page.getByRole('tab', { name: 'Reviews & activity', exact: true }).click();
@@ -552,7 +627,9 @@ try {
     resolve(artifacts, 'verification.json'),
     JSON.stringify(
       {
-        accountDirectoryRestored: true,
+        accountDirectoryOnly: true,
+        currentVerificationAndContractFilters: true,
+        providerKycRemoved: true,
         applicationScreensSeparated: true,
         privateNoteSaved: true,
         sourceUploadBytes: payload.length,
@@ -567,7 +644,7 @@ try {
     )
   );
   console.log(
-    'Supplier separation browser checks passed: original account directory, original application queue/review, enhanced supplier detail only, private notes/evidence, restricted access and responsive themes.'
+    'Supplier browser checks passed: account-only directory, current verification and contract filters, no provider KYC, unchanged application review, private notes/evidence, restricted access and responsive themes.'
   );
 } catch (error) {
   await page.screenshot({ path: resolve(artifacts, 'failure.png'), fullPage: true });

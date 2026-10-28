@@ -39,7 +39,9 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle role="heading" aria-level={2} className="text-base">{title}</CardTitle>
+        <CardTitle role="heading" aria-level={2} className="text-base">
+          {title}
+        </CardTitle>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
@@ -191,7 +193,6 @@ export function SupplierWorkspaceView({ recordId }: { recordId: string }) {
                   ...(data.permissions.review
                     ? {
                         reviews: data.review?.reviews,
-                        legacyKyc: data.legacyKyc,
                         legacyManualKyc: data.legacyManualKyc,
                       }
                     : {}),
@@ -440,7 +441,9 @@ export function SupplierWorkspaceView({ recordId }: { recordId: string }) {
                 items={{
                   'Ownership and licensing': data.capabilities.rights,
                   Compliance: data.capabilities.compliance,
-                  ...(data.permissions.review ? {'Additional supplier notes': data.capabilities.notes} : {}),
+                  ...(data.permissions.review
+                    ? { 'Additional supplier notes': data.capabilities.notes }
+                    : {}),
                 }}
               />
             </Section>
@@ -580,33 +583,6 @@ export function SupplierWorkspaceView({ recordId }: { recordId: string }) {
                         : 'No current application is linked to this account.'}{' '}
                       Existing records have been preserved.
                     </p>
-                  </Section>
-                )}
-                {data.legacyKyc && (
-                  <Section title="Historical provider verification">
-                    <Fields
-                      items={{
-                        Provider: data.legacyKyc.provider,
-                        'Historical status': data.legacyKyc.status,
-                        'Failure reason': data.legacyKyc.failureReason,
-                        'Last updated': dateTime(data.legacyKyc.updatedAt),
-                      }}
-                    />
-                    <div className="mt-5 space-y-4">
-                      {data.legacyKyc.checks.map((check) => (
-                        <div className="rounded-md border p-3" key={check.id}>
-                          <Fields
-                            items={{
-                              Check: check.checkType,
-                              Status: check.status,
-                              'Masked value': check.valueMasked,
-                              Submitted: dateTime(check.submittedAt),
-                              Verified: dateTime(check.verifiedAt),
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
                   </Section>
                 )}
                 {data.legacyManualKyc && (

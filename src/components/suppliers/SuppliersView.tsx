@@ -14,7 +14,7 @@ import { useAuthorization } from '@/hooks/useAuthorization';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PERMISSIONS } from '@/lib/constants/permissions';
 import type { SupplierListParams } from '@/services/suppliers.service';
-import type { BusinessDomain } from '@/types/supplier.types';
+import type { BusinessDomain, SupplierVerificationStatus } from '@/types/supplier.types';
 
 const PAGE_SIZE = 20;
 
@@ -47,6 +47,10 @@ export function SuppliersView() {
     'ALL' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION' | 'DELETED'
   >('ALL');
   const [selectedDomains, setSelectedDomains] = useState<BusinessDomain[]>([]);
+  const [verificationFilter, setVerificationFilter] = useState<SupplierVerificationStatus | 'ALL'>(
+    'ALL'
+  );
+  const [contractFilter, setContractFilter] = useState('all');
   const [emailVerifiedFilter, setEmailVerifiedFilter] = useState('all');
   const debouncedSearch = useDebounce(searchQuery, 400);
 
@@ -56,6 +60,8 @@ export function SuppliersView() {
     q: debouncedSearch || undefined,
     supplierType: typeFilter === 'ALL' ? undefined : typeFilter,
     status: statusFilter === 'ALL' ? undefined : statusFilter,
+    verificationStatus: verificationFilter === 'ALL' ? undefined : verificationFilter,
+    offlineContractDone: contractFilter === 'all' ? undefined : contractFilter === 'completed',
     contactEmailVerified:
       emailVerifiedFilter === 'all' ? undefined : emailVerifiedFilter === 'verified',
     businessDomains: selectedDomains.length ? selectedDomains : undefined,
@@ -72,13 +78,18 @@ export function SuppliersView() {
     setTypeFilter('ALL');
     setStatusFilter('ALL');
     setSelectedDomains([]);
+    setVerificationFilter('ALL');
+    setContractFilter('all');
     setEmailVerifiedFilter('all');
     setPage(1);
   };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-surface)' }}>
-      <PageHeader title="Suppliers" description="Manage supplier accounts and invitations." />
+      <PageHeader
+        title="Suppliers"
+        description="Review supplier capabilities, verification progress, and contract readiness."
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="px-4 pt-4 sm:px-6 sm:pt-6">
@@ -111,6 +122,16 @@ export function SuppliersView() {
                 setSelectedDomains(value);
                 setPage(1);
               }}
+              verificationFilter={verificationFilter}
+              setVerificationFilter={(value) => {
+                setVerificationFilter(value);
+                setPage(1);
+              }}
+              contractFilter={contractFilter}
+              setContractFilter={(value) => {
+                setContractFilter(value);
+                setPage(1);
+              }}
               emailVerifiedFilter={emailVerifiedFilter}
               setEmailVerifiedFilter={(value) => {
                 setEmailVerifiedFilter(value);
@@ -121,6 +142,18 @@ export function SuppliersView() {
             />
 
             <div className="p-4 sm:p-6">
+              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-sm font-medium">
+                  {query.isLoading
+                    ? 'Loading suppliers…'
+                    : query.isError
+                      ? 'Supplier accounts'
+                      : `${total} supplier ${total === 1 ? 'account' : 'accounts'}`}
+                </p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Account activity, verification, and contract completion are tracked separately.
+                </p>
+              </div>
               <div
                 className="overflow-hidden rounded-lg border"
                 style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border-default)' }}

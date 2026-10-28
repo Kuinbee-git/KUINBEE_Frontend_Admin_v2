@@ -15,6 +15,14 @@ export type BusinessDomain =
   | 'SOCIAL_MEDIA'
   | 'OTHER';
 
+export type SupplierVerificationStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'CHANGES_REQUESTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'NOT_RECORDED';
+
 // Supplier List Item (for directory view)
 export interface SupplierListItem {
   supplier: {
@@ -37,13 +45,16 @@ export interface SupplierListItem {
     businessDomains: string[];
     primaryDomain: string | null;
     naturesOfDataProvided: string | null;
+    isOfflineContractDone: boolean;
     createdAt: string; // ISO
     updatedAt: string; // ISO
   };
-  kyc: {
-    provider: 'SIGNZY';
-    status: 'PENDING' | 'IN_PROGRESS' | 'VERIFIED' | 'REJECTED' | 'FAILED';
-  } | null;
+  verification: {
+    status: SupplierVerificationStatus;
+    source: 'ONBOARDING' | 'MANUAL' | 'HISTORICAL' | 'UNKNOWN';
+  };
+  country: string | null;
+  capabilities: { domains: string[]; offerings: string[]; modalities: string[]; formats: string[] };
 }
 
 // Supplier Detail (for individual supplier page)

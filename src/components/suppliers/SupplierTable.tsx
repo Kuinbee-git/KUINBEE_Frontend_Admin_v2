@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, Building2, User, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Building2, User } from 'lucide-react';
 import { StatusBadge, formatStatusLabel, formatEnumLabel } from '@/components/shared/StatusBadge';
 import { DataTable, type ColumnDef } from '@/components/shared/DataTable';
 import { SUPPLIER_VERIFICATION } from '@/lib/supplier-verification';
@@ -15,18 +15,22 @@ export function SupplierTable({ suppliers, onRowClick }: SupplierTableProps) {
   const columns: ColumnDef<SupplierListItem>[] = [
     {
       header: 'Supplier',
+      className: 'w-[22%]',
       render: ({ supplier, supplierProfile: p, country }) => {
         const Icon = p.supplierType === 'COMPANY' ? Building2 : User;
         return (
-          <div className="flex min-w-52 max-w-80 items-start gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <div
-              className="rounded-md border p-2"
+              className="shrink-0 rounded-md border p-2"
               style={{ borderColor: 'var(--border-default)', color: 'var(--text-muted)' }}
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
             </div>
             <div className="min-w-0 space-y-1">
-              <p className="font-medium whitespace-normal" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="font-medium whitespace-normal break-words"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {(p.supplierType === 'COMPANY' ? p.companyName : p.individualName) ||
                   supplier.email}
               </p>
@@ -48,18 +52,19 @@ export function SupplierTable({ suppliers, onRowClick }: SupplierTableProps) {
     },
     {
       header: 'Capabilities',
+      className: 'w-[21%]',
       render: ({ capabilities }) => {
         const domains = capabilities?.domains ?? [];
         const services = capabilities?.offerings ?? [];
         const formats = capabilities?.formats ?? [];
         return (
-          <div className="min-w-48 max-w-72 space-y-2 whitespace-normal">
+          <div className="min-w-0 space-y-2 whitespace-normal">
             {domains.length ? (
               <div className="flex flex-wrap gap-1">
                 {domains.slice(0, 2).map((domain) => (
                   <span
                     key={domain}
-                    className="rounded border px-2 py-0.5 text-xs"
+                    className="max-w-full rounded border px-2 py-0.5 text-xs break-words"
                     style={{
                       borderColor: 'var(--border-default)',
                       backgroundColor: 'var(--bg-surface)',
@@ -100,8 +105,9 @@ export function SupplierTable({ suppliers, onRowClick }: SupplierTableProps) {
     },
     {
       header: 'Contact',
+      className: 'w-[20%]',
       render: ({ supplier, supplierProfile: p }) => (
-        <div className="min-w-44 max-w-64 space-y-1">
+        <div className="min-w-0 space-y-1">
           {p.contactPersonName && <p className="text-sm">{p.contactPersonName}</p>}
           <div className="flex items-start gap-2">
             <span className="break-all text-xs">{p.contactEmail || supplier.email}</span>
@@ -123,6 +129,7 @@ export function SupplierTable({ suppliers, onRowClick }: SupplierTableProps) {
     },
     {
       header: 'Account status',
+      className: 'w-[10%]',
       render: ({ supplier }) => (
         <StatusBadge
           status={formatStatusLabel(supplier.status)}
@@ -138,6 +145,7 @@ export function SupplierTable({ suppliers, onRowClick }: SupplierTableProps) {
     },
     {
       header: 'Verification status',
+      className: 'w-[16%]',
       render: ({ verification }) => {
         const state =
           SUPPLIER_VERIFICATION[verification?.status] ?? SUPPLIER_VERIFICATION.NOT_RECORDED;
@@ -160,26 +168,28 @@ export function SupplierTable({ suppliers, onRowClick }: SupplierTableProps) {
     },
     {
       header: 'Contract',
+      className: 'w-[11%]',
       render: ({ supplierProfile }) => (
-        <div className="flex items-center justify-between gap-6">
+        <div className="flex items-center">
           <StatusBadge
             status={supplierProfile.isOfflineContractDone ? 'Completed' : 'Pending'}
             semanticType={supplierProfile.isOfflineContractDone ? 'success' : 'pending'}
           />
-          <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </div>
       ),
     },
   ];
   return (
-    <DataTable
-      columns={columns}
-      data={suppliers}
-      onRowClick={(item) => onRowClick(item.supplier.id)}
-      ariaLabel="Suppliers"
-      getRowLabel={(item) => `Open supplier ${item.supplier.email}`}
-      getRowKey={(item) => item.supplier.id}
-      emptyMessage="No suppliers found"
-    />
+    <div className="[&_table]:min-w-[1040px] [&_table]:table-fixed">
+      <DataTable
+        columns={columns}
+        data={suppliers}
+        onRowClick={(item) => onRowClick(item.supplier.id)}
+        ariaLabel="Suppliers"
+        getRowLabel={(item) => `Open supplier ${item.supplier.email}`}
+        getRowKey={(item) => item.supplier.id}
+        emptyMessage="No suppliers found"
+      />
+    </div>
   );
 }

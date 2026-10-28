@@ -546,6 +546,15 @@ try {
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         'Directory viewport overflow'
       );
+      if (width === 1440) {
+        const bounds = await page
+          .getByRole('columnheader', { name: 'Verification status', exact: true })
+          .boundingBox();
+        assert(
+          bounds && bounds.x + bounds.width <= width,
+          'Verification status must remain visible on desktop'
+        );
+      }
     }
   await account.click();
   assert(new URL(page.url()).pathname === '/dashboard/suppliers/synthetic-supplier');

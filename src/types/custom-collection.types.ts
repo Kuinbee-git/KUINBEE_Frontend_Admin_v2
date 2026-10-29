@@ -1,3 +1,11 @@
+export interface CustomCollectionSampleFile {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: string;
+  status: 'STAGED' | 'READY';
+}
+
 export type CustomCollectionRevisionStatus =
   | 'DRAFT'
   | 'SUBMITTED'
@@ -69,6 +77,7 @@ export interface CustomCollectionRevision {
   deliverables: string;
   qualityAssurance: string;
   complianceNotes: string | null;
+  sampleFiles?: CustomCollectionSampleFile[];
   coverImage: CustomCollectionImage | null;
   submittedAt: string | null;
   reviewStartedAt: string | null;

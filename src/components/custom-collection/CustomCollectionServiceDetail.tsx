@@ -1,5 +1,6 @@
 'use client';
 
+import { ServiceSampleFiles } from './ServiceSampleFiles';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -149,6 +150,12 @@ function RevisionPanel({ revision, title }: { revision: CustomCollectionRevision
         <Separator />
 
         <div className="space-y-5">
+          <ServiceSampleFiles
+            key={revision.id}
+            serviceId={revision.serviceId}
+            revisionId={revision.id}
+            files={revision.sampleFiles}
+          />
           <FieldBlock label="Description" value={revision.description} />
           <FieldBlock label="Deliverables" value={revision.deliverables} />
           <FieldBlock label="Quality assurance" value={revision.qualityAssurance} />

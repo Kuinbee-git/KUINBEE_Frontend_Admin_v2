@@ -313,6 +313,8 @@ async function scenario(name, fn) {
   }
 }
 async function upload(page) {
+  assert.equal(await page.getByLabel('Catalogue file', { exact: true }).getAttribute('multiple'), null);
+  assert(!/measurements\.csv|sensor_channels\.csv|field dictionary/.test(await page.locator('body').innerText()));
   await page.getByLabel('Catalogue file', { exact: true }).setInputFiles({
     name: 'catalogue.csv',
     mimeType: 'text/csv',

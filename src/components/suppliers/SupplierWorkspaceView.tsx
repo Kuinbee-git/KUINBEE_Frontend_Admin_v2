@@ -34,6 +34,7 @@ import type { SupplierReviewDecision } from '@/lib/supplier-onboarding-contracts
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import { openExternalUrl } from '@/lib/utils/url.utils';
 import { SupplierStage, Fields, SafeLink, dateTime, stageLabels } from './supplierWorkspaceUi';
+import { SupplierCatalogueSection } from './SupplierCatalogueSection';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -276,6 +277,9 @@ export function SupplierWorkspaceView({ recordId }: { recordId: string }) {
           <p role="status" className="rounded-lg border p-4 text-sm">
             {notice}
           </p>
+        )}
+        {r.recordId.startsWith('account:') && (
+          <SupplierCatalogueSection supplierId={r.recordId.slice('account:'.length)} />
         )}
         <Tabs value={tab} onValueChange={setTab}>
           <div className="overflow-x-auto">

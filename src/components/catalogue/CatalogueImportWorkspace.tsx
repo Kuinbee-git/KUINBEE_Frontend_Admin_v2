@@ -62,6 +62,8 @@ export function CatalogueCapacityPanel({
     null
   );
   const refresh = useCallback(async () => {
+    setBusy(true);
+    setError('');
     try {
       const result = await api.capacity();
       setCapacity(result);
@@ -69,6 +71,8 @@ export function CatalogueCapacityPanel({
       setError('');
     } catch (e) {
       setError(catalogueError(e));
+    } finally {
+      setBusy(false);
     }
   }, [api]);
   useEffect(() => {
@@ -76,6 +80,7 @@ export function CatalogueCapacityPanel({
     void api
       .capacity(controller.signal)
       .then((result) => {
+        if (controller.signal.aborted) return;
         setCapacity(result);
         setLimit(result.override === null ? '' : String(result.override));
         setError('');
@@ -120,9 +125,9 @@ export function CatalogueCapacityPanel({
           <strong>{capacity.limit.toLocaleString()}</strong> saved preparations ·{' '}
           {capacity.remaining.toLocaleString()} available
         </p>
-      ) : (
+      ) : !error ? (
         <p role="status">Loading allowance…</p>
-      )}
+      ) : null}
       <p className="text-sm text-muted-foreground">
         This counts all retained preparations, including those later submitted or published. File
         storage has its own allowance.

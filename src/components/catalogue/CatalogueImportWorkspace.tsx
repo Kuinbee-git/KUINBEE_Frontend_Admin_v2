@@ -216,6 +216,13 @@ export function CatalogueImportWorkspace({
   const [mode, setMode] = useState<CatalogueImportUploadBody['mode']>('CREATE_MISSING');
   const [files, setFiles] = useState<File[]>([]),
     [downloads, setDownloads] = useState<CatalogueFile[]>([]);
+  const [template, setTemplate] = useState<Awaited<ReturnType<CatalogueApi['template']>> | null>(null);
+  useEffect(() => {
+    if (!canImport) return;
+    let cancelled = false;
+    void api.template('csv').then(value => { if (!cancelled) setTemplate(value); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [api, canImport]);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [notice, setNotice] = useState('');
@@ -459,7 +466,7 @@ export function CatalogueImportWorkspace({
         <section className={section} aria-label="Catalogue file preparation">
           <h2 className="text-lg font-semibold">1. Prepare your metadata file</h2>
           <p className="text-sm text-muted-foreground">
-            Use our template and its field dictionary. Catalogue identifier and title are required.
+            Use one Excel or CSV template, with one collection per row. Collection ID is the supplier’s own stable reference; Collection name is also required.
             Leave undocumented metadata unconfirmed. Format gaps do not block valid private drafts.
           </p>
           <div className="flex flex-wrap gap-3">
@@ -470,10 +477,16 @@ export function CatalogueImportWorkspace({
                 className={button}
                 disabled={busy}
                 onClick={() =>
-                  void readAction(async () => setDownloads((await api.template(format)).files))
+                  void readAction(async () => {
+                    const result = await api.template(format);
+                    setTemplate(result);
+                    setDownloads(result.files);
+                    const onlyFile = result.files[0];
+                    if (result.files.length === 1 && onlyFile) downloadCatalogueFile(onlyFile);
+                  })
                 }
               >
-                Get {format === 'csv' ? 'CSV templates' : 'Excel template'}
+                Download {format === 'csv' ? 'CSV template' : 'Excel template'}
               </button>
             ))}
           </div>
@@ -492,6 +505,16 @@ export function CatalogueImportWorkspace({
               ))}
             </ul>
           )}
+          {template?.lookups && (
+            <details className="min-w-0 rounded-lg border p-4 text-sm">
+              <summary className="cursor-pointer font-medium">Category and source choices</summary>
+              <p className="mt-3 text-muted-foreground">Use these names in Category and Source. Source choices belong to this supplier. Unknown or ambiguous names are flagged; the system does not guess a match.</p>
+              {([['Categories', template.lookups.categories], ['Supplier sources', template.lookups.sources]] as const).map(([title, values]) => (
+                <div key={title} className="mt-3 min-w-0 break-words"><strong>{title}</strong><p>{values.length ? values.map(value => value.name).join('; ') : 'No saved choices. Leave this field blank if unknown.'}</p></div>
+              ))}
+              {template.instructions?.map(instruction => <p key={instruction} className="mt-3 break-words text-muted-foreground">{instruction}</p>)}
+            </details>
+          )}
           <label htmlFor={`${fieldId}-control-3`} className={label}>
             Catalogue file
             <input
@@ -500,15 +523,12 @@ export function CatalogueImportWorkspace({
               className={input}
               type="file"
               accept=".csv,.xlsx"
-              multiple
               disabled={busy || Boolean(pending)}
               onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
             />
           </label>
           <p className="text-xs text-muted-foreground">
-            One Excel workbook, or catalogue.csv with optional measurements.csv and
-            sensor_channels.csv. Up to 1,000 collections and 32 MB combined. Arabic text and text
-            identifiers are supported.
+            Upload one .xlsx workbook or UTF-8 CSV file, up to 1,000 collections and 32 MB. Keep the template headings and Excel sheet names unchanged. Enter quantities, languages, dates and coverage on the same row; no extra input files or system IDs are required. Use values only, without formulas or macros. Arabic text and leading zeroes in collection references are supported.
           </p>
           <label htmlFor={`${fieldId}-control-4`} className={label}>
             How to handle matching identifiers
@@ -719,7 +739,7 @@ export function CatalogueImportWorkspace({
                             key={change.field}
                             className="min-w-0 rounded-md bg-muted/50 p-3 text-sm"
                           >
-                            <dt className="break-words font-medium">{change.field}</dt>
+                            <dt className="break-words font-medium">{({ primaryCategoryId: 'Category', sourceId: 'Source', dataTypes: 'Data types', title: 'Collection name', declaredFormats: 'File formats' } as Record<string, string>)[change.field] ?? change.field}</dt>
                             <dd className="mt-1 grid min-w-0 gap-2 sm:grid-cols-2">
                               <div className="whitespace-pre-wrap break-words">
                                 <span className="text-xs text-muted-foreground">Saved: </span>

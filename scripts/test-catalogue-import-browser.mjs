@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
@@ -12,7 +13,8 @@ import {
   CatalogueEntryPatchBodySchema,
   DatasetPreparationCapacityUpdateBodySchema,
 } from '@kuinbee/dataset-preparation-contracts';
-const administrative = process.cwd().endsWith('/admin');
+const administrative =
+  JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).name === 'admin';
 const client = administrative
   ? `import{adminCatalogueApi}from'./src/services/catalogue-imports.service';const api=adminCatalogueApi('supplier-test');`
   : `import{supplierCatalogueApi as api}from'./src/lib/api/catalogue-imports';`;
@@ -47,7 +49,10 @@ const server = createServer((req, res) => {
 });
 server.listen(0, '127.0.0.1');
 await once(server, 'listening');
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+});
 const origin = `http://127.0.0.1:${server.address().port}`;
 const apiBase = administrative
   ? '/api/v2/admin/suppliers/supplier-test'

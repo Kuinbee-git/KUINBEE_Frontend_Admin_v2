@@ -9,6 +9,7 @@ import {
 // are left in the underlying response, never turned into current active claims.
 export function ReviewContentMetadata({ metadata }: { metadata: DatasetContentMetadata }) {
   const enabled: Record<keyof DatasetPreparationProfiles, boolean> = {
+    cad: metadata.modalities?.includes('CAD') ?? false,
     tabular: metadata.modalities?.includes('TABULAR') ?? false,
     audio: metadata.modalities?.includes('AUDIO') ?? false,
     images: metadata.modalities?.includes('IMAGE') ?? false,

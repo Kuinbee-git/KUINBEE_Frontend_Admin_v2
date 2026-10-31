@@ -51,7 +51,11 @@ const expectedSources = [
   'legacyCatalogue',
   'legacyCatalogueEndpoints',
   'tables',
-  'tableMetadata', 'tableReferences',
+  'tableMetadata',
+  'tableReferences',
+  'preparationCapacity',
+  'catalogueImport',
+  'catalogueImportHttp',
   'edit',
   'cataloguePrimitives',
 ].map((name) => `packages/api-contracts/src/datasets/${name}.schema.ts`);
@@ -148,7 +152,7 @@ assert.equal(
   }).success,
   false
 );
-assert.equal(DATASET_UPLOAD_FILE_LIMIT_BYTES, '2000000000');
+assert.equal(DATASET_UPLOAD_FILE_LIMIT_BYTES, '5000000000');
 const received = {
   partNumber: 1,
   expectedBytes: 5,

@@ -98,6 +98,16 @@ export const CLARU_DELIVERY_ACCESS: AccessRequirement = {
 
 const ROUTE_ACCESS_RULES: readonly RouteAccessRule[] = [
   {
+    matches: (pathname) => /^\/dashboard\/suppliers\/[^/]+\/catalogue(?:\/|$)/.test(pathname),
+    requirement: {
+      allOf: [PERMISSIONS.SUPPLIERS.VIEW],
+      anyOf: [
+        PERMISSIONS.SUPPLIERS.IMPORT_CATALOGUE,
+        PERMISSIONS.SUPPLIERS.MANAGE_PREPARATION_CAPACITY,
+      ],
+    },
+  },
+  {
     matches: (pathname) => /^\/dashboard\/suppliers\/[^/]+\/analytics(?:\/|$)/.test(pathname),
     requirement: {
       allOf: [PERMISSIONS.SUPPLIERS.VIEW, PERMISSIONS.SUPPLIERS.VIEW_ANALYTICS],
@@ -184,7 +194,9 @@ const ROUTE_ACCESS_RULES: readonly RouteAccessRule[] = [
     requirement: SOURCE_CATALOG_ACCESS,
   },
   {
-    matches: (pathname) => pathname.startsWith('/dashboard/supplier-kyc') || pathname.startsWith('/dashboard/supplier-applications'),
+    matches: (pathname) =>
+      pathname.startsWith('/dashboard/supplier-kyc') ||
+      pathname.startsWith('/dashboard/supplier-applications'),
     requirement: { anyOf: [PERMISSIONS.SUPPLIERS.MANAGE_VERIFICATION] },
   },
   {

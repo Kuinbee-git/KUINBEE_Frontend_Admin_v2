@@ -281,7 +281,9 @@ const server = createServer(async (req, res) => {
     let data;
     if (url.pathname.endsWith('/my-permissions'))
       data = { permissions: viewer ? ['VIEW_SUPPLIER'] : [] };
-    else if (url.pathname === '/api/v1/admin/suppliers') {
+    else if (/^\/api\/v2\/admin\/suppliers\/[^/]+\/capacity$/.test(url.pathname)) {
+      data = { limit: 1000, used: 50, remaining: 950, generation: 0, override: 1000 };
+    } else if (url.pathname === '/api/v1/admin/suppliers') {
       let items = [
         supplierListItem,
         ...['SUBMITTED', 'CHANGES_REQUESTED', 'APPROVED', 'REJECTED', 'NOT_RECORDED'].map(

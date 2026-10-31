@@ -1,0 +1,4 @@
+import { DATASET_CONTENT_ADMIN_ENABLED } from './dataset-content-environment';
+export const DATASET_CATALOGUE_IMPORT_ENABLED =
+  DATASET_CONTENT_ADMIN_ENABLED &&
+  process.env.NEXT_PUBLIC_DATASET_CATALOGUE_IMPORT_ENABLED === 'true';

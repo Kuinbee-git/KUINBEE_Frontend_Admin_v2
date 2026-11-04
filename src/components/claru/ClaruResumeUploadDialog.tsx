@@ -4,6 +4,8 @@ import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ClaruCategoryPicker } from './ClaruCategoryPicker';
+import { ClaruMetadataFields } from './ClaruMetadataFields';
+import { claruMetadataDraft, readClaruMetadata } from './claruMetadataUtils';
 import {
   claruConsentLabels,
   claruAcceptByType as acceptByType,
@@ -60,6 +62,9 @@ export function ClaruResumeUploadDialog({ submission, project }: ClaruResumeUplo
   const [open, setOpen] = useState(false);
   const [correctionMode, setCorrectionMode] = useState<'files' | 'declaration'>('files');
   const [form, setForm] = useState(() => declarationForm(submission));
+  const [customMetadata, setCustomMetadata] = useState(() =>
+    claruMetadataDraft(submission.declared.custom)
+  );
   const [filesByPartId, setFilesByPartId] = useState<Record<string, File>>({});
   const [error, setError] = useState<string | null>(null);
   const [consent, setConsent] = useState<Record<string, boolean>>({});
@@ -92,6 +97,7 @@ export function ClaruResumeUploadDialog({ submission, project }: ClaruResumeUplo
     setAddedFiles({});
     setCorrectionMode('files');
     setForm(declarationForm(submission));
+    setCustomMetadata(claruMetadataDraft(submission.declared.custom));
     setFilesByPartId({});
     setError(null);
     mutation.reset();
@@ -243,6 +249,15 @@ export function ClaruResumeUploadDialog({ submission, project }: ClaruResumeUplo
             }
           : {}),
       } satisfies ClaruDeclaration;
+
+      const metadata = readClaruMetadata(
+        project?.metadataSchema,
+        customMetadata,
+        submission.declared.custom
+      );
+      if (metadata.errors.length) return setError(metadata.errors.join(' '));
+      if (Object.keys(metadata.custom).length || submission.declared.custom)
+        declared.custom = metadata.custom;
 
       if (
         isRefused &&
@@ -521,6 +536,15 @@ export function ClaruResumeUploadDialog({ submission, project }: ClaruResumeUplo
                 ) : null}
               </div>
             </section>
+          ) : null}
+
+          {isCorrection ? (
+            <ClaruMetadataFields
+              schema={project?.metadataSchema}
+              value={customMetadata}
+              onChange={setCustomMetadata}
+              idPrefix="claru-correction-metadata"
+            />
           ) : null}
 
           {selectableParts.length > 0 ? (

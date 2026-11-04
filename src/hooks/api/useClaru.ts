@@ -25,7 +25,16 @@ export function useClaruProjects() {
   return useQuery({
     queryKey: claruKeys.projects(),
     queryFn: service.getClaruProjects,
-    staleTime: 60_000,
+    staleTime: (query) =>
+      query.state.data?.team.status === 'active' &&
+      !query.state.data.team.blocked &&
+      query.state.data.projects.length
+        ? 60_000
+        : 0,
+    refetchInterval: (query) =>
+      query.state.data?.team.status === 'draft' || query.state.data?.projects.length === 0
+        ? 60_000
+        : false,
   });
 }
 

@@ -36,6 +36,7 @@ import { ClaruCreateSubmissionDialog } from './ClaruCreateSubmissionDialog';
 import { ClaruBulkSubmissionDialog } from './ClaruBulkSubmissionDialog';
 import { ClaruQueuePanel } from './ClaruQueuePanel';
 import {
+  claruTeamBlock,
   claruFileTypeLabel,
   claruStateLabel,
   claruStateSemantic,
@@ -98,7 +99,7 @@ export function ClaruBatchWorkspace({ batchId }: { batchId: string }) {
   const submissions = submissionsQuery.data?.items ?? [];
   const pagination = submissionsQuery.data?.pagination;
   const canManage = can({ anyOf: [PERMISSIONS.CLARU.MANAGE] });
-  const blocked = projectsQuery.data?.team.blocked;
+  const blocked = claruTeamBlock(projectsQuery.data);
   const visibleCounts = submissions.reduce(
     (counts, submission) => ({
       ...counts,
@@ -182,6 +183,11 @@ export function ClaruBatchWorkspace({ batchId }: { batchId: string }) {
                     <p className="text-xs text-[var(--text-muted)]">Capture profile</p>
                     <p className="mt-1 text-sm font-medium">
                       {project.captureAspectRatio} · IMU {project.checkGroups.imu}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">
+                      {(project.frameRates ?? [30, 60]).join(', ')} fps ·{' '}
+                      {project.metadataSchema?.fields.filter((field) => field.required).length ?? 0}{' '}
+                      required metadata fields
                     </p>
                   </div>
                 </div>

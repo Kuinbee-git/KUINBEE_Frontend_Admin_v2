@@ -88,6 +88,7 @@ function persistentInput(input: ClaruSubmissionCreateInput): ClaruSubmissionCrea
         ? { axisConvention: declared.imu.axisConvention, videoStartUs: declared.imu.videoStartUs }
         : undefined,
       batchRef: declared.batchRef,
+      custom: declared.custom,
     },
     parts: input.parts.map(({ clientPartId, fileType, fileName, byteSize }) => ({
       clientPartId,

@@ -1,5 +1,18 @@
 import type { SemanticStatus } from '@/components/shared/StatusBadge';
-import type { ClaruFileType, ClaruSubmissionState } from '@/types';
+import type { ClaruDiscovery, ClaruFileType, ClaruSubmissionState } from '@/types';
+
+export function claruTeamBlock(discovery?: ClaruDiscovery) {
+  if (discovery?.team.blocked) return discovery.team.blocked;
+  const status = discovery?.team.status?.toLowerCase();
+  if (!status || status === 'active') return undefined;
+  return {
+    code: `TEAM_${status.toUpperCase()}`,
+    remedy:
+      status === 'draft'
+        ? 'Your Claru team is awaiting activation. Ask your Claru contact to activate it, then refresh projects.'
+        : `Your Claru team is ${status}. Contact Claru to restore delivery access.`,
+  };
+}
 
 export function claruStateLabel(state: ClaruSubmissionState): string {
   switch (state) {

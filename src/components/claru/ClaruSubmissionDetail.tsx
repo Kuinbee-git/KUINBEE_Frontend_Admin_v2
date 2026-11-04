@@ -41,6 +41,7 @@ import { formatDateTime } from '@/utils/date.utils';
 import { ClaruResumeUploadDialog } from './ClaruResumeUploadDialog';
 import { ClaruTransferPanel } from './ClaruTransferPanel';
 import {
+  claruTeamBlock,
   claruFileTypeLabel,
   claruStateLabel,
   claruStateSemantic,
@@ -159,7 +160,7 @@ export function ClaruSubmissionDetail({ submissionId }: { submissionId: string }
   const editable = ['draft', 'refused', 'expired'].includes(submission.state);
   const canManage = can({ anyOf: [PERMISSIONS.CLARU.MANAGE] });
   const canSeal = can({ anyOf: [PERMISSIONS.CLARU.SEAL] });
-  const blocked = projectsQuery.data?.team.blocked;
+  const blocked = claruTeamBlock(projectsQuery.data);
   const hasStagedUpload = Boolean(
     staged?.result.uploadInstructions.some((part) => part.uploadState === 'pending')
   );
@@ -359,6 +360,11 @@ export function ClaruSubmissionDetail({ submissionId }: { submissionId: string }
                   Failed checks: {submission.rejection.checks.join(', ')}
                 </p>
               ) : null}
+              {submission.rejection.comment ? (
+                <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--text-secondary)]">
+                  Reviewer note: {submission.rejection.comment}
+                </p>
+              ) : null}
               <p className="mt-2 text-xs font-medium text-[var(--status-error)]">
                 A corrected clip must use a new external reference.
               </p>
@@ -447,6 +453,16 @@ export function ClaruSubmissionDetail({ submissionId }: { submissionId: string }
                     value={formatDateTime(submission.declared.recordedAt)}
                   />
                 </dl>
+                {submission.declared.custom && Object.keys(submission.declared.custom).length ? (
+                  <details className="mt-4">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Project metadata
+                    </summary>
+                    <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md bg-[var(--bg-muted)] p-3 text-xs">
+                      {JSON.stringify(submission.declared.custom, null, 2)}
+                    </pre>
+                  </details>
+                ) : null}
               </CardContent>
             </Card>
 

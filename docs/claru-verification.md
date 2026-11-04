@@ -17,7 +17,11 @@ npm run build
 It covers supplied multipart boundaries, saved-slice resume, exact PUT headers,
 sidecars without an invented Content-Type, missing ETags, sibling cancellation,
 draining outstanding checkpoints before retry, pause, file mismatch, and skipping
-files already confirmed by Claru.
+files already confirmed by Claru. It also tests v5 metadata serialization,
+nested type validation, timestamp time zones, calendar dates, reserved JSON
+keys, UTF-8 size limits, warning-only schemas and preservation of unlisted data.
+`npm run test:claru:queue` verifies that custom metadata survives queueing,
+refresh and retry with the same external reference.
 
 ## Browser acceptance
 
@@ -54,6 +58,13 @@ blocked teams; unavailable discovery; 390px, 768px, and desktop layouts; and the
 panel's dark-mode toggle. Every scenario checks for uncaught browser errors, and
 screen captures check for horizontal page overflow.
 
+V5 scenarios cover all eleven required project fields, nested camera
+intrinsics, preventing create/upload before required metadata is ready,
+time-zone errors, shared bulk metadata with per-clip edits, declaration-only
+corrections preserving extra metadata, human reviewer comments, and pending
+activation. Run `npm run test:claru:bulk:browser` against the same server for
+bulk, queue and interruption acceptance.
+
 ## Review fixes
 
 - Category selection supports text search and keyboard navigation.
@@ -80,6 +91,9 @@ Before release, deploy the backend and frontend together: the checkpoint request
 now requires `uploadId`. Apply the Claru database migration, configure the
 server-side `CLARU_API_KEY`, and assign the three permissions as appropriate.
 Superadmins retain all Claru access; manage and seal are independent for admins.
+The v5 backend additionally needs migration
+`20261104120000_claru_reviewer_comment` before startup. No API credential belongs
+in a `NEXT_PUBLIC_*` variable or in browser storage.
 
 Use the backend guide at `backend/docs/claru-backend-testing.md` from the workspace
 root for the live checklist. From the deployed admin origin, verify real PUT and

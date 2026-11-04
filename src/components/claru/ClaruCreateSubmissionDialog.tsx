@@ -16,6 +16,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ClaruCategoryPicker } from './ClaruCategoryPicker';
+import { ClaruMetadataFields } from './ClaruMetadataFields';
+import { readClaruMetadata, type ClaruMetadataDraft } from './claruMetadataUtils';
 import {
   claruConsentLabels as consentLabels,
   claruAcceptByType as acceptByType,
@@ -66,6 +68,7 @@ export function ClaruCreateSubmissionDialog({ batch, project }: ClaruCreateSubmi
   const [durationMinutes, setDurationMinutes] = useState('');
   const [axisConvention, setAxisConvention] = useState('RDF');
   const [videoStartUs, setVideoStartUs] = useState('');
+  const [customMetadata, setCustomMetadata] = useState<ClaruMetadataDraft>({});
   const [files, setFiles] = useState(emptyFiles);
   const [consent, setConsent] = useState<Record<ConsentKey, boolean>>({
     worker_consent_obtained: false,
@@ -91,6 +94,7 @@ export function ClaruCreateSubmissionDialog({ batch, project }: ClaruCreateSubmi
     setDurationMinutes('');
     setAxisConvention('RDF');
     setVideoStartUs('');
+    setCustomMetadata({});
     setFiles(emptyFiles());
     setConsent({
       worker_consent_obtained: false,
@@ -162,6 +166,9 @@ export function ClaruCreateSubmissionDialog({ batch, project }: ClaruCreateSubmi
       return setError('Video start must be an exact whole number of microseconds.');
     }
 
+    const metadata = readClaruMetadata(project.metadataSchema, customMetadata);
+    if (metadata.errors.length) return setError(metadata.errors.join(' '));
+
     const filesByClientPartId: Record<string, File> = {};
     const parts = expectedFiles.flatMap((expectation) =>
       files[expectation.fileType].map((file) => {
@@ -189,6 +196,7 @@ export function ClaruCreateSubmissionDialog({ batch, project }: ClaruCreateSubmi
           mount: mount.trim(),
           recordedAt: new Date(recordedTimestamp).toISOString(),
           durationSeconds,
+          ...(Object.keys(metadata.custom).length ? { custom: metadata.custom } : {}),
           consent: {
             worker_consent_obtained: true,
             site_or_employer_permission_obtained: true,
@@ -450,6 +458,13 @@ export function ClaruCreateSubmissionDialog({ batch, project }: ClaruCreateSubmi
               </div>
             ) : null}
           </section>
+
+          <ClaruMetadataFields
+            schema={project.metadataSchema}
+            value={customMetadata}
+            onChange={setCustomMetadata}
+            idPrefix="claru-create-metadata"
+          />
 
           <section
             className="space-y-3 border-t pt-5"

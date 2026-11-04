@@ -17,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { enqueueClaruClips } from '@/services/claru-queue.service';
 import type { ClaruBatch, ClaruConsent, ClaruFileType, ClaruProject } from '@/types';
 import { ClaruCategoryPicker } from './ClaruCategoryPicker';
+import { ClaruMetadataFields } from './ClaruMetadataFields';
+import type { ClaruMetadataDraft } from './claruMetadataUtils';
 import { claruFileTypeLabel, formatBytes, formatClaruDuration } from './claruAdminUtils';
 import { claruAcceptByType, claruConsentLabels, claruFileError } from './claruFormUtils';
 import {
@@ -61,6 +63,7 @@ export function ClaruBulkSubmissionDialog({
   const [categoryCode, setCategoryCode] = useState('');
   const [recordedAt, setRecordedAt] = useState('');
   const [durationMinutes, setDurationMinutes] = useState('');
+  const [customMetadata, setCustomMetadata] = useState<ClaruMetadataDraft>({});
   const [consent, setConsent] = useState(emptyConsent);
   const [page, setPage] = useState(0);
   const [showErrors, setShowErrors] = useState(false);
@@ -152,6 +155,7 @@ export function ClaruBulkSubmissionDialog({
     setCategoryCode('');
     setRecordedAt('');
     setDurationMinutes('');
+    setCustomMetadata({});
     setConsent(emptyConsent());
     setPage(0);
     setShowErrors(false);
@@ -192,6 +196,7 @@ export function ClaruBulkSubmissionDialog({
       axisConvention: 'RDF',
       videoStartUs: '',
       matchingFileConfirmed: false,
+      customMetadata: { ...customMetadata },
     }));
     setRows((current) => [...current, ...additions]);
     setConsent(emptyConsent());
@@ -217,6 +222,7 @@ export function ClaruBulkSubmissionDialog({
         ...(categoryCode ? { categoryCode } : {}),
         ...(recordedAt ? { recordedAt } : {}),
         ...(durationMinutes ? { durationMinutes, durationSource: 'manual' as const } : {}),
+        customMetadata: { ...row.customMetadata, ...customMetadata },
       }))
     );
     setError(null);
@@ -411,6 +417,13 @@ export function ClaruBulkSubmissionDialog({
                 </p>
               </div>
             </div>
+            <ClaruMetadataFields
+              schema={project.metadataSchema}
+              value={customMetadata}
+              onChange={setCustomMetadata}
+              idPrefix="claru-bulk-shared-metadata"
+              shared
+            />
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" disabled={!rows.length} onClick={applyShared}>
                 Apply shared details to all clips
@@ -732,6 +745,12 @@ export function ClaruBulkSubmissionDialog({
                       </div>
                     ) : null}
                   </details>
+                  <ClaruMetadataFields
+                    schema={project.metadataSchema}
+                    value={row.customMetadata ?? {}}
+                    onChange={(value) => updateRow(row.id, { customMetadata: value })}
+                    idPrefix={`${prefix}-metadata`}
+                  />
                   {showErrors && errors.length ? (
                     <ul
                       className="mt-3 list-disc space-y-1 pl-5 text-xs"

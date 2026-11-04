@@ -46,6 +46,9 @@ Only the batch name and project are required to create the batch. The other fiel
 
 On the batch page, check the displayed clip-length range, aspect ratio, required file roles, and any motion-sensor requirements. Required file roles have an asterisk. Follow the current rules shown for that project.
 
+The capture profile also shows accepted frame rates and the number of required
+project metadata fields. These rules come from Claru's live project list.
+
 If the project connection is unavailable, use **Retry connection** or **Refresh projects**, depending on the page. If it remains unavailable or the team/project is blocked, report the displayed message to the superadmin before continuing.
 
 **5. Select videos using Bulk upload**
@@ -63,6 +66,20 @@ Shared capture details initially come from the batch. Change them if needed, the
 Apply a shared category only when it is correct for every clip. Apply a shared recording time or duration only when those values really are the same. Recording time means the actual start time, not the file's modification date. Duration is read from the video where possible and remains editable; leave the shared duration blank to retain each clip's measured value.
 
 Review every clip's reference, category, recording time, duration, and capture details. Change individual exceptions after applying shared details. Large selections have pages of 20 clips: review all pages. Shared changes apply across every page.
+
+Complete **Project metadata** for each clip. The fields follow the project's
+current requirements. The worldwide project currently requires capture
+country/city/date, collection start/end times, contributor ID, work environment
+and activity, exact camera model, capture software/firmware, and camera
+intrinsics. Start/end times need seconds and an explicit time zone, for example
+`2026-11-04T09:12:00+05:30`. Camera intrinsics are a JSON object with a 3×3 `K`
+matrix and the delivered image width and height; use the capture team's actual
+calibration, not the example values shown in the form.
+
+Use **Shared project metadata** for values that apply to all selected clips,
+then **Apply shared details to all clips**. Review each clip's metadata and edit
+exceptions, especially recording times and camera settings. Missing required
+values and invalid JSON must be fixed before clips can enter the queue.
 
 The reference prefix helps generate a label for each clip. For example, use CLR-DAY03-CARD01 for one group and CLR-DAY03-CARD02 for another. References must be unique across the team's batches. If you change the prefix after selecting files, click **Regenerate references** and review the results.
 
@@ -147,6 +164,10 @@ For a **refused** clip, read the reason, every failed check, and the suggested r
 For an **expired** clip, choose **Restart delivery**, reselect files for every retained role, including optional files previously declared, and review the declaration and consent. Remove any optional role that is no longer needed. Choose **Prepare corrected upload**, then **Start upload**. Seal after uploading. Keep the same reference.
 
 For a **rejected** clip, read the rejection reason and address the underlying issue. Add the corrected footage as a new clip with a new reference, then upload, review, and seal it. Leave the old clip as the rejection record.
+
+Human rejections can also include a **Reviewer note** beside the selected
+reason. Read both. Project metadata is visible in the clip's capture declaration
+and can be changed with a declaration-only correction on an unsealed clip.
 
 **13. Continue later deliveries and finish the batch**
 

@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { metadataSchema, customMetadata, fillMetadata } from './fixtures/claru-v5-metadata.mjs';
 
 const base = process.env.CLARU_TEST_BASE_URL || 'http://localhost:3017';
 const artifacts = process.env.CLARU_BULK_TEST_ARTIFACTS || '/tmp/claru-bulk-browser-review';
@@ -155,7 +156,7 @@ async function scenario(name, run, options = {}) {
         },
         contract: { version: 2, minAcceptedVersion: 1 },
         rateLimit: { requestsPerMinute: 600 },
-        projects: [project],
+        projects: [{ ...project, ...model.projectOverrides }],
       };
     } else if (endpoint.endsWith('/claru/batches')) {
       data = { items: [batch], page: 1, pageSize: 20, total: 1 };
@@ -383,6 +384,25 @@ await fs.mkdir(artifacts, { recursive: true });
 browser = await chromium.launch({ headless: true });
 
 try {
+  await scenario('v5 bulk metadata applies shared values, supports per-clip edits and reaches upload intact', async (page, model) => {
+    await ready(page);
+    await selectVideos(page, [syntheticVideo('v5-one.mp4'), syntheticVideo('v5-two.mp4')]);
+    await page.getByRole('button', { name: 'Add 2 clips to queue', exact: true }).click();
+    await page.getByText('capture_city is required.', { exact: true }).first().waitFor();
+    assert.equal(createRequests(model).length, 0);
+    await fillMetadata(page, 'claru-bulk-shared-metadata');
+    await page.getByRole('button', { name: 'Apply shared details to all clips', exact: true }).click();
+    const cards = page.locator('[data-claru-bulk-row]');
+    await cards.nth(1).getByLabel('Capture city *', { exact: true }).fill('Mumbai');
+    await enqueue(page, 2);
+    await startQueue(page);
+    await allReady(page, model, 2);
+    const requests = createRequests(model);
+    assert.deepEqual(requests[0].body.declared.custom, customMetadata);
+    assert.deepEqual(requests[1].body.declared.custom, { ...customMetadata, capture_city: 'Mumbai' });
+    assert.equal(model.requests.filter((request) => request.endpoint.endsWith('/seal')).length, 0);
+  }, { projectOverrides: { contractVersion: 5, frameRates: [30, 50, 60], metadataSchema } });
+
   await scenario(
     'bulk selection reviews each clip and preserves truthful declarations',
     async (page, model) => {

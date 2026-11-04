@@ -7,6 +7,7 @@ import type {
 } from '@/types';
 import { claruFileError, validClaruAxis } from './claruFormUtils';
 import { claruFileTypeLabel } from './claruAdminUtils';
+import { readClaruMetadata, type ClaruMetadataDraft } from './claruMetadataUtils';
 
 export type ClaruBulkCapture = Required<ClaruBatchDefaults>;
 
@@ -22,6 +23,7 @@ export interface ClaruBulkRow extends ClaruBulkCapture {
   axisConvention: string;
   videoStartUs: string;
   matchingFileConfirmed: boolean;
+  customMetadata?: ClaruMetadataDraft;
 }
 
 export interface ClaruBulkDuplicateCounts {
@@ -115,6 +117,7 @@ export function validateClaruBulkRow(
   }
   const fileError = claruFileError(row.video, 'video');
   if (fileError) errors.push(fileError);
+  errors.push(...readClaruMetadata(project.metadataSchema, row.customMetadata ?? {}).errors);
   const allFiles = [row.video];
   for (const expectation of project.expectedFiles) {
     if (expectation.fileType === 'video') continue;
@@ -155,6 +158,8 @@ export function validateClaruBulkRow(
 }
 
 export function buildClaruBulkEntry(row: ClaruBulkRow, batch: ClaruBatch, project: ClaruProject) {
+  const metadata = readClaruMetadata(project.metadataSchema, row.customMetadata ?? {});
+  if (metadata.errors.length) throw new Error(metadata.errors.join(' '));
   const filesByClientPartId: Record<string, File> = {};
   const parts: ClaruSubmissionCreateInput['parts'] = [];
   const addPart = (fileType: ClaruFileType, file: File) => {
@@ -180,6 +185,7 @@ export function buildClaruBulkEntry(row: ClaruBulkRow, batch: ClaruBatch, projec
       mount: row.mount.trim(),
       recordedAt: new Date(row.recordedAt).toISOString(),
       durationSeconds: Number(row.durationMinutes) * 60,
+      ...(Object.keys(metadata.custom).length ? { custom: metadata.custom } : {}),
       consent: {
         worker_consent_obtained: true,
         site_or_employer_permission_obtained: true,

@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { metadataSchema, customMetadata, fillMetadata } from './fixtures/claru-v5-metadata.mjs';
 
 const base = process.env.CLARU_TEST_BASE_URL || 'http://localhost:3017';
 const artifacts = process.env.CLARU_TEST_ARTIFACTS || '/tmp/claru-browser-review';
@@ -133,14 +134,14 @@ async function scenario(name, run, options = {}) {
       data = {
         team: {
           name: 'Kuinbee',
-          status: 'active',
+          status: model.teamStatus ?? 'active',
           ...(model.blocked
             ? { blocked: { code: 'TEAM_BLOCKED', remedy: 'Contact Claru to restore team access.' } }
             : {}),
         },
         contract: { version: 2, minAcceptedVersion: 1 },
         rateLimit: { requestsPerMinute: 600 },
-        projects: model.emptyProjects ? [] : [project],
+        projects: model.emptyProjects ? [] : [{ ...project, ...model.projectOverrides }],
       };
     } else if (endpoint.endsWith('/claru/batches'))
       data =
@@ -597,6 +598,62 @@ async function resume(page) {
     },
     { discoveryError: true }
   );
+  await scenario('v5 metadata is required before upload and is sent as a nested custom object', async (page, model) => {
+    await ready(page, `/dashboard/claru/batches/${batch.id}`);
+    await visible(page, '30, 50, 60 fps');
+    await page.getByRole('button', { name: 'Add clip', exact: true }).click();
+    await page.getByLabel('External reference', { exact: true }).fill('v5-metadata-clip');
+    await page.locator('#claru-category').click();
+    await page.getByRole('combobox', { name: 'Search activity categories' }).fill('vegetables');
+    await page.getByRole('option', { name: /Preparing vegetables/ }).click();
+    await page.getByLabel('Duration in minutes', { exact: true }).fill('10');
+    await page.locator('#claru-file-video').setInputFiles({ name: 'capture.mp4', mimeType: 'video/mp4', buffer: Buffer.alloc(12, 1) });
+    for (const checkbox of await page.getByRole('checkbox').all()) await checkbox.check();
+    await page.locator('form button[type=submit]').click();
+    await visible(page, 'capture_city is required.');
+    assert.equal(model.requests.filter((request) => request.endpoint.endsWith(`/batches/${batch.id}/submissions`)).length, 0);
+    await fillMetadata(page, 'claru-create-metadata');
+    await page.locator('#claru-create-metadata-collection_start_time').fill('2026-11-04T09:12:00');
+    await page.locator('form button[type=submit]').click();
+    await visible(page, 'an ISO timestamp with seconds and a time zone');
+    await page.locator('#claru-create-metadata-collection_start_time').fill(customMetadata.collection_start_time);
+    await screenshot(page, 'v5-metadata-desktop');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await screenshot(page, 'v5-metadata-mobile');
+    await page.locator('form button[type=submit]').click();
+    await page.getByRole('button', { name: 'Start upload', exact: true }).waitFor();
+    assert.deepEqual(model.submission.declared.custom, customMetadata);
+  }, { projectOverrides: { contractVersion: 5, frameRates: [30, 50, 60], metadataSchema } });
+
+  await scenario('v5 declaration correction retains unknown metadata and the original reference', async (page, model) => {
+    model.submission.state = 'refused';
+    model.submission.parts[0].uploadState = 'uploaded';
+    model.submission.declared.custom = { ...customMetadata, ExtraField: { original: [false, 0, null] } };
+    await ready(page);
+    await page.getByRole('button', { name: 'Correct submission', exact: true }).click();
+    await page.getByText('Declaration only', { exact: true }).click();
+    await page.locator('#claru-correction-metadata-capture_city').fill('Mumbai');
+    await page.getByRole('button', { name: 'Save declaration', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.equal(model.submission.externalRef, 'kitchen-2026-09-27-0031');
+    assert.deepEqual(model.submission.declared.custom, { ...customMetadata, capture_city: 'Mumbai', ExtraField: { original: [false, 0, null] } });
+  }, { projectOverrides: { contractVersion: 5, metadataSchema } });
+
+  await scenario('human rejection displays both the selected reason and reviewer comment', async (page, model) => {
+    model.submission.state = 'rejected';
+    model.submission.sealed = true;
+    model.submission.rejection = { code: 'REVIEW_REJECTED', type: 'human', reason: 'Capture framing', comment: 'Hands were outside the frame.', checks: [] };
+    await ready(page);
+    await visible(page, 'Capture framing');
+    await visible(page, 'Reviewer note: Hands were outside the frame.');
+  });
+
+  await scenario('pending activation gives a remedy and prevents new batches', async (page) => {
+    await ready(page, '/dashboard/claru');
+    await visible(page, 'awaiting activation');
+    assert.equal(await page.getByRole('button', { name: 'New delivery batch', exact: true }).isDisabled(), true);
+  }, { teamStatus: 'draft', emptyProjects: true });
+
   await fs.writeFile(path.join(artifacts, 'results.json'), JSON.stringify(results, null, 2));
   console.log(`${results.length} browser scenarios passed. Artifacts: ${artifacts}`);
 })()

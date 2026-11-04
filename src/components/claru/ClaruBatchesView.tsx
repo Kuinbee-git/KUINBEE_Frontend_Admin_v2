@@ -29,6 +29,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { PERMISSIONS } from '@/lib/constants/permissions';
 import { formatDate } from '@/utils/date.utils';
 import { ClaruCreateBatchDialog } from './ClaruCreateBatchDialog';
+import { claruTeamBlock } from './claruAdminUtils';
 
 export function ClaruBatchesView() {
   const [page, setPage] = useState(1);
@@ -49,7 +50,7 @@ export function ClaruBatchesView() {
   const pagination = batchesQuery.data?.pagination;
   const canManage = can({ anyOf: [PERMISSIONS.CLARU.MANAGE] });
   const clipsOnPage = batches.reduce((total, batch) => total + batch.submissionCount, 0);
-  const blocked = projectsQuery.data?.team.blocked;
+  const blocked = claruTeamBlock(projectsQuery.data);
 
   return (
     <div className="min-h-screen bg-[var(--bg-surface)]">

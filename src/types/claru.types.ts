@@ -15,6 +15,38 @@ export interface ClaruProjectCategory {
   parent?: { id: string; name: string } | null;
 }
 
+export type ClaruJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | ClaruJsonValue[]
+  | { [key: string]: ClaruJsonValue };
+
+export interface ClaruMetadataField {
+  name?: string;
+  type:
+    | 'string'
+    | 'number'
+    | 'integer'
+    | 'boolean'
+    | 'date'
+    | 'timestamp'
+    | 'enum'
+    | 'object'
+    | 'array';
+  required?: boolean;
+  description?: string;
+  options?: string[];
+  fields?: ClaruMetadataField[];
+  items?: ClaruMetadataField;
+}
+
+export interface ClaruMetadataSchema {
+  enforced: boolean;
+  fields: ClaruMetadataField[];
+}
+
 export interface ClaruProject {
   id: string;
   name: string;
@@ -29,6 +61,8 @@ export interface ClaruProject {
   clipLength: { minSeconds: number; maxSeconds: number };
   categories: ClaruProjectCategory[];
   contractVersion: number;
+  frameRates?: number[];
+  metadataSchema?: ClaruMetadataSchema | null;
 }
 
 export interface ClaruDiscovery {
@@ -108,6 +142,7 @@ export interface ClaruDeclaration {
   consent: ClaruConsent;
   imu?: { axisConvention: string; videoStartUs?: number | null };
   batchRef?: string;
+  custom?: Record<string, ClaruJsonValue>;
 }
 
 export interface ClaruSubmissionPartInput {
@@ -167,6 +202,7 @@ export interface ClaruSubmission {
     type: string | null;
     reason: string;
     checks: string[];
+    comment?: string | null;
   } | null;
   version: number;
   sealedAt: string | null;

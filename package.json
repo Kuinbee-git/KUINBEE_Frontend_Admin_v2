@@ -13,7 +13,7 @@
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "type-check": "tsc --noEmit",
-    "test:claru": "node --test scripts/test-claru-transfer.mjs",
+    "test:claru": "node --test scripts/test-claru-transfer.mjs scripts/test-claru-metadata.mjs",
     "test:claru:browser": "node scripts/test-claru-browser.mjs",
     "test:claru:queue": "node --test scripts/test-claru-queue.mjs",
     "test:claru:bulk:browser": "node scripts/test-claru-bulk-browser.mjs",

@@ -244,6 +244,7 @@ test('pause retains locks until checkpoint drain and prevents the next queued cl
 test('refresh stores metadata only and requires exact original files before resuming', async () => {
   const h = harness();
   const original = h.entry('one');
+  original.input.declared.custom = { capture_city: 'Pune', camera_intrinsics: { width: 1920, K: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] } };
   const [id] = h.api.enqueueClaruClips([original]);
   const saved = [...h.storage.values()][0];
   assert.ok(saved.includes('one.mp4'));
@@ -254,6 +255,7 @@ test('refresh stores metadata only and requires exact original files before resu
   refreshed.auth.setState({ user });
   assert.equal(refreshed.store.getState().items[0].status, 'needs_files');
   assert.equal(refreshed.creates.length, 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(refreshed.store.getState().items[0].input.declared.custom)), original.input.declared.custom);
   assert.throws(
     () => refreshed.api.attachClaruQueueFiles(id, { video: new File(['wrong'], 'one.mp4') }),
     /original filename and byte size/
@@ -262,6 +264,7 @@ test('refresh stores metadata only and requires exact original files before resu
   refreshed.api.attachClaruQueueFiles(id, original.filesByClientPartId);
   refreshed.api.resumeClaruQueueItem(id);
   await until(() => refreshed.store.getState().items[0].status === 'ready');
+  assert.deepEqual(JSON.parse(JSON.stringify(refreshed.creates[0].input.declared.custom)), original.input.declared.custom);
   assert.equal(refreshed.creates[0].input.externalRef, 'one');
   assert.equal([...refreshed.storage.values()][0].includes('private-signed'), false);
 });

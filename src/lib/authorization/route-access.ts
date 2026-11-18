@@ -154,6 +154,10 @@ const ROUTE_ACCESS_RULES: readonly RouteAccessRule[] = [
     requirement: PLATFORM_DATASET_ACCESS,
   },
   {
+    matches: startsWith('/dashboard/supplier-datasets'),
+    requirement: DATASET_REVIEW_ACCESS,
+  },
+  {
     matches: startsWith('/dashboard/datasets'),
     requirement: PLATFORM_DATASET_ACCESS,
   },

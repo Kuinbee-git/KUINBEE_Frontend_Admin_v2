@@ -17,6 +17,8 @@ import {
   DatasetFrozenInventoryQuerySchema,
   DatasetAdminProposalsQuerySchema,
   DatasetAdminProposalsResponseSchema,
+  DatasetAdminSupplierCatalogueQuerySchema,
+  DatasetAdminSupplierCatalogueResponseSchema,
   DatasetFileDownloadBodySchema,
   DatasetFileDownloadResponseSchema,
   DatasetFileObservationQuerySchema,
@@ -51,7 +53,7 @@ const css = (
 ).css;
 const bundle = await build({
   stdin: {
-    contents: `import React from 'react';import{createRoot}from'react-dom/client';import{QueryClient,QueryClientProvider}from'@tanstack/react-query';import{ContentReviewBoundary}from'./src/components/datasets/content/ContentReviewBoundary';import{ProposalsView}from'./src/components/proposals/ProposalsView';import{UpdateRequestsView}from'./src/components/update-requests/UpdateRequestsView';import AdminQuestionsPage from './src/app/dashboard/questions/page';import{useAuthStore}from'./src/store/auth.store';const root=createRoot(document.getElementById('root'));let sequence=0;window.mount=(id,mode='review',actor=${JSON.stringify(actorId)},type='SUPERADMIN')=>{useAuthStore.getState().setUser({id:actor,email:'review@example.test',userType:type,status:'ACTIVE',emailVerified:true});const client=new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}});root.render(<React.StrictMode><QueryClientProvider client={client} key={++sequence}>{mode==='questions'?<AdminQuestionsPage/>:mode==='updates'?<UpdateRequestsView/>:mode==='queue'?<ProposalsView/>:<ContentReviewBoundary datasetId={id} queueType='proposals' legacy={<p data-legacy-review>Existing legacy review route</p>}/>}</QueryClientProvider></React.StrictMode>)};window.switchActor=(id)=>useAuthStore.getState().setUser({id,email:'other@example.test',userType:'ADMIN',status:'ACTIVE',emailVerified:true});window.mount(location.pathname.split('/').at(-1));`,
+    contents: `import React from 'react';import{createRoot}from'react-dom/client';import{QueryClient,QueryClientProvider}from'@tanstack/react-query';import{ContentReviewBoundary}from'./src/components/datasets/content/ContentReviewBoundary';import{ProposalsView}from'./src/components/proposals/ProposalsView';import{SupplierDatasetsView}from'./src/components/datasets/SupplierDatasetsView';import{UpdateRequestsView}from'./src/components/update-requests/UpdateRequestsView';import AdminQuestionsPage from './src/app/dashboard/questions/page';import{useAuthStore}from'./src/store/auth.store';const root=createRoot(document.getElementById('root'));let sequence=0;window.mount=(id,mode='review',actor=${JSON.stringify(actorId)},type='SUPERADMIN')=>{useAuthStore.getState().setUser({id:actor,email:'review@example.test',userType:type,status:'ACTIVE',emailVerified:true});const client=new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}});root.render(<React.StrictMode><QueryClientProvider client={client} key={++sequence}>{mode==='questions'?<AdminQuestionsPage/>:mode==='updates'?<UpdateRequestsView/>:mode==='queue'?<ProposalsView/>:mode==='catalogue'?<SupplierDatasetsView/>:<ContentReviewBoundary datasetId={id} queueType='proposals' legacy={<p data-legacy-review>Existing legacy review route</p>}/>}</QueryClientProvider></React.StrictMode>)};window.switchActor=(id)=>useAuthStore.getState().setUser({id,email:'other@example.test',userType:'ADMIN',status:'ACTIVE',emailVerified:true});window.mount(location.pathname.split('/').at(-1));`,
     loader: 'jsx',
     resolveDir: process.cwd(),
   },
@@ -86,6 +88,7 @@ const bundle = await build({
   ],
 });
 const questionFixtures = new Map();
+const supplierCatalogue = [];
 let questionInventoryRows = [];
 const models = new Map(),
   receipts = new Map(),
@@ -209,6 +212,27 @@ const server = createServer(async (req, res) => {
           pageSize: query.pageSize,
           total: rows.length,
           items: rows.slice((query.page - 1) * query.pageSize, query.page * query.pageSize),
+        })
+      );
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v2/admin/dataset-proposals/catalogue') {
+      const query = DatasetAdminSupplierCatalogueQuerySchema.parse(queryObject(url));
+      const matches = supplierCatalogue.filter(
+        (row) =>
+          (!query.q ||
+            [row.datasetUniqueId, row.title, row.supplier.name].some((field) =>
+              field.toLowerCase().includes(query.q.toLowerCase())
+            )) &&
+          (!query.status || row.status === query.status) &&
+          (!query.visibility || row.visibility === query.visibility)
+      );
+      return ok(
+        res,
+        DatasetAdminSupplierCatalogueResponseSchema.parse({
+          items: matches.slice((query.page - 1) * query.pageSize, query.page * query.pageSize),
+          page: query.page,
+          pageSize: query.pageSize,
+          total: matches.length,
         })
       );
     }
@@ -444,9 +468,20 @@ async function open(page, model) {
   await enabled(button(page, 'Pick for review'));
 }
 async function decide(page, target, action, note) {
-  await button(page, `${action} ${target}`).click();
+  const actionText =
+    action === 'Request changes'
+      ? target === 'pricing'
+        ? 'Request pricing changes'
+        : 'Request changes'
+      : `${action} ${target}`;
+  const confirm = {
+    Approve: 'Confirm approval',
+    Reject: 'Confirm rejection',
+    'Request changes': 'Confirm change request',
+  };
+  await button(page, actionText).click();
   await page.getByLabel(target + ' decision feedback', { exact: true }).fill(note);
-  await button(page, 'Confirm ' + action.toLowerCase() + ' ' + target).click();
+  await button(page, confirm[action]).click();
 }
 try {
   browser = await chromium.launch({ headless: true });
@@ -491,6 +526,108 @@ try {
   console.log(
     'PASS all three choices render frozen modality/scoped declarations and explicit assigned review without publication'
   );
+
+  const priced = add('SAMPLE_ONLY');
+  priced.submittedContent.common.title =
+    'Original Layered Digital Illustrations (PSD) for AI Training';
+  priced.submittedContent.common.overview =
+    'Human-made digital illustrations delivered as layered Photoshop files.';
+  priced.submittedContent.metadata.modalities = ['IMAGE'];
+  priced.submittedContent.common.license =
+    'Non-exclusive AI training licence. Full terms are agreed with Kuinbee.';
+  priced.submittedContent.metadata.fullCollectionOffer = {
+    mode: 'PAID_ON_REQUEST',
+    terms: 'The evaluation sample is free. Contact Kuinbee to license the full collection.',
+    pricePerFile: { amount: '4', currency: 'USD' },
+  };
+  supplierCatalogue.push(
+    {
+      id: priced.state.datasetId,
+      datasetUniqueId: priced.state.datasetUniqueId,
+      title: priced.submittedContent.common.title,
+      status: 'PUBLISHED',
+      visibility: 'PUBLIC',
+      updatedAt: now,
+      primaryCategory: { id: id(22), name: 'AI & ML' },
+      supplier: { id: id(23), name: 'Vikroz Private Limited', email: 'supplier@example.test' },
+    },
+    {
+      id: id(24),
+      datasetUniqueId: 'D0000000002',
+      title: 'Other Supplier Dataset',
+      status: 'PUBLISHED',
+      visibility: 'UNLISTED',
+      updatedAt: now,
+      primaryCategory: null,
+      supplier: { id: id(25), name: 'Another Supplier', email: 'another@example.test' },
+    }
+  );
+  await open(page, priced);
+  await button(page, 'Pick for review').click();
+  await enabled(button(page, 'Approve Dataset'));
+  await page.locator('#pricing').getByText('US$4 per file', { exact: true }).waitFor();
+  await page.locator('#pricing').getByText('Free', { exact: true }).first().waitFor();
+  await page.getByText('Listing status', { exact: true }).waitFor();
+  await page.getByText('Review status', { exact: true }).waitFor();
+  for (const action of ['Approve Dataset', 'Request changes', 'Reject Dataset']) {
+    await enabled(button(page, action));
+    assert.notEqual(
+      await button(page, action).evaluate((node) => getComputedStyle(node).backgroundColor),
+      'rgba(0, 0, 0, 0)'
+    );
+  }
+  await button(page, 'Approve Dataset').hover();
+  assert.equal(
+    await button(page, 'Approve Dataset').evaluate((node) => getComputedStyle(node).color),
+    'rgb(255, 255, 255)'
+  );
+  await page.mouse.move(1, 1);
+  await page.evaluate(() => document.documentElement.classList.add('dark'));
+  await page.screenshot({
+    path: resolve(artifacts, 'supplier-dataset-review.png'),
+    animations: 'disabled',
+  });
+  await page.locator('#pricing').screenshot({
+    path: resolve(artifacts, 'supplier-dataset-pricing.png'),
+    animations: 'disabled',
+  });
+  await page.evaluate(() => window.mount(null, 'catalogue'));
+  await page.getByRole('heading', { name: 'Supplier Datasets', exact: true }).waitFor();
+  await page
+    .getByRole('link', { name: priced.submittedContent.common.title, exact: true })
+    .first()
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole('link', { name: priced.submittedContent.common.title, exact: true })
+      .first()
+      .getAttribute('href'),
+    '/dashboard/supplier-datasets/' + priced.state.datasetId
+  );
+  await page.getByRole('textbox', { name: 'Search' }).fill('Vikroz');
+  await assertEventually(() =>
+    requests.some(
+      (request) =>
+        request.path.endsWith('/catalogue') &&
+        request.query.q === 'Vikroz' &&
+        request.query.status === 'PUBLISHED'
+    )
+  );
+  await page
+    .getByRole('link', { name: 'Other Supplier Dataset', exact: true })
+    .waitFor({ state: 'hidden' });
+  await page.screenshot({ path: resolve(artifacts, 'supplier-datasets.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole('link', { name: priced.submittedContent.common.title, exact: true })
+    .waitFor();
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  await page.setViewportSize({ width: 1366, height: 1000 });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  console.log(
+    'PASS supplier catalogue search and review status, access terms, and colored decisions'
+  );
+  requests.length = 0;
 
   const paid = add('FULL_AND_SAMPLE');
   paid.state.pricing.isPaid = true;
@@ -652,7 +789,7 @@ try {
     .getByLabel('Submitted assessment note', { exact: true })
     .fill('Exact uploaded full material');
   await button(page, 'Save submitted assessment').click();
-  await page.getByText('80.00', { exact: true }).waitFor();
+  await page.locator('#assessment').getByText('80.00', { exact: true }).waitFor();
   assert.equal(paged.assessment.contentId, paged.submittedContent.id);
   console.log(
     'PASS assessment uses exact submitted content and explicit scores, retaining the supplier declaration scope'

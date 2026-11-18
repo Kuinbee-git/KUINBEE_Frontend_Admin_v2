@@ -49,17 +49,39 @@ export const reviewLabel = (value: string) =>
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replaceAll('_', ' ')
     .replace(/^./, (c) => c.toUpperCase());
+export const formatReviewPricePerFile = ({
+  amount,
+  currency,
+}: {
+  amount: string;
+  currency: string;
+}) => {
+  const formatted = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
+    .formatToParts(Number(amount))
+    .map((part) => (part.type === 'currency' && currency === 'USD' ? 'US$' : part.value))
+    .join('');
+  return formatted + ' per file';
+};
+
 export function ReviewSection({
+  id,
   title,
   children,
   className = '',
 }: {
+  id?: string;
   title: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
     <section
+      id={id}
       className={'min-w-0 space-y-4 p-5 ' + className}
       style={{ borderColor: 'var(--border-default)' }}
     >

@@ -10,6 +10,9 @@ import {
   DatasetAdminProposalsResponseSchema,
   DatasetAdminAssignmentsQuerySchema,
   DatasetAdminAssignmentsResponseSchema,
+  DatasetAdminSupplierCatalogueQuerySchema,
+  DatasetAdminSupplierCatalogueResponseSchema,
+  type DatasetAdminSupplierCatalogueQuery,
   DatasetReviewResponseSchema,
   DatasetWorkflowResponseSchema,
   DatasetReviewPickBodySchema,
@@ -49,6 +52,9 @@ import { apiClient } from '@/lib/api/client';
 import { DATASET_CONTENT_ADMIN_ENABLED } from '@/lib/dataset-content-environment';
 
 export type AdminDatasetReview = ReturnType<typeof DatasetReviewResponseSchema.parse>;
+export type AdminSupplierDataset = ReturnType<
+  typeof DatasetAdminSupplierCatalogueResponseSchema.parse
+>['items'][number];
 export type AdminDatasetInbox = ReturnType<typeof DatasetAdminProposalsResponseSchema.parse>;
 export type AdminDatasetAssignments = ReturnType<
   typeof DatasetAdminAssignmentsResponseSchema.parse
@@ -258,6 +264,20 @@ export const datasetContentApi = {
     )
       incompatible();
     return result;
+  },
+  async supplierCatalogue(
+    input: Partial<DatasetAdminSupplierCatalogueQuery>,
+    signal?: AbortSignal
+  ) {
+    const params = DatasetAdminSupplierCatalogueQuerySchema.parse(input);
+    return request(
+      '/v2/admin/dataset-proposals/catalogue',
+      DatasetAdminSupplierCatalogueResponseSchema,
+      {
+        params,
+        signal,
+      }
+    );
   },
   async inbox(input: Partial<DatasetAdminProposalsQuery>, signal?: AbortSignal) {
     const query = DatasetAdminProposalsQuerySchema.parse(input);

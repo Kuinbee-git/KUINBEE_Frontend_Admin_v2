@@ -135,11 +135,19 @@ const NAV_ITEMS: AdminNavItem[] = [
   },
   {
     id: 'datasets',
-    label: 'Datasets',
+    label: 'Platform Datasets',
     icon: Database,
     href: '/dashboard/datasets',
     group: 'marketplace',
     access: PLATFORM_DATASET_ACCESS,
+  },
+  {
+    id: 'supplier-datasets',
+    label: 'Supplier Datasets',
+    icon: Database,
+    href: '/dashboard/supplier-datasets',
+    group: 'marketplace',
+    access: DATASET_REVIEW_ACCESS,
   },
   {
     id: 'data-requirements',

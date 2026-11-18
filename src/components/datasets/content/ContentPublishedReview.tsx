@@ -14,7 +14,12 @@ import type { DatasetReviewCommand } from '@/lib/datasets/dataset-review-command
 import { getFriendlyErrorMessage } from '@/lib/utils/error.utils';
 import { ContentAssessment } from './ContentAssessment';
 import { ContentReviewInventory } from './ContentReviewInventory';
-import { ReviewFacts, ReviewContentMetadata } from './ContentReviewFacts';
+import {
+  ReviewFacts,
+  ReviewContentMetadata,
+  formatReviewPricePerFile,
+  reviewLabel,
+} from './ContentReviewFacts';
 
 type Props = {
   review: AdminDatasetReview;
@@ -95,6 +100,7 @@ function PublishedContent({ review, actorId, locked, canAssess, execute }: Props
   const { published, assessment } = result.data,
     frozen = published.publishedContent!;
   const publication = published.publication!;
+  const offer = frozen.metadata.fullCollectionOffer;
   return (
     <div className="mt-4 space-y-5" data-published-content={frozen.id}>
       <p className="text-sm">
@@ -143,13 +149,27 @@ function PublishedContent({ review, actorId, locked, canAssess, execute }: Props
           ],
           ['Source captured for published content', frozen.common.source.name],
           [
-            'Price at publication',
+            frozen.uploadChoice === 'SAMPLE_ONLY'
+              ? 'Sample price at publication'
+              : 'Access price at publication',
             publication.pricingAtPublication.isPaid
               ? `${publication.pricingAtPublication.price} ${publication.pricingAtPublication.currency}`
               : 'Free',
           ],
-          ['Current Dataset status', published.state.datasetStatus],
-          ['Current visibility', published.visibility],
+          ...(offer
+            ? ([
+                [
+                  'Full collection offer',
+                  offer.pricePerFile
+                    ? formatReviewPricePerFile(offer.pricePerFile)
+                    : 'Price on request',
+                ],
+                ['Purchase method', 'Enquiry only'],
+                ['Full collection terms', offer.terms],
+              ] as const)
+            : []),
+          ['Listing status', reviewLabel(published.state.datasetStatus)],
+          ['Visibility', reviewLabel(published.visibility)],
         ]}
       />
       {frozen.dependenciesChanged && (
